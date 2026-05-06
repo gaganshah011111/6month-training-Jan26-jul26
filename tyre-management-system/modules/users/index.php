@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../includes/functions.php';
-if (!has_role(['Super Admin', 'Admin'])) { echo 'Access denied'; return; }
+if (!has_role(['Super Admin'])) { echo 'Access denied'; return; }
 $pdo = Database::connection();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -30,7 +30,13 @@ $users = $pdo->query('SELECT id, full_name, email, role, status, created_at FROM
     <div class="col-md-2"><input class="form-control" type="password" name="password" placeholder="Password" required></div>
     <div class="col-md-2">
         <select class="form-select" name="role">
-            <option>Super Admin</option><option>Admin</option><option>Employee</option>
+            <option>Super Admin</option>
+            <option>HR Manager</option>
+            <option>Production Manager</option>
+            <option>Inventory Manager</option>
+            <option>Dispatch Manager</option>
+            <option>Quality Manager</option>
+            <option>Employee</option>
         </select>
     </div>
     <div class="col-md-2"><button class="btn btn-primary w-100" name="create_user">Add User</button></div>

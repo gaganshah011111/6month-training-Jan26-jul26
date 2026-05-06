@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../config/app.php';
+require_once __DIR__ . '/functions.php';
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_name(SESSION_NAME);
@@ -17,15 +18,19 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 
 function require_auth(array $roles = []): void
 {
-    if (!isset($_SESSION['user'])) {
-        header('Location: login.php');
-        exit;
+    ensure_session_started();
+    if (!is_logged_in()) {
+        redirect('login.php');
     }
 
-    if ($roles && !in_array($_SESSION['user']['role'], $roles, true)) {
-        http_response_code(403);
-        echo 'Unauthorized access.';
-        exit;
+    if ($roles && !has_role($roles)) {
+        $user = current_user();
+        $target = role_home_page((string)($user['role'] ?? ''));
+        $currentPage = (string)($_GET['page'] ?? '');
+        if ($currentPage !== '' && $target === $currentPage) {
+            redirect('403.php');
+        }
+        redirect($target);
     }
 }
 

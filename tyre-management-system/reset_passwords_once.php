@@ -18,7 +18,11 @@ try {
 
     $users = [
         'superadmin@ralson.local' => 'Super@123',
-        'admin@ralson.local' => 'Admin@123',
+        'hr@ralson.local' => 'HR@123',
+        'production@ralson.local' => 'Production@123',
+        'inventory@ralson.local' => 'Inventory@123',
+        'dispatch@ralson.local' => 'Dispatch@123',
+        'quality@ralson.local' => 'Quality@123',
         'employee@ralson.local' => 'Emp@123',
     ];
 

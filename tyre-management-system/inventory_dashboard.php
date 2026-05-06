@@ -2,7 +2,6 @@
 declare(strict_types=1);
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/functions.php';
-require_auth(['Super Admin']);
-header('Location: ' . route_url('super/dashboard'));
+require_auth(['Inventory Manager', 'Super Admin']);
+header('Location: ' . route_url('inventory/dashboard'));
 exit;
-

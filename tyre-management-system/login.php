@@ -6,9 +6,13 @@ require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/functions.php';
 
 if (isset($_SESSION['user'])) {
-    $role = $_SESSION['user']['role'];
-    header('Location: ' . ($role === 'Super Admin' ? 'super_dashboard.php' : ($role === 'Admin' ? 'dashboard.php' : 'employee_dashboard.php')));
-    exit;
+    $role = (string)($_SESSION['user']['role'] ?? '');
+    $target = role_home_page($role);
+    if ($target !== 'login.php') {
+        header('Location: ' . route_url($target));
+        exit;
+    }
+    logout_user();
 }
 
 $error = '';
@@ -62,14 +66,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                     login_user($user, $remember);
-                    if (($user['role'] ?? '') === 'Super Admin') {
-                        header('Location: super_dashboard.php');
-                    } elseif (($user['role'] ?? '') === 'Admin') {
-                        header('Location: dashboard.php');
+                    $target = role_home_page((string)($user['role'] ?? ''));
+                    if ($target === 'login.php') {
+                        logout_user();
+                        $error = 'Role is not configured for dashboard access.';
                     } else {
-                        header('Location: ' . route_url('employee/dashboard'));
+                        header('Location: ' . route_url($target));
+                        exit;
                     }
-                    exit;
                 }
             }
         }

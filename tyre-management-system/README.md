@@ -17,7 +17,11 @@ Industrial training project ERP built with Core PHP + MySQL + Bootstrap 5.
 
 ## Default Login (password: `password`)
 - Super Admin: `superadmin@ralson.local`
-- Admin: `admin@ralson.local`
+- HR Manager: `hr@ralson.local`
+- Production Manager: `production@ralson.local`
+- Inventory Manager: `inventory@ralson.local`
+- Dispatch Manager: `dispatch@ralson.local`
+- Quality Manager: `quality@ralson.local`
 - Employee: `employee@ralson.local`
 
 ## Implemented Workflow

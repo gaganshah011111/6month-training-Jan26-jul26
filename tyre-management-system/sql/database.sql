@@ -6,7 +6,7 @@ CREATE TABLE users (
     full_name VARCHAR(120) NOT NULL,
     email VARCHAR(120) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    role ENUM('Super Admin','Admin','Employee') NOT NULL DEFAULT 'Employee',
+    role ENUM('Super Admin','HR Manager','Production Manager','Inventory Manager','Dispatch Manager','Quality Manager','Employee') NOT NULL DEFAULT 'Employee',
     status ENUM('active','inactive') NOT NULL DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_users_role_status(role, status)
@@ -148,7 +148,11 @@ CREATE TABLE settings (
 
 INSERT INTO users (full_name, email, password_hash, role, status) VALUES
 ('Super Admin', 'superadmin@ralson.local', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Super Admin', 'active'),
-('Admin User', 'admin@ralson.local', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin', 'active'),
+('HR Manager', 'hr@ralson.local', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'HR Manager', 'active'),
+('Production Manager', 'production@ralson.local', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Production Manager', 'active'),
+('Inventory Manager', 'inventory@ralson.local', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Inventory Manager', 'active'),
+('Dispatch Manager', 'dispatch@ralson.local', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Dispatch Manager', 'active'),
+('Quality Manager', 'quality@ralson.local', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Quality Manager', 'active'),
 ('Employee User', 'employee@ralson.local', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Employee', 'active');
 
 INSERT INTO employees (employee_code, full_name, department, contact_no, joining_date, basic_salary) VALUES

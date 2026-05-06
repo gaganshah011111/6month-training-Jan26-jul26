@@ -22,7 +22,7 @@ Industrial training project ERP built with Core PHP + MySQL + Bootstrap 5.
 - Inventory Manager: `inventory@ralson.local`
 - Dispatch Manager: `dispatch@ralson.local`
 - Quality Manager: `quality@ralson.local`
-- Employee: `employee@ralson.local`
+- Employee:  `employee@ralson.local` 
 
 ## Implemented Workflow
 1. Secure authentication with role-based redirection.

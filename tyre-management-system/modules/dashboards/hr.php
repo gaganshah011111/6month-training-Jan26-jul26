@@ -10,8 +10,8 @@ $payroll = (float)$pdo->query("SELECT COALESCE(SUM(net_salary),0) FROM salaries 
 ?>
 <h3>HR Dashboard</h3>
 <div class="row g-3">
-    <div class="col-md-3"><div class="card"><div class="card-body"><small>Employees</small><h4><?= e((string)$employees) ?></h4></div></div></div>
-    <div class="col-md-3"><div class="card"><div class="card-body"><small>Present Today</small><h4><?= e((string)$present) ?></h4></div></div></div>
-    <div class="col-md-3"><div class="card"><div class="card-body"><small>Pending Leaves</small><h4><?= e((string)$leavePending) ?></h4></div></div></div>
-    <div class="col-md-3"><div class="card"><div class="card-body"><small>Monthly Payroll</small><h4><?= e((string)$payroll) ?></h4></div></div></div>
+    <div class="col-md-3"><div class="card kpi-card"><div class="card-body d-flex justify-content-between align-items-start"><div><small>Employees</small><h4><?= e((string)$employees) ?></h4></div><span class="kpi-icon"><i class="bi bi-people"></i></span></div></div></div>
+    <div class="col-md-3"><div class="card kpi-card"><div class="card-body d-flex justify-content-between align-items-start"><div><small>Present Today</small><h4><?= e((string)$present) ?></h4></div><span class="kpi-icon"><i class="bi bi-calendar-check"></i></span></div></div></div>
+    <div class="col-md-3"><div class="card kpi-card"><div class="card-body d-flex justify-content-between align-items-start"><div><small>Pending Leaves</small><h4><?= e((string)$leavePending) ?></h4></div><span class="kpi-icon"><i class="bi bi-calendar-minus"></i></span></div></div></div>
+    <div class="col-md-3"><div class="card kpi-card"><div class="card-body d-flex justify-content-between align-items-start"><div><small>Monthly Payroll</small><h4><?= e((string)$payroll) ?></h4></div><span class="kpi-icon"><i class="bi bi-cash-coin"></i></span></div></div></div>
 </div>

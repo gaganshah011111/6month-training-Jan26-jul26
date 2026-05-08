@@ -58,6 +58,10 @@ function require_employee_record(PDO $pdo): array
         throw new RuntimeException('Your employee profile is not linked yet. Please ask admin to map this account in Employees module.');
     }
 
+    if (($employee['employee_type'] ?? 'Staff') === 'Worker') {
+        throw new RuntimeException('Worker profiles do not have self-service login. Attendance and payroll are managed by HR.');
+    }
+
     return $employee;
 }
 

@@ -10,6 +10,7 @@ return [
     'dispatch/dashboard' => 'modules/dashboards/dispatch.php',
     'quality/dashboard' => 'modules/dashboards/quality.php',
     'employees/list' => 'modules/employees/index.php',
+    'employees/create' => 'modules/employees/create.php',
     'attendance/list' => 'modules/hr/attendance/index.php',
     'leave/list' => 'modules/hr/leave/index.php',
     'payroll/list' => 'modules/hr/payroll/index.php',

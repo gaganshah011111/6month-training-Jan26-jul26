@@ -8,16 +8,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? 'create';
     if ($action === 'create') {
         try {
-            $stmt = $pdo->prepare('INSERT INTO leaves(employee_id,from_date,to_date,start_date,end_date,leave_type,reason,is_paid,status) VALUES(:e,:f,:t,:sd,:ed,:lt,:r,:ip,:s)');
+            $employeeId = post_int('employee_id');
+            $empStmt = $pdo->prepare('SELECT employee_type FROM employees WHERE id=:id');
+            $empStmt->execute(['id' => $employeeId]);
+            $employee = $empStmt->fetch() ?: [];
+            $employeeType = (string)($employee['employee_type'] ?? 'Staff');
+            $leaveCategory = post_string('leave_category', 20) ?: 'Paid';
+            if ($employeeType === 'Worker' && $leaveCategory !== 'Unpaid') {
+                $leaveCategory = 'Unpaid';
+            }
+            $isPaid = $leaveCategory === 'Paid' ? 1 : 0;
+            $stmt = $pdo->prepare('INSERT INTO leaves(employee_id,from_date,to_date,start_date,end_date,leave_type,leave_category,reason,is_paid,status) VALUES(:e,:f,:t,:sd,:ed,:lt,:lc,:r,:ip,:s)');
             $stmt->execute([
-                'e' => post_int('employee_id'),
+                'e' => $employeeId,
                 'f' => $_POST['from_date'],
                 't' => $_POST['to_date'],
                 'sd' => $_POST['from_date'],
                 'ed' => $_POST['to_date'],
                 'lt' => post_string('leave_type', 50),
+                'lc' => $leaveCategory,
                 'r' => post_string('reason'),
-                'ip' => isset($_POST['is_paid']) ? 1 : 0,
+                'ip' => $isPaid,
                 's' => 'Applied'
             ]);
             set_flash('success', 'Leave request created.');
@@ -80,8 +91,8 @@ $rows = $pdo->query("SELECT l.*, e.full_name,
 <div class="col"><input class="form-control" type="date" name="from_date" required></div>
 <div class="col"><input class="form-control" type="date" name="to_date" required></div>
 <div class="col"><input class="form-control" name="leave_type" placeholder="Type (Casual/Sick)" required></div>
+<div class="col"><select class="form-select" name="leave_category"><option>Paid</option><option>Half Paid</option><option>Unpaid</option></select></div>
 <div class="col"><input class="form-control" name="reason" placeholder="Reason" required></div>
-<div class="col form-check mt-2"><input class="form-check-input" type="checkbox" id="paidLeave" name="is_paid" checked><label class="form-check-label" for="paidLeave">Paid leave</label></div>
 <div class="col"><button class="btn btn-primary w-100">Submit</button></div>
 </form>
-<table class="table table-sm align-middle"><tr><th>Employee</th><th>Duration</th><th>Type</th><th>Paid</th><th>Status</th><th>Action</th></tr><?php foreach($rows as $r): ?><tr><td><?= e($r['full_name']) ?></td><td><?= e(((string)($r['leave_from'] ?? '')) . ' to ' . ((string)($r['leave_to'] ?? ''))) ?></td><td><?= e((string)($r['leave_type'] ?? 'Casual')) ?></td><td><?= (int)($r['is_paid'] ?? 0) === 1 ? 'Yes' : 'No' ?></td><td><?= e((string)($r['status'] ?? 'Applied')) ?></td><td class="d-flex gap-1"><?php if (($r['status'] ?? 'Applied') === 'Applied'): ?><form method="post"><?= csrf_input() ?><input type="hidden" name="action" value="status"><input type="hidden" name="id" value="<?= (int)$r['id'] ?>"><input type="hidden" name="status" value="Approved"><button class="btn btn-sm btn-outline-success">Approve</button></form><form method="post"><?= csrf_input() ?><input type="hidden" name="action" value="status"><input type="hidden" name="id" value="<?= (int)$r['id'] ?>"><input type="hidden" name="status" value="Rejected"><button class="btn btn-sm btn-outline-danger">Reject</button></form><?php endif; ?></td></tr><?php endforeach; ?></table>
+<table class="table table-sm align-middle"><tr><th>Employee</th><th>Duration</th><th>Type</th><th>Category</th><th>Paid</th><th>Status</th><th>Action</th></tr><?php foreach($rows as $r): ?><tr><td><?= e($r['full_name']) ?></td><td><?= e(((string)($r['leave_from'] ?? '')) . ' to ' . ((string)($r['leave_to'] ?? ''))) ?></td><td><?= e((string)($r['leave_type'] ?? 'Casual')) ?></td><td><?= e((string)($r['leave_category'] ?? 'Paid')) ?></td><td><?= (int)($r['is_paid'] ?? 0) === 1 ? 'Yes' : 'No' ?></td><td><?= e((string)($r['status'] ?? 'Applied')) ?></td><td class="d-flex gap-1"><?php if (($r['status'] ?? 'Applied') === 'Applied'): ?><form method="post"><?= csrf_input() ?><input type="hidden" name="action" value="status"><input type="hidden" name="id" value="<?= (int)$r['id'] ?>"><input type="hidden" name="status" value="Approved"><button class="btn btn-sm btn-outline-success">Approve</button></form><form method="post"><?= csrf_input() ?><input type="hidden" name="action" value="status"><input type="hidden" name="id" value="<?= (int)$r['id'] ?>"><input type="hidden" name="status" value="Rejected"><button class="btn btn-sm btn-outline-danger">Reject</button></form><?php endif; ?></td></tr><?php endforeach; ?></table>

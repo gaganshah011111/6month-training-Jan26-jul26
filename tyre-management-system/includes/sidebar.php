@@ -4,8 +4,32 @@ require_once __DIR__ . '/functions.php';
 $page = $_GET['page'] ?? 'dashboard';
 $user = current_user();
 $role = (string)($user['role'] ?? '');
+$iconMap = [
+    'Super Dashboard' => 'bi-speedometer2',
+    'User Management' => 'bi-people',
+    'System Settings' => 'bi-gear',
+    'Global Reports' => 'bi-graph-up',
+    'Dashboard' => 'bi-house-door',
+    'Employees' => 'bi-person-badge',
+    'Attendance' => 'bi-calendar-check',
+    'Leave' => 'bi-calendar-minus',
+    'Payroll' => 'bi-cash-coin',
+    'HR Reports' => 'bi-clipboard-data',
+    'Raw Materials' => 'bi-box-seam',
+    'Suppliers' => 'bi-truck',
+    'Production' => 'bi-building-gear',
+    'Machines' => 'bi-cpu',
+    'Production Reports' => 'bi-bar-chart',
+    'Inventory' => 'bi-boxes',
+    'Inventory Reports' => 'bi-archive',
+    'Orders & Dispatch' => 'bi-send',
+    'Inspection & Defects' => 'bi-shield-check',
+    'My Profile' => 'bi-person-circle',
+    'Salary' => 'bi-receipt-cutoff',
+    'Change Password' => 'bi-key',
+];
 ?>
-<aside class="col-lg-2 col-md-3 bg-white border-end min-vh-100 p-3 sidebar-fixed">
+<aside class="col-lg-2 col-md-3 app-sidebar min-vh-100 p-3 sidebar-fixed">
     <?php
     $menu = match ($role) {
         'Super Admin' => [
@@ -32,11 +56,23 @@ $role = (string)($user['role'] ?? '');
     };
     foreach ($menu as $section => $links):
     ?>
-        <div class="text-uppercase text-muted fw-semibold small mt-2 mb-1"><?= e($section) ?></div>
+        <div class="sidebar-section text-uppercase fw-semibold small mt-2 mb-1"><?= e($section) ?></div>
         <?php foreach ($links as $key => $label): ?>
-            <a class="d-block p-2 text-decoration-none text-dark rounded hover-bg mb-1 <?= $page === $key ? 'active-nav' : '' ?>" href="<?= e(route_url($key)) ?>"><?= e($label) ?></a>
+            <?php $icon = $iconMap[$label] ?? 'bi-circle'; ?>
+            <a class="sidebar-link d-flex align-items-center gap-2 p-2 text-decoration-none rounded mb-1 <?= $page === $key ? 'active-nav' : '' ?>" href="<?= e(route_url($key)) ?>">
+                <i class="bi <?= e($icon) ?>"></i>
+                <span><?= e($label) ?></span>
+            </a>
         <?php endforeach; ?>
     <?php endforeach; ?>
-    <a class="d-block p-2 text-decoration-none text-dark rounded hover-bg mb-1 mt-3" href="logout.php">Logout</a>
+    <a class="sidebar-link d-flex align-items-center gap-2 p-2 text-decoration-none rounded mb-1 mt-3" href="logout.php">
+        <i class="bi bi-box-arrow-right"></i>
+        <span>Logout</span>
+    </a>
+    <div class="sidebar-help-card mt-3">
+        <div class="small fw-semibold mb-1"><i class="bi bi-headset me-1"></i>Need Help?</div>
+        <div class="small text-muted mb-2">Support team is available.</div>
+        <a href="<?= e(route_url('settings/profile')) ?>" class="btn btn-sm btn-outline-light w-100">Contact Support</a>
+    </div>
 </aside>
 

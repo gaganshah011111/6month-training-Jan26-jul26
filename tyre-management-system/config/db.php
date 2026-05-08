@@ -54,13 +54,36 @@ class Database
                 user_id INT NULL UNIQUE,
                 employee_code VARCHAR(50) NOT NULL UNIQUE,
                 full_name VARCHAR(150) NOT NULL,
+                email VARCHAR(150) NULL,
+                password_hash VARCHAR(255) NULL,
+                employee_type ENUM('Staff','Worker') NOT NULL DEFAULT 'Staff',
                 department VARCHAR(100) NOT NULL,
-                role_name VARCHAR(100) NOT NULL DEFAULT 'Employee',
+                designation VARCHAR(120) NULL,
+                role VARCHAR(100) NOT NULL DEFAULT 'Employee',
+                salary_type VARCHAR(50) NOT NULL DEFAULT 'Monthly',
+                shift_timing VARCHAR(80) NULL,
+                shift_start TIME NULL,
+                shift_end TIME NULL,
                 contact_no VARCHAR(20) NULL,
                 address VARCHAR(255) NULL,
                 profile_image VARCHAR(255) NULL,
                 joining_date DATE NOT NULL,
                 basic_salary DECIMAL(12,2) NOT NULL DEFAULT 0,
+                paid_leave_limit DECIMAL(6,2) NOT NULL DEFAULT 12,
+                half_paid_leave_limit DECIMAL(6,2) NOT NULL DEFAULT 6,
+                hra_percentage DECIMAL(6,2) NOT NULL DEFAULT 40,
+                hra_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+                pf_applicable TINYINT(1) NOT NULL DEFAULT 1,
+                pf_percentage DECIMAL(6,2) NOT NULL DEFAULT 12,
+                esi_applicable TINYINT(1) NOT NULL DEFAULT 1,
+                esi_percentage DECIMAL(6,2) NOT NULL DEFAULT 0.75,
+                esi_salary_limit DECIMAL(12,2) NOT NULL DEFAULT 21000,
+                medical_allowance DECIMAL(12,2) NOT NULL DEFAULT 0,
+                other_allowances DECIMAL(12,2) NOT NULL DEFAULT 0,
+                overtime_rate DECIMAL(12,2) NOT NULL DEFAULT 0,
+                daily_wage DECIMAL(12,2) NOT NULL DEFAULT 0,
+                hourly_rate DECIMAL(12,2) NOT NULL DEFAULT 0,
+                status VARCHAR(20) NOT NULL DEFAULT 'active',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
@@ -72,6 +95,12 @@ class Database
                 shift ENUM('Morning','Evening','Night') NOT NULL DEFAULT 'Morning',
                 status ENUM('Present','Absent','Late','Half Day','Leave') NOT NULL DEFAULT 'Present',
                 remarks VARCHAR(255) NULL,
+                punch_in_time DATETIME NULL,
+                punch_out_time DATETIME NULL,
+                total_hours DECIMAL(8,2) NOT NULL DEFAULT 0,
+                overtime_hours DECIMAL(8,2) NOT NULL DEFAULT 0,
+                is_late TINYINT(1) NOT NULL DEFAULT 0,
+                is_emergency_duty TINYINT(1) NOT NULL DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE KEY uk_attendance_employee_day (employee_id, attendance_date),
                 INDEX idx_attendance_date (attendance_date),
@@ -85,6 +114,7 @@ class Database
                 to_date DATE NOT NULL,
                 leave_type VARCHAR(50) NOT NULL DEFAULT 'Casual',
                 reason VARCHAR(255) NOT NULL,
+                leave_category ENUM('Paid','Half Paid','Unpaid') NOT NULL DEFAULT 'Paid',
                 is_paid TINYINT(1) NOT NULL DEFAULT 1,
                 status ENUM('Applied','Approved','Rejected') NOT NULL DEFAULT 'Applied',
                 approved_by INT NULL,
@@ -99,15 +129,45 @@ class Database
                 month_year CHAR(7) NOT NULL,
                 present_days DECIMAL(5,2) NOT NULL DEFAULT 0,
                 paid_leave_days DECIMAL(5,2) NOT NULL DEFAULT 0,
+                half_paid_leave_days DECIMAL(5,2) NOT NULL DEFAULT 0,
                 unpaid_leave_days DECIMAL(5,2) NOT NULL DEFAULT 0,
                 overtime_hours DECIMAL(8,2) NOT NULL DEFAULT 0,
                 overtime_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
                 deductions DECIMAL(12,2) NOT NULL DEFAULT 0,
                 basic DECIMAL(12,2) NOT NULL DEFAULT 0,
+                hra_percentage DECIMAL(6,2) NOT NULL DEFAULT 0,
+                hra_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+                pf_percentage DECIMAL(6,2) NOT NULL DEFAULT 0,
+                pf_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+                esi_employee_percentage DECIMAL(6,2) NOT NULL DEFAULT 0,
+                esi_employee_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+                esi_employer_percentage DECIMAL(6,2) NOT NULL DEFAULT 0,
+                esi_employer_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+                medical_allowance DECIMAL(12,2) NOT NULL DEFAULT 0,
+                other_allowances DECIMAL(12,2) NOT NULL DEFAULT 0,
+                leave_deduction DECIMAL(12,2) NOT NULL DEFAULT 0,
+                half_day_deduction DECIMAL(12,2) NOT NULL DEFAULT 0,
+                late_entry_deduction DECIMAL(12,2) NOT NULL DEFAULT 0,
+                gross_salary DECIMAL(12,2) NOT NULL DEFAULT 0,
+                total_deduction DECIMAL(12,2) NOT NULL DEFAULT 0,
                 net_salary DECIMAL(12,2) NOT NULL DEFAULT 0,
                 generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE KEY uk_salary_employee_month (employee_id, month_year),
                 CONSTRAINT fk_salaries_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+
+            "CREATE TABLE IF NOT EXISTS salary_increments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                employee_id INT NOT NULL,
+                old_salary DECIMAL(12,2) NOT NULL DEFAULT 0,
+                new_salary DECIMAL(12,2) NOT NULL DEFAULT 0,
+                increment_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+                increment_percentage DECIMAL(8,2) NOT NULL DEFAULT 0,
+                effective_date DATE NOT NULL,
+                reason VARCHAR(255) NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_increment_employee (employee_id),
+                CONSTRAINT fk_increment_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 
             "CREATE TABLE IF NOT EXISTS suppliers (
@@ -270,6 +330,24 @@ class Database
         if (!self::hasColumn($pdo, 'attendance', 'remarks')) {
             $pdo->exec("ALTER TABLE attendance ADD COLUMN remarks VARCHAR(255) NULL AFTER status");
         }
+        if (!self::hasColumn($pdo, 'attendance', 'punch_in_time')) {
+            $pdo->exec("ALTER TABLE attendance ADD COLUMN punch_in_time DATETIME NULL AFTER remarks");
+        }
+        if (!self::hasColumn($pdo, 'attendance', 'punch_out_time')) {
+            $pdo->exec("ALTER TABLE attendance ADD COLUMN punch_out_time DATETIME NULL AFTER punch_in_time");
+        }
+        if (!self::hasColumn($pdo, 'attendance', 'total_hours')) {
+            $pdo->exec("ALTER TABLE attendance ADD COLUMN total_hours DECIMAL(8,2) NOT NULL DEFAULT 0 AFTER punch_out_time");
+        }
+        if (!self::hasColumn($pdo, 'attendance', 'overtime_hours')) {
+            $pdo->exec("ALTER TABLE attendance ADD COLUMN overtime_hours DECIMAL(8,2) NOT NULL DEFAULT 0 AFTER total_hours");
+        }
+        if (!self::hasColumn($pdo, 'attendance', 'is_late')) {
+            $pdo->exec("ALTER TABLE attendance ADD COLUMN is_late TINYINT(1) NOT NULL DEFAULT 0 AFTER overtime_hours");
+        }
+        if (!self::hasColumn($pdo, 'attendance', 'is_emergency_duty')) {
+            $pdo->exec("ALTER TABLE attendance ADD COLUMN is_emergency_duty TINYINT(1) NOT NULL DEFAULT 0 AFTER is_late");
+        }
 
         // leaves: support legacy and new naming
         if (!self::hasColumn($pdo, 'leaves', 'leave_type')) {
@@ -293,6 +371,86 @@ class Database
         if (!self::hasColumn($pdo, 'leaves', 'status')) {
             $pdo->exec("ALTER TABLE leaves ADD COLUMN status ENUM('Applied','Approved','Rejected') NOT NULL DEFAULT 'Applied' AFTER is_paid");
         }
+        if (!self::hasColumn($pdo, 'leaves', 'leave_category')) {
+            $pdo->exec("ALTER TABLE leaves ADD COLUMN leave_category ENUM('Paid','Half Paid','Unpaid') NOT NULL DEFAULT 'Paid' AFTER reason");
+        }
+
+        // employee salary structure compatibility
+        if (!self::hasColumn($pdo, 'employees', 'email')) {
+            $pdo->exec("ALTER TABLE employees ADD COLUMN email VARCHAR(150) NULL AFTER full_name");
+        }
+        if (!self::hasColumn($pdo, 'employees', 'password_hash')) {
+            $pdo->exec("ALTER TABLE employees ADD COLUMN password_hash VARCHAR(255) NULL AFTER email");
+        }
+        if (!self::hasColumn($pdo, 'employees', 'designation')) {
+            $pdo->exec("ALTER TABLE employees ADD COLUMN designation VARCHAR(120) NULL AFTER department");
+        }
+        if (!self::hasColumn($pdo, 'employees', 'role')) {
+            $pdo->exec("ALTER TABLE employees ADD COLUMN role VARCHAR(100) NOT NULL DEFAULT 'Employee' AFTER designation");
+        }
+        if (self::hasColumn($pdo, 'employees', 'role_name')) {
+            $pdo->exec("UPDATE employees SET role = COALESCE(NULLIF(role, ''), role_name)");
+        }
+        if (!self::hasColumn($pdo, 'employees', 'employee_type')) {
+            $pdo->exec("ALTER TABLE employees ADD COLUMN employee_type ENUM('Staff','Worker') NOT NULL DEFAULT 'Staff' AFTER full_name");
+        }
+        if (!self::hasColumn($pdo, 'employees', 'salary_type')) {
+            $pdo->exec("ALTER TABLE employees ADD COLUMN salary_type VARCHAR(50) NOT NULL DEFAULT 'Monthly' AFTER role");
+        }
+        if (!self::hasColumn($pdo, 'employees', 'shift_timing')) {
+            $pdo->exec("ALTER TABLE employees ADD COLUMN shift_timing VARCHAR(80) NULL AFTER salary_type");
+        }
+        if (!self::hasColumn($pdo, 'employees', 'shift_start')) {
+            $pdo->exec("ALTER TABLE employees ADD COLUMN shift_start TIME NULL AFTER shift_timing");
+        }
+        if (!self::hasColumn($pdo, 'employees', 'shift_end')) {
+            $pdo->exec("ALTER TABLE employees ADD COLUMN shift_end TIME NULL AFTER shift_start");
+        }
+        if (!self::hasColumn($pdo, 'employees', 'paid_leave_limit')) {
+            $pdo->exec("ALTER TABLE employees ADD COLUMN paid_leave_limit DECIMAL(6,2) NOT NULL DEFAULT 12 AFTER basic_salary");
+        }
+        if (!self::hasColumn($pdo, 'employees', 'half_paid_leave_limit')) {
+            $pdo->exec("ALTER TABLE employees ADD COLUMN half_paid_leave_limit DECIMAL(6,2) NOT NULL DEFAULT 6 AFTER paid_leave_limit");
+        }
+        if (!self::hasColumn($pdo, 'employees', 'hra_percentage')) {
+            $pdo->exec("ALTER TABLE employees ADD COLUMN hra_percentage DECIMAL(6,2) NOT NULL DEFAULT 40 AFTER half_paid_leave_limit");
+        }
+        if (!self::hasColumn($pdo, 'employees', 'hra_amount')) {
+            $pdo->exec("ALTER TABLE employees ADD COLUMN hra_amount DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER hra_percentage");
+        }
+        if (!self::hasColumn($pdo, 'employees', 'pf_applicable')) {
+            $pdo->exec("ALTER TABLE employees ADD COLUMN pf_applicable TINYINT(1) NOT NULL DEFAULT 1 AFTER hra_amount");
+        }
+        if (!self::hasColumn($pdo, 'employees', 'pf_percentage')) {
+            $pdo->exec("ALTER TABLE employees ADD COLUMN pf_percentage DECIMAL(6,2) NOT NULL DEFAULT 12 AFTER pf_applicable");
+        }
+        if (!self::hasColumn($pdo, 'employees', 'esi_applicable')) {
+            $pdo->exec("ALTER TABLE employees ADD COLUMN esi_applicable TINYINT(1) NOT NULL DEFAULT 1 AFTER pf_percentage");
+        }
+        if (!self::hasColumn($pdo, 'employees', 'esi_percentage')) {
+            $pdo->exec("ALTER TABLE employees ADD COLUMN esi_percentage DECIMAL(6,2) NOT NULL DEFAULT 0.75 AFTER esi_applicable");
+        }
+        if (!self::hasColumn($pdo, 'employees', 'esi_salary_limit')) {
+            $pdo->exec("ALTER TABLE employees ADD COLUMN esi_salary_limit DECIMAL(12,2) NOT NULL DEFAULT 21000 AFTER esi_percentage");
+        }
+        if (!self::hasColumn($pdo, 'employees', 'medical_allowance')) {
+            $pdo->exec("ALTER TABLE employees ADD COLUMN medical_allowance DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER esi_salary_limit");
+        }
+        if (!self::hasColumn($pdo, 'employees', 'other_allowances')) {
+            $pdo->exec("ALTER TABLE employees ADD COLUMN other_allowances DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER medical_allowance");
+        }
+        if (!self::hasColumn($pdo, 'employees', 'overtime_rate')) {
+            $pdo->exec("ALTER TABLE employees ADD COLUMN overtime_rate DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER other_allowances");
+        }
+        if (!self::hasColumn($pdo, 'employees', 'daily_wage')) {
+            $pdo->exec("ALTER TABLE employees ADD COLUMN daily_wage DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER overtime_rate");
+        }
+        if (!self::hasColumn($pdo, 'employees', 'hourly_rate')) {
+            $pdo->exec("ALTER TABLE employees ADD COLUMN hourly_rate DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER daily_wage");
+        }
+        if (!self::hasColumn($pdo, 'employees', 'status')) {
+            $pdo->exec("ALTER TABLE employees ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'active' AFTER hourly_rate");
+        }
 
         // salaries/payroll compatibility columns
         if (!self::hasColumn($pdo, 'salaries', 'present_days')) {
@@ -301,8 +459,11 @@ class Database
         if (!self::hasColumn($pdo, 'salaries', 'paid_leave_days')) {
             $pdo->exec("ALTER TABLE salaries ADD COLUMN paid_leave_days DECIMAL(5,2) NOT NULL DEFAULT 0 AFTER present_days");
         }
+        if (!self::hasColumn($pdo, 'salaries', 'half_paid_leave_days')) {
+            $pdo->exec("ALTER TABLE salaries ADD COLUMN half_paid_leave_days DECIMAL(5,2) NOT NULL DEFAULT 0 AFTER paid_leave_days");
+        }
         if (!self::hasColumn($pdo, 'salaries', 'unpaid_leave_days')) {
-            $pdo->exec("ALTER TABLE salaries ADD COLUMN unpaid_leave_days DECIMAL(5,2) NOT NULL DEFAULT 0 AFTER paid_leave_days");
+            $pdo->exec("ALTER TABLE salaries ADD COLUMN unpaid_leave_days DECIMAL(5,2) NOT NULL DEFAULT 0 AFTER half_paid_leave_days");
         }
         if (!self::hasColumn($pdo, 'salaries', 'overtime_hours')) {
             $pdo->exec("ALTER TABLE salaries ADD COLUMN overtime_hours DECIMAL(8,2) NOT NULL DEFAULT 0 AFTER unpaid_leave_days");
@@ -315,6 +476,28 @@ class Database
         }
         if (!self::hasColumn($pdo, 'salaries', 'basic')) {
             $pdo->exec("ALTER TABLE salaries ADD COLUMN basic DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER deductions");
+        }
+        foreach ([
+            'hra_percentage DECIMAL(6,2) NOT NULL DEFAULT 0',
+            'hra_amount DECIMAL(12,2) NOT NULL DEFAULT 0',
+            'pf_percentage DECIMAL(6,2) NOT NULL DEFAULT 0',
+            'pf_amount DECIMAL(12,2) NOT NULL DEFAULT 0',
+            'esi_employee_percentage DECIMAL(6,2) NOT NULL DEFAULT 0',
+            'esi_employee_amount DECIMAL(12,2) NOT NULL DEFAULT 0',
+            'esi_employer_percentage DECIMAL(6,2) NOT NULL DEFAULT 0',
+            'esi_employer_amount DECIMAL(12,2) NOT NULL DEFAULT 0',
+            'medical_allowance DECIMAL(12,2) NOT NULL DEFAULT 0',
+            'other_allowances DECIMAL(12,2) NOT NULL DEFAULT 0',
+            'leave_deduction DECIMAL(12,2) NOT NULL DEFAULT 0',
+            'half_day_deduction DECIMAL(12,2) NOT NULL DEFAULT 0',
+            'late_entry_deduction DECIMAL(12,2) NOT NULL DEFAULT 0',
+            'gross_salary DECIMAL(12,2) NOT NULL DEFAULT 0',
+            'total_deduction DECIMAL(12,2) NOT NULL DEFAULT 0'
+        ] as $columnDef) {
+            $columnName = explode(' ', $columnDef)[0];
+            if (!self::hasColumn($pdo, 'salaries', $columnName)) {
+                $pdo->exec("ALTER TABLE salaries ADD COLUMN {$columnDef}");
+            }
         }
 
         // quality_checks compatibility
@@ -363,6 +546,20 @@ class Database
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE KEY uk_payroll_employee_month_year (employee_id, month, year),
             CONSTRAINT fk_payroll_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS salary_increments (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            employee_id INT NOT NULL,
+            old_salary DECIMAL(12,2) NOT NULL DEFAULT 0,
+            new_salary DECIMAL(12,2) NOT NULL DEFAULT 0,
+            increment_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+            increment_percentage DECIMAL(8,2) NOT NULL DEFAULT 0,
+            effective_date DATE NOT NULL,
+            reason VARCHAR(255) NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_increment_employee (employee_id),
+            CONSTRAINT fk_increment_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     }
 }

@@ -10,8 +10,8 @@ $dispatch = (int)$pdo->query("SELECT COUNT(*) FROM dispatch WHERE dispatch_statu
 ?>
 <h3>Super Admin Dashboard</h3>
 <div class="row g-3">
-    <div class="col-md-3"><div class="card"><div class="card-body"><small>Total Users</small><h4><?= e((string)$users) ?></h4></div></div></div>
-    <div class="col-md-3"><div class="card"><div class="card-body"><small>Total Employees</small><h4><?= e((string)$employees) ?></h4></div></div></div>
-    <div class="col-md-3"><div class="card"><div class="card-body"><small>Today Production</small><h4><?= e((string)$production) ?></h4></div></div></div>
-    <div class="col-md-3"><div class="card"><div class="card-body"><small>Pending Dispatch</small><h4><?= e((string)$dispatch) ?></h4></div></div></div>
+    <div class="col-md-3"><div class="card kpi-card"><div class="card-body d-flex justify-content-between align-items-start"><div><small>Total Users</small><h4><?= e((string)$users) ?></h4></div><span class="kpi-icon"><i class="bi bi-person-lines-fill"></i></span></div></div></div>
+    <div class="col-md-3"><div class="card kpi-card"><div class="card-body d-flex justify-content-between align-items-start"><div><small>Total Employees</small><h4><?= e((string)$employees) ?></h4></div><span class="kpi-icon"><i class="bi bi-people-fill"></i></span></div></div></div>
+    <div class="col-md-3"><div class="card kpi-card"><div class="card-body d-flex justify-content-between align-items-start"><div><small>Today Production</small><h4><?= e((string)$production) ?></h4></div><span class="kpi-icon"><i class="bi bi-building-gear"></i></span></div></div></div>
+    <div class="col-md-3"><div class="card kpi-card"><div class="card-body d-flex justify-content-between align-items-start"><div><small>Pending Dispatch</small><h4><?= e((string)$dispatch) ?></h4></div><span class="kpi-icon"><i class="bi bi-send"></i></span></div></div></div>
 </div>

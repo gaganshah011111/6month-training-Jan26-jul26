@@ -25,12 +25,19 @@ try {
         } elseif (strlen($reason) > 255) {
             $error = 'Reason is too long.';
         } else {
-            $stmt = $pdo->prepare("INSERT INTO leaves(employee_id, from_date, to_date, reason, status) VALUES(:employee_id, :from_date, :to_date, :reason, 'Applied')");
+            $leaveCategory = (string)($_POST['leave_category'] ?? 'Paid');
+            $isPaid = $leaveCategory === 'Paid' ? 1 : 0;
+            $stmt = $pdo->prepare("INSERT INTO leaves(employee_id, from_date, to_date, start_date, end_date, leave_type, leave_category, reason, is_paid, status) VALUES(:employee_id, :from_date, :to_date, :start_date, :end_date, :leave_type, :leave_category, :reason, :is_paid, 'Applied')");
             $stmt->execute([
                 'employee_id' => $employeeId,
                 'from_date' => $fromDate,
                 'to_date' => $toDate,
+                'start_date' => $fromDate,
+                'end_date' => $toDate,
+                'leave_type' => 'General',
+                'leave_category' => $leaveCategory,
                 'reason' => $reason,
+                'is_paid' => $isPaid,
             ]);
             $success = 'Leave request submitted successfully.';
         }
@@ -79,6 +86,14 @@ try {
                     <label class="form-label">Reason</label>
                     <input class="form-control" type="text" name="reason" maxlength="255" required>
                 </div>
+                <div class="col-md-4">
+                    <label class="form-label">Leave Category</label>
+                    <select class="form-select" name="leave_category">
+                        <option>Paid</option>
+                        <option>Half Paid</option>
+                        <option>Unpaid</option>
+                    </select>
+                </div>
                 <div class="col-12">
                     <button class="btn btn-primary" type="submit">Submit Leave Request</button>
                 </div>
@@ -95,13 +110,14 @@ try {
                     <th>From</th>
                     <th>To</th>
                     <th>Reason</th>
+                    <th>Category</th>
                     <th>Status</th>
                     <th>Applied On</th>
                 </tr>
                 </thead>
                 <tbody>
                 <?php if (!$rows): ?>
-                    <tr><td colspan="5" class="text-center text-muted">No leave records found.</td></tr>
+                    <tr><td colspan="6" class="text-center text-muted">No leave records found.</td></tr>
                 <?php else: ?>
                     <?php foreach ($rows as $row): ?>
                         <?php
@@ -119,6 +135,7 @@ try {
                             <td><?= e($row['from_date']) ?></td>
                             <td><?= e($row['to_date']) ?></td>
                             <td><?= e($row['reason']) ?></td>
+                            <td><?= e((string)($row['leave_category'] ?? (($row['is_paid'] ?? 0) ? 'Paid' : 'Unpaid'))) ?></td>
                             <td><span class="badge bg-<?= e($badge) ?>"><?= e($status) ?></span></td>
                             <td><?= e((string)$row['created_at']) ?></td>
                         </tr>

@@ -48,6 +48,22 @@ function is_logged_in(): bool
     return isset($_SESSION['user']) || isset($_SESSION['user_id']);
 }
 
+function normalize_role_name(string $role): string
+{
+    $normalized = strtolower(trim($role));
+    return match ($normalized) {
+        'super admin', 'super_admin', 'superadmin' => 'Super Admin',
+        'admin' => 'Admin',
+        'hr manager', 'hr_manager', 'hr' => 'HR Manager',
+        'production manager', 'production_manager' => 'Production Manager',
+        'inventory manager', 'inventory_manager' => 'Inventory Manager',
+        'dispatch manager', 'dispatch_manager' => 'Dispatch Manager',
+        'quality manager', 'quality_manager' => 'Quality Manager',
+        'employee', 'staff' => 'Employee',
+        default => trim($role),
+    };
+}
+
 function has_role($role): bool
 {
     ensure_session_started();
@@ -55,12 +71,13 @@ function has_role($role): bool
         return false;
     }
 
-    $sessionRole = (string)($_SESSION['role'] ?? ($_SESSION['user']['role'] ?? ''));
+    $sessionRole = normalize_role_name((string)($_SESSION['role'] ?? ($_SESSION['user']['role'] ?? '')));
     if ($sessionRole === '') {
         return false;
     }
 
     $roles = is_array($role) ? $role : [$role];
+    $roles = array_map(static fn($r) => normalize_role_name((string)$r), $roles);
     return in_array($sessionRole, $roles, true);
 }
 
@@ -126,6 +143,7 @@ function post_int(string $key): int
 
 function role_home_page(string $role): string
 {
+    $role = normalize_role_name($role);
     return match ($role) {
         'Super Admin' => 'super/dashboard',
         'Admin' => 'super/dashboard',
@@ -141,6 +159,7 @@ function role_home_page(string $role): string
 
 function role_home_file(string $role): string
 {
+    $role = normalize_role_name($role);
     return match ($role) {
         'Super Admin', 'Admin' => 'super_dashboard.php',
         'HR Manager' => 'hr_dashboard.php',
@@ -163,6 +182,7 @@ function page_allowed_roles(): array
 
         'hr/dashboard' => ['HR Manager', 'Super Admin', 'Admin'],
         'employees/list' => ['HR Manager', 'Super Admin', 'Admin'],
+        'employees/create' => ['HR Manager', 'Super Admin', 'Admin'],
         'attendance/list' => ['HR Manager', 'Super Admin', 'Admin'],
         'leave/list' => ['HR Manager', 'Super Admin', 'Admin'],
         'payroll/list' => ['HR Manager', 'Super Admin', 'Admin'],
@@ -201,7 +221,7 @@ function can_access_page(string $page, ?array $user = null): bool
         return false;
     }
 
-    $role = (string)($user['role'] ?? '');
+    $role = normalize_role_name((string)($user['role'] ?? ''));
     $rules = page_allowed_roles();
     if (!isset($rules[$page])) {
         return in_array($role, ['Super Admin', 'Admin'], true);

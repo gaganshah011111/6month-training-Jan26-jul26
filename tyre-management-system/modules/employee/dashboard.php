@@ -21,10 +21,17 @@ try {
         $attendanceSummary[$status] = (int)$row['total'];
     }
 
-    $leaveStmt = $pdo->prepare("SELECT COALESCE(SUM(DATEDIFF(to_date, from_date) + 1), 0) FROM leaves WHERE employee_id = :employee_id AND status = 'Approved' AND YEAR(from_date) = YEAR(CURDATE())");
+    $leaveStmt = $pdo->prepare("SELECT
+        COALESCE(SUM(CASE WHEN COALESCE(leave_category,'Paid')='Paid' AND status='Approved' THEN DATEDIFF(COALESCE(to_date,end_date), COALESCE(from_date,start_date))+1 ELSE 0 END), 0) AS paid_days,
+        COALESCE(SUM(CASE WHEN COALESCE(leave_category,'Half Paid')='Half Paid' AND status='Approved' THEN DATEDIFF(COALESCE(to_date,end_date), COALESCE(from_date,start_date))+1 ELSE 0 END), 0) AS half_paid_days
+        FROM leaves
+        WHERE employee_id = :employee_id AND YEAR(COALESCE(from_date,start_date)) = YEAR(CURDATE())");
     $leaveStmt->execute(['employee_id' => $employeeId]);
-    $approvedDays = (int)$leaveStmt->fetchColumn();
-    $annualLeaveLimit = 24;
+    $leaveStat = $leaveStmt->fetch() ?: [];
+    $annualLeaveLimit = (float)($employee['paid_leave_limit'] ?? 12);
+    $halfLeaveLimit = (float)($employee['half_paid_leave_limit'] ?? 6);
+    $approvedDays = (float)($leaveStat['paid_days'] ?? 0);
+    $halfPaidDays = (float)($leaveStat['half_paid_days'] ?? 0);
     $leaveBalance = max(0, $annualLeaveLimit - $approvedDays);
 
     $salaryStmt = $pdo->prepare('SELECT * FROM salaries WHERE employee_id = :employee_id ORDER BY month_year DESC, id DESC LIMIT 1');
@@ -72,9 +79,9 @@ try {
         <div class="col-md-3">
             <div class="card h-100 shadow-sm">
                 <div class="card-body">
-                    <small class="text-muted">Leave Balance</small>
+                    <small class="text-muted">Leave Balance (Paid/Half Paid)</small>
                     <h3 class="mt-2 mb-1"><?= e((string)$leaveBalance) ?> days</h3>
-                    <p class="small mb-0 text-muted">Used this year: <?= e((string)$approvedDays) ?> of <?= e((string)$annualLeaveLimit) ?></p>
+                    <p class="small mb-0 text-muted">Paid used: <?= e((string)$approvedDays) ?>/<?= e((string)$annualLeaveLimit) ?> | Half Paid: <?= e((string)$halfPaidDays) ?>/<?= e((string)$halfLeaveLimit) ?></p>
                 </div>
             </div>
         </div>

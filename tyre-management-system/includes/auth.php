@@ -38,7 +38,7 @@ function login_user(array $user, bool $rememberMe): void
 {
     session_regenerate_id(true);
     $displayName = (string)($user['full_name'] ?? $user['name'] ?? '');
-    $role = (string)($user['role'] ?? '');
+    $role = normalize_role_name((string)($user['role'] ?? ''));
     $_SESSION['user'] = [
         'id' => $user['id'],
         'name' => $displayName,

@@ -53,9 +53,8 @@ try {
                 <thead class="table-light">
                 <tr>
                     <th>Month</th>
-                    <th>Basic</th>
-                    <th>Overtime</th>
-                    <th>Deductions</th>
+                    <th>Gross</th>
+                    <th>Total Deduction</th>
                     <th>Net Salary</th>
                     <th>Payslip</th>
                 </tr>
@@ -67,9 +66,8 @@ try {
                     <?php foreach ($rows as $row): ?>
                         <tr>
                             <td><?= e($row['month_year']) ?></td>
-                            <td><?= e(number_format((float)$row['basic'], 2)) ?></td>
-                            <td><?= e(number_format((float)$row['overtime'], 2)) ?></td>
-                            <td><?= e(number_format((float)$row['deductions'], 2)) ?></td>
+                            <td><?= e(number_format((float)($row['gross_salary'] ?? $row['basic'] ?? 0), 2)) ?></td>
+                            <td><?= e(number_format((float)($row['total_deduction'] ?? $row['deductions'] ?? 0), 2)) ?></td>
                             <td><strong><?= e(number_format((float)$row['net_salary'], 2)) ?></strong></td>
                             <td><a class="btn btn-sm btn-outline-primary" href="<?= e(route_url('employee/salary')) ?>&slip=<?= e((string)$row['id']) ?>">View</a></td>
                         </tr>
@@ -104,14 +102,25 @@ try {
                     <div class="col-md-6"><p><strong>Employee:</strong> <?= e($employee['full_name']) ?></p></div>
                     <div class="col-md-6"><p><strong>Department:</strong> <?= e($employee['department']) ?></p></div>
                     <div class="col-md-6"><p><strong>Month:</strong> <?= e($selectedSlip['month_year']) ?></p></div>
-                    <div class="col-md-6"><p><strong>Generated:</strong> <?= e((string)$selectedSlip['created_at']) ?></p></div>
+                    <div class="col-md-6"><p><strong>Generated:</strong> <?= e((string)($selectedSlip['generated_at'] ?? $selectedSlip['created_at'] ?? '')) ?></p></div>
                 </div>
                 <hr>
                 <table class="table table-bordered">
-                    <tr><th>Basic Salary</th><td>INR <?= e(number_format((float)$selectedSlip['basic'], 2)) ?></td></tr>
-                    <tr><th>Overtime</th><td>INR <?= e(number_format((float)$selectedSlip['overtime'], 2)) ?></td></tr>
-                    <tr><th>Deductions</th><td>INR <?= e(number_format((float)$selectedSlip['deductions'], 2)) ?></td></tr>
-                    <tr><th>Net Salary</th><td><strong>INR <?= e(number_format((float)$selectedSlip['net_salary'], 2)) ?></strong></td></tr>
+                    <tr class="table-light"><th colspan="2">Earnings</th></tr>
+                    <tr><th>Basic Salary</th><td>INR <?= e(number_format((float)($selectedSlip['basic'] ?? 0), 2)) ?></td></tr>
+                    <tr><th>HRA (<?= e((string)($selectedSlip['hra_percentage'] ?? 0)) ?>%)</th><td>INR <?= e(number_format((float)($selectedSlip['hra_amount'] ?? 0), 2)) ?></td></tr>
+                    <tr><th>Medical Allowance</th><td>INR <?= e(number_format((float)($selectedSlip['medical_allowance'] ?? 0), 2)) ?></td></tr>
+                    <tr><th>Other Allowances</th><td>INR <?= e(number_format((float)($selectedSlip['other_allowances'] ?? 0), 2)) ?></td></tr>
+                    <tr><th>Overtime Amount</th><td>INR <?= e(number_format((float)($selectedSlip['overtime_amount'] ?? 0), 2)) ?></td></tr>
+                    <tr><th>Gross Salary</th><td><strong>INR <?= e(number_format((float)($selectedSlip['gross_salary'] ?? 0), 2)) ?></strong></td></tr>
+                    <tr class="table-light"><th colspan="2">Deductions</th></tr>
+                    <tr><th>PF (<?= e((string)($selectedSlip['pf_percentage'] ?? 0)) ?>%)</th><td>INR <?= e(number_format((float)($selectedSlip['pf_amount'] ?? 0), 2)) ?></td></tr>
+                    <tr><th>ESI Employee (<?= e((string)($selectedSlip['esi_employee_percentage'] ?? 0)) ?>%)</th><td>INR <?= e(number_format((float)($selectedSlip['esi_employee_amount'] ?? 0), 2)) ?></td></tr>
+                    <tr><th>Leave Deduction</th><td>INR <?= e(number_format((float)($selectedSlip['leave_deduction'] ?? 0), 2)) ?></td></tr>
+                    <tr><th>Half Day Deduction</th><td>INR <?= e(number_format((float)($selectedSlip['half_day_deduction'] ?? 0), 2)) ?></td></tr>
+                    <tr><th>Late Entry Deduction</th><td>INR <?= e(number_format((float)($selectedSlip['late_entry_deduction'] ?? 0), 2)) ?></td></tr>
+                    <tr><th>Total Deduction</th><td>INR <?= e(number_format((float)($selectedSlip['total_deduction'] ?? $selectedSlip['deductions'] ?? 0), 2)) ?></td></tr>
+                    <tr><th>Net Salary</th><td><strong>INR <?= e(number_format((float)($selectedSlip['net_salary'] ?? 0), 2)) ?></strong></td></tr>
                 </table>
             </div>
         </div>

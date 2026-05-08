@@ -4,6 +4,8 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/functions.php';
+$cssPath = __DIR__ . '/assets/css/style.css';
+$cssVersion = is_file($cssPath) ? (string)filemtime($cssPath) : (string)time();
 
 if (isset($_SESSION['user'])) {
     $role = (string)($_SESSION['user']['role'] ?? '');
@@ -88,14 +90,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Ralson ERP</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="assets/css/style.css?v=<?= e($cssVersion) ?>" rel="stylesheet">
 </head>
-<body class="bg-light d-flex align-items-center" style="min-height: 100vh;">
-<div class="container">
+<body class="app-body d-flex align-items-center" style="min-height: 100vh;">
+<div class="container py-4">
     <div class="row justify-content-center">
-        <div class="col-md-4">
-            <div class="card shadow-sm">
+        <div class="col-lg-5 col-md-7 col-sm-10">
+            <div class="card login-card shadow-sm">
                 <div class="card-body">
-                    <h4 class="mb-3">Ralson ERP Login</h4>
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <span class="brand-mark">R</span>
+                        <h4 class="mb-0">Ralson ERP Login</h4>
+                    </div>
+                    <p class="text-muted small mb-3">Sign in to access your ERP dashboard.</p>
                     <?php if ($error): ?><div class="alert alert-danger"><?= e($error) ?></div><?php endif; ?>
                     <?php if (!empty($debugOutput)): ?>
                         <div class="alert alert-warning">
@@ -106,11 +114,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <form method="post">
                         <div class="mb-3">
                             <label class="form-label">Email</label>
-                            <input class="form-control" type="email" name="email" required>
+                            <div class="input-group login-input-group">
+                                <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                                <input class="form-control" type="email" name="email" required>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Password</label>
-                            <input class="form-control" type="password" name="password" required>
+                            <div class="input-group login-input-group">
+                                <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                                <input class="form-control" id="loginPassword" type="password" name="password" required>
+                                <button class="btn btn-outline-secondary" type="button" id="togglePassword" aria-label="Show password">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="form-check mb-3">
                             <input class="form-check-input" type="checkbox" name="remember_me" id="remember">
@@ -123,6 +140,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var btn = document.getElementById('togglePassword');
+    var input = document.getElementById('loginPassword');
+    if (!btn || !input) return;
+    btn.addEventListener('click', function () {
+        var isPassword = input.getAttribute('type') === 'password';
+        input.setAttribute('type', isPassword ? 'text' : 'password');
+        var icon = btn.querySelector('i');
+        if (icon) {
+            icon.className = isPassword ? 'bi bi-eye-slash' : 'bi bi-eye';
+        }
+    });
+});
+</script>
 </body>
 </html>
 

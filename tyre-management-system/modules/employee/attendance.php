@@ -3,73 +3,56 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../includes/employee.php';
 require_once __DIR__ . '/../../includes/functions.php';
-require_once __DIR__ . '/../../includes/payroll_logic.php';
+require_once __DIR__ . '/../../includes/attendance_workflow.php';
 
 $pdo = Database::connection();
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf();
+    try {
+        $employee = require_employee_record($pdo);
+        if (($employee['employee_type'] ?? 'Staff') !== 'Staff') {
+            throw new RuntimeException('Punch in/out is only for staff.');
+        }
+        $action = (string)($_POST['action'] ?? '');
+        $today = date('Y-m-d');
+        if ($action === 'punch_in') {
+            staff_record_punch_in($pdo, $employee, $today);
+            set_flash('success', 'Punch in recorded.');
+        } elseif ($action === 'punch_out') {
+            staff_record_punch_out($pdo, $employee, $today);
+            set_flash('success', 'Punch out recorded. Hours updated.');
+        }
+    } catch (Throwable $e) {
+        set_flash('danger', $e->getMessage());
+    }
+    $month = preg_match('/^\d{4}-\d{2}$/', (string)($_POST['redirect_month'] ?? '')) ? (string)$_POST['redirect_month'] : date('Y-m');
+    header('Location: index.php?page=' . rawurlencode('employee/attendance') . '&month=' . rawurlencode($month));
+    exit;
+}
+
 $error = '';
 $attendanceRows = [];
 $calendarData = [];
 $selectedMonth = (string)($_GET['month'] ?? date('Y-m'));
-$success = '';
+$employee = null;
+$todayRow = null;
 
 try {
     $employee = require_employee_record($pdo);
     $employeeId = (int)$employee['id'];
     $shiftTiming = (string)($employee['shift_timing'] ?? '09:00-18:00');
+    $isStaff = ($employee['employee_type'] ?? 'Staff') === 'Staff';
 
     if (!preg_match('/^\d{4}-\d{2}$/', $selectedMonth)) {
         $selectedMonth = date('Y-m');
     }
 
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        verify_csrf();
-        $action = (string)($_POST['action'] ?? '');
-        $today = date('Y-m-d');
-
-        if ($action === 'punch_in') {
-            $stmt = $pdo->prepare("INSERT INTO attendance(employee_id,attendance_date,shift,status,remarks,punch_in_time) VALUES(:employee_id,:attendance_date,:shift,'Present','Punch in recorded',:punch_in_time)
-                ON DUPLICATE KEY UPDATE punch_in_time=IFNULL(punch_in_time, VALUES(punch_in_time)), remarks='Punch in recorded', status=IF(status='Absent','Late',status)");
-            $stmt->execute([
-                'employee_id' => $employeeId,
-                'attendance_date' => $today,
-                'shift' => 'Morning',
-                'punch_in_time' => date('Y-m-d H:i:s'),
-            ]);
-            $success = 'Punch in recorded.';
-        } elseif ($action === 'punch_out') {
-            $rowStmt = $pdo->prepare('SELECT id, punch_in_time, attendance_date FROM attendance WHERE employee_id=:employee_id AND attendance_date=:attendance_date LIMIT 1');
-            $rowStmt->execute(['employee_id' => $employeeId, 'attendance_date' => $today]);
-            $attendanceToday = $rowStmt->fetch();
-            if ($attendanceToday) {
-                $punchOut = date('Y-m-d H:i:s');
-                $totalHours = compute_work_hours((string)$attendanceToday['punch_in_time'], $punchOut);
-                $overtimeHours = max(0, $totalHours - 8);
-                $isLate = ((strtotime((string)$attendanceToday['punch_in_time']) ?: 0) > strtotime($today . ' 09:15:00')) ? 1 : 0;
-                $isSunday = (int)date('w', strtotime($today)) === 0;
-                if ($isSunday) {
-                    $overtimeHours += $totalHours;
-                }
-                $status = $totalHours < 4 ? 'Half Day' : ($isLate ? 'Late' : 'Present');
-
-                $updateStmt = $pdo->prepare('UPDATE attendance SET punch_out_time=:punch_out_time,total_hours=:total_hours,overtime_hours=:overtime_hours,is_late=:is_late,is_emergency_duty=:ied,status=:status,remarks=:remarks WHERE id=:id');
-                $updateStmt->execute([
-                    'punch_out_time' => $punchOut,
-                    'total_hours' => $totalHours,
-                    'overtime_hours' => $overtimeHours,
-                    'is_late' => $isLate,
-                    'ied' => $isSunday ? 1 : 0,
-                    'status' => $status,
-                    'remarks' => $isSunday ? 'Emergency duty (Sunday)' : ($overtimeHours > 0 ? 'Overtime applied' : 'Punch out recorded'),
-                    'id' => (int)$attendanceToday['id'],
-                ]);
-                $success = 'Punch out recorded. Total hours calculated.';
-            } else {
-                $error = 'Punch in first, then punch out.';
-            }
-        }
+    if ($isStaff) {
+        $todayRow = staff_today_attendance_row($pdo, $employeeId, date('Y-m-d'));
     }
 
-    $stmt = $pdo->prepare("SELECT attendance_date, shift, status, punch_in_time, punch_out_time, total_hours, overtime_hours FROM attendance WHERE employee_id = :employee_id AND DATE_FORMAT(attendance_date, '%Y-%m') = :month ORDER BY attendance_date DESC");
+    $stmt = $pdo->prepare("SELECT attendance_date, shift, status, punch_in_time, punch_out_time, total_hours, overtime_hours, is_late, is_early_exit, is_emergency_duty FROM attendance WHERE employee_id = :employee_id AND DATE_FORMAT(attendance_date, '%Y-%m') = :month ORDER BY attendance_date DESC");
     $stmt->execute(['employee_id' => $employeeId, 'month' => $selectedMonth]);
     $attendanceRows = $stmt->fetchAll();
 
@@ -93,18 +76,50 @@ $daysInMonth = (int)date('t', strtotime($selectedMonth . '-01'));
 </div>
 
 <?php if ($error): ?><div class="alert alert-danger"><?= e($error) ?></div><?php endif; ?>
-<?php if ($success): ?><div class="alert alert-success"><?= e($success) ?></div><?php endif; ?>
 
-<?php if (!$error): ?>
+<?php if (!$error && $employee && ($employee['employee_type'] ?? 'Staff') === 'Staff'): ?>
     <div class="card shadow-sm mb-3">
         <div class="card-header bg-white"><strong>Punch In / Punch Out</strong></div>
-        <div class="card-body d-flex gap-2 align-items-center">
-            <span class="text-muted small">Shift Timing: <?= e($shiftTiming) ?></span>
-            <form method="post" class="m-0"><?= csrf_input() ?><input type="hidden" name="action" value="punch_in"><button class="btn btn-success btn-sm">Punch In</button></form>
-            <form method="post" class="m-0"><?= csrf_input() ?><input type="hidden" name="action" value="punch_out"><button class="btn btn-primary btn-sm">Punch Out</button></form>
+        <div class="card-body">
+            <p class="small text-muted mb-2">Shift reference: <?= e($shiftTiming) ?> (late / half-day / OT are calculated from your profile shift times when you punch out).</p>
+            <div class="row g-2 align-items-end">
+                <div class="col-md-8">
+                    <div class="small text-uppercase text-muted mb-1">Today</div>
+                    <p class="mb-0">
+                        <strong>Status:</strong> <?= e((string)($todayRow['status'] ?? '—')) ?>
+                        <?php if ($todayRow && !empty($todayRow['punch_in_time'])): ?>
+                            &nbsp;| <strong>In:</strong> <?= e((string)$todayRow['punch_in_time']) ?>
+                        <?php endif; ?>
+                        <?php if ($todayRow && !empty($todayRow['punch_out_time'])): ?>
+                            &nbsp;| <strong>Out:</strong> <?= e((string)$todayRow['punch_out_time']) ?>
+                        <?php endif; ?>
+                        <?php if ($todayRow && isset($todayRow['total_hours']) && $todayRow['total_hours'] !== null && $todayRow['total_hours'] !== ''): ?>
+                            &nbsp;| <strong>Hours:</strong> <?= e((string)$todayRow['total_hours']) ?>
+                        <?php endif; ?>
+                    </p>
+                </div>
+                <div class="col-md-4 text-md-end d-flex flex-wrap gap-2 justify-content-md-end">
+                    <form method="post" class="m-0">
+                        <?= csrf_input() ?>
+                        <input type="hidden" name="action" value="punch_in">
+                        <input type="hidden" name="redirect_month" value="<?= e($selectedMonth) ?>">
+                        <button class="btn btn-success btn-sm" type="submit">Punch In</button>
+                    </form>
+                    <form method="post" class="m-0">
+                        <?= csrf_input() ?>
+                        <input type="hidden" name="action" value="punch_out">
+                        <input type="hidden" name="redirect_month" value="<?= e($selectedMonth) ?>">
+                        <button class="btn btn-primary btn-sm" type="submit">Punch Out</button>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
+<?php elseif (!$error && $employee): ?>
+    <div class="alert alert-info">Your attendance is maintained by HR (manual worker records).</div>
+<?php endif; ?>
 
+<?php if (!$error && $employee): ?>
     <div class="card shadow-sm mb-3">
         <div class="card-header bg-white"><strong>Monthly Calendar View</strong></div>
         <div class="card-body">
@@ -118,9 +133,15 @@ $daysInMonth = (int)date('t', strtotime($selectedMonth . '-01'));
                         $badgeClass = 'success';
                     } elseif ($status === 'Absent') {
                         $badgeClass = 'danger';
-                    } elseif ($status === 'Leave') {
+                    } elseif (in_array($status, ['Paid Leave', 'Unpaid Leave', 'Leave'], true)) {
                         $badgeClass = 'warning text-dark';
                     } elseif ($status === 'Late') {
+                        $badgeClass = 'info text-dark';
+                    } elseif ($status === 'Half Day') {
+                        $badgeClass = 'warning text-dark';
+                    } elseif ($status === 'Emergency Duty') {
+                        $badgeClass = 'danger';
+                    } elseif ($status === 'Holiday') {
                         $badgeClass = 'info text-dark';
                     }
                     ?>
@@ -148,21 +169,23 @@ $daysInMonth = (int)date('t', strtotime($selectedMonth . '-01'));
                     <th>Punch Out</th>
                     <th>Total Hours</th>
                     <th>Overtime</th>
+                    <th>Late</th>
                 </tr>
                 </thead>
                 <tbody>
                 <?php if (!$attendanceRows): ?>
-                    <tr><td colspan="7" class="text-center text-muted">No attendance found for this month.</td></tr>
+                    <tr><td colspan="8" class="text-center text-muted">No attendance found for this month.</td></tr>
                 <?php else: ?>
                     <?php foreach ($attendanceRows as $row): ?>
                         <tr>
                             <td><?= e($row['attendance_date']) ?></td>
                             <td><?= e($row['shift']) ?></td>
                             <td><?= e($row['status']) ?></td>
-                            <td><?= e((string)($row['punch_in_time'] ?? '-')) ?></td>
-                            <td><?= e((string)($row['punch_out_time'] ?? '-')) ?></td>
-                            <td><?= e((string)($row['total_hours'] ?? 0)) ?></td>
+                            <td><?= !empty($row['punch_in_time']) ? e((string)$row['punch_in_time']) : '—' ?></td>
+                            <td><?= !empty($row['punch_out_time']) ? e((string)$row['punch_out_time']) : '—' ?></td>
+                            <td><?= isset($row['total_hours']) && $row['total_hours'] !== null && $row['total_hours'] !== '' ? e((string)$row['total_hours']) : '—' ?></td>
                             <td><?= e((string)($row['overtime_hours'] ?? 0)) ?></td>
+                            <td><?= ((int)($row['is_late'] ?? 0) === 1 || ($row['status'] ?? '') === 'Late') ? 'Yes' : 'No' ?></td>
                         </tr>
                     <?php endforeach; ?>
                 <?php endif; ?>

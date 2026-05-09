@@ -46,8 +46,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($leave) {
                 $pdo->prepare('UPDATE leaves SET status=:s WHERE id=:id')->execute(['s' => $status, 'id' => $leaveId]);
                 if ($status === 'Approved') {
-                    $rangeStmt = $pdo->prepare("INSERT INTO attendance(employee_id, attendance_date, shift, status, remarks)
-                        SELECT :eid, d.day_date, 'Morning', 'Leave', 'Approved leave'
+                    $leaveCat = (string)($leave['leave_category'] ?? 'Paid');
+                    $leaveStatus = ($leaveCat === 'Unpaid' || !(int)($leave['is_paid'] ?? 1)) ? 'Unpaid Leave' : 'Paid Leave';
+                    $rangeStmt = $pdo->prepare("INSERT INTO attendance(employee_id, attendance_date, shift, status, remarks, punch_in_time, punch_out_time, total_hours, overtime_hours, is_late, is_early_exit, is_emergency_duty)
+                        SELECT :eid, d.day_date, 'Morning', :st, 'Approved leave', NULL, NULL, NULL, 0, 0, 0, 0
                         FROM (
                             SELECT DATE_ADD(:fromDate, INTERVAL seq.day DAY) AS day_date
                             FROM (
@@ -60,10 +62,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             ) seq
                         ) d
                         WHERE d.day_date BETWEEN :fromDate AND :toDate
-                        ON DUPLICATE KEY UPDATE status='Leave', remarks='Approved leave'");
+                        ON DUPLICATE KEY UPDATE status=VALUES(status), remarks=VALUES(remarks), punch_in_time=NULL, punch_out_time=NULL, total_hours=NULL, overtime_hours=0, is_late=0, is_early_exit=0, is_emergency_duty=0");
                     $fromDate = (string)($leave['from_date'] ?? $leave['start_date'] ?? '');
                     $toDate = (string)($leave['to_date'] ?? $leave['end_date'] ?? '');
-                    $rangeStmt->execute(['eid' => (int)$leave['employee_id'], 'fromDate' => $fromDate, 'toDate' => $toDate]);
+                    $rangeStmt->execute(['eid' => (int)$leave['employee_id'], 'st' => $leaveStatus, 'fromDate' => $fromDate, 'toDate' => $toDate]);
                 }
             }
             $pdo->commit();

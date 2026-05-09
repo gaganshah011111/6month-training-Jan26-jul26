@@ -7,7 +7,7 @@ require_auth(['Super Admin']);
 $pdo = Database::connection();
 $kpis = [
     'Total Employees' => (int)$pdo->query('SELECT COUNT(*) FROM employees')->fetchColumn(),
-    'Present Today' => (int)$pdo->query("SELECT COUNT(*) FROM attendance WHERE attendance_date = CURDATE() AND status = 'Present'")->fetchColumn(),
+    'Present Today' => (int)$pdo->query("SELECT COUNT(*) FROM attendance WHERE attendance_date = CURDATE() AND status IN ('Present','Late','Half Day','Emergency Duty')")->fetchColumn(),
     'Absent Today' => (int)$pdo->query("SELECT COUNT(*) FROM attendance WHERE attendance_date = CURDATE() AND status = 'Absent'")->fetchColumn(),
     'Total Raw Materials' => (int)$pdo->query('SELECT COUNT(*) FROM raw_materials')->fetchColumn(),
     'Today Production' => (int)$pdo->query('SELECT COALESCE(SUM(output_quantity),0) FROM production WHERE production_date = CURDATE()')->fetchColumn(),

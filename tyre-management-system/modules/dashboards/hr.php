@@ -4,7 +4,7 @@ require_once __DIR__ . '/../../config/db.php';
 if (!has_role(['HR Manager','Super Admin'])) { echo 'Access denied'; return; }
 $pdo = Database::connection();
 $employees = (int)$pdo->query('SELECT COUNT(*) FROM employees')->fetchColumn();
-$present = (int)$pdo->query("SELECT COUNT(*) FROM attendance WHERE attendance_date = CURDATE() AND status='Present'")->fetchColumn();
+$present = (int)$pdo->query("SELECT COUNT(*) FROM attendance WHERE attendance_date = CURDATE() AND status IN ('Present','Late','Half Day','Emergency Duty')")->fetchColumn();
 $leavePending = (int)$pdo->query("SELECT COUNT(*) FROM leaves WHERE status='Applied'")->fetchColumn();
 $payroll = (float)$pdo->query("SELECT COALESCE(SUM(net_salary),0) FROM salaries WHERE month_year = DATE_FORMAT(CURDATE(), '%Y-%m')")->fetchColumn();
 ?>

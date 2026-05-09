@@ -93,18 +93,38 @@ class Database
                 employee_id INT NOT NULL,
                 attendance_date DATE NOT NULL,
                 shift ENUM('Morning','Evening','Night') NOT NULL DEFAULT 'Morning',
-                status ENUM('Present','Absent','Late','Half Day','Leave') NOT NULL DEFAULT 'Present',
+                status VARCHAR(40) NOT NULL DEFAULT 'Present',
                 remarks VARCHAR(255) NULL,
                 punch_in_time DATETIME NULL,
                 punch_out_time DATETIME NULL,
-                total_hours DECIMAL(8,2) NOT NULL DEFAULT 0,
+                total_hours DECIMAL(8,2) NULL DEFAULT NULL,
                 overtime_hours DECIMAL(8,2) NOT NULL DEFAULT 0,
                 is_late TINYINT(1) NOT NULL DEFAULT 0,
+                is_early_exit TINYINT(1) NOT NULL DEFAULT 0,
                 is_emergency_duty TINYINT(1) NOT NULL DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE KEY uk_attendance_employee_day (employee_id, attendance_date),
                 INDEX idx_attendance_date (attendance_date),
                 CONSTRAINT fk_attendance_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+
+            "CREATE TABLE IF NOT EXISTS company_holidays (
+                holiday_date DATE NOT NULL PRIMARY KEY,
+                label VARCHAR(120) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+
+            "CREATE TABLE IF NOT EXISTS hr_holidays (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                holiday_date DATE NOT NULL,
+                holiday_name VARCHAR(160) NOT NULL,
+                holiday_type VARCHAR(50) NOT NULL,
+                department_scope VARCHAR(120) NOT NULL DEFAULT '' COMMENT 'empty = all departments',
+                remarks VARCHAR(255) NULL,
+                created_by INT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uk_hr_holiday_scope (holiday_date, department_scope),
+                INDEX idx_hr_holiday_date (holiday_date)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 
             "CREATE TABLE IF NOT EXISTS leaves (
@@ -348,6 +368,33 @@ class Database
         if (!self::hasColumn($pdo, 'attendance', 'is_emergency_duty')) {
             $pdo->exec("ALTER TABLE attendance ADD COLUMN is_emergency_duty TINYINT(1) NOT NULL DEFAULT 0 AFTER is_late");
         }
+        if (!self::hasColumn($pdo, 'attendance', 'is_early_exit')) {
+            $pdo->exec("ALTER TABLE attendance ADD COLUMN is_early_exit TINYINT(1) NOT NULL DEFAULT 0 AFTER is_late");
+        }
+
+        $pdo->exec("ALTER TABLE attendance MODIFY status VARCHAR(40) NOT NULL DEFAULT 'Present'");
+        $pdo->exec("ALTER TABLE attendance MODIFY total_hours DECIMAL(8,2) NULL DEFAULT NULL");
+        $pdo->exec("UPDATE attendance SET status = 'Paid Leave' WHERE status = 'Leave'");
+        $pdo->exec("UPDATE attendance SET is_emergency_duty = 1 WHERE status = 'Emergency Duty'");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS company_holidays (
+            holiday_date DATE NOT NULL PRIMARY KEY,
+            label VARCHAR(120) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS hr_holidays (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            holiday_date DATE NOT NULL,
+            holiday_name VARCHAR(160) NOT NULL,
+            holiday_type VARCHAR(50) NOT NULL,
+            department_scope VARCHAR(120) NOT NULL DEFAULT '',
+            remarks VARCHAR(255) NULL,
+            created_by INT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uk_hr_holiday_scope (holiday_date, department_scope),
+            INDEX idx_hr_holiday_date (holiday_date)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
         // leaves: support legacy and new naming
         if (!self::hasColumn($pdo, 'leaves', 'leave_type')) {

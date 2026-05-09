@@ -19,9 +19,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $daysInMonth = (int)date('t', strtotime($month . '-01'));
         $attStmt = $pdo->prepare("SELECT
-                SUM(CASE WHEN status='Present' THEN 1 WHEN status='Late' THEN 1 WHEN status='Half Day' THEN 0.5 ELSE 0 END) AS present_days,
+                SUM(CASE WHEN status IN ('Present','Late','Emergency Duty') THEN 1 WHEN status='Half Day' THEN 0.5 WHEN status IN ('Paid Leave','Holiday') THEN 1 ELSE 0 END) AS present_days,
                 SUM(CASE WHEN status='Half Day' THEN 1 ELSE 0 END) AS half_days,
-                SUM(CASE WHEN status='Late' THEN 1 ELSE 0 END) AS late_days,
+                SUM(CASE WHEN status='Late' OR is_late = 1 THEN 1 ELSE 0 END) AS late_days,
                 COALESCE(SUM(overtime_hours),0) AS overtime_hours
             FROM attendance
             WHERE employee_id=:eid AND DATE_FORMAT(attendance_date, '%Y-%m')=:month");

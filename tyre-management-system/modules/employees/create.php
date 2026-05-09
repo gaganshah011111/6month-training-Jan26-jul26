@@ -44,6 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('employees/list');
     } catch (Throwable $e) {
         set_flash('danger', 'Create employee failed: ' . $e->getMessage());
+        redirect('employees/create');
     }
 }
 
@@ -81,9 +82,10 @@ $employeeUsers = $pdo->query("SELECT id, full_name, email FROM users WHERE role 
                     <div class="col-md-2"><label class="form-label">Employee Type</label><select class="form-select" name="employee_type"><option>Staff</option><option>Worker</option></select></div>
                     <div class="col-md-2"><label class="form-label">Role</label><input class="form-control" name="role" value="Employee"></div>
                     <div class="col-md-2"><label class="form-label">Joining Date</label><input class="form-control" type="date" name="joining_date" required></div>
-                    <div class="col-md-4"><label class="form-label">Shift</label><input class="form-control" name="shift_timing" placeholder="General Shift"></div>
-                    <div class="col-md-2"><label class="form-label">Shift Start</label><input class="form-control" type="time" name="shift_start"></div>
-                    <div class="col-md-2"><label class="form-label">Shift End</label><input class="form-control" type="time" name="shift_end"></div>
+                    <div class="col-md-3"><label class="form-label">Shift</label><select class="form-select" id="shift_preset" name="shift_preset_select" aria-label="Shift preset"><option value="">Custom / other</option><option value="morning">Morning (09:00–18:00)</option><option value="evening">Evening (14:00–22:00)</option><option value="night">Night (22:00–06:00)</option></select><small class="text-muted d-block mt-1">Sets shift name and times; you can edit times below.</small></div>
+                    <div class="col-md-3"><label class="form-label">Shift name (saved)</label><input class="form-control" name="shift_timing" id="shift_timing_input" placeholder="e.g. Morning Shift"></div>
+                    <div class="col-md-2"><label class="form-label">Shift Start</label><input class="form-control" type="time" name="shift_start" id="shift_start_input"></div>
+                    <div class="col-md-2"><label class="form-label">Shift End</label><input class="form-control" type="time" name="shift_end" id="shift_end_input"></div>
                     <div class="col-md-2"><label class="form-label">Status</label><select class="form-select" name="status"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
                 </div>
             </div>
@@ -122,3 +124,23 @@ $employeeUsers = $pdo->query("SELECT id, full_name, email FROM users WHERE role 
         </div>
     </form>
 </div>
+<script>
+(function () {
+    var preset = document.getElementById('shift_preset');
+    var nameIn = document.getElementById('shift_timing_input');
+    var startIn = document.getElementById('shift_start_input');
+    var endIn = document.getElementById('shift_end_input');
+    var map = {
+        morning: { label: 'Morning Shift', start: '09:00', end: '18:00' },
+        evening: { label: 'Evening Shift', start: '14:00', end: '22:00' },
+        night: { label: 'Night Shift', start: '22:00', end: '06:00' }
+    };
+    preset.addEventListener('change', function () {
+        var m = map[preset.value];
+        if (!m) return;
+        nameIn.value = m.label;
+        startIn.value = m.start;
+        endIn.value = m.end;
+    });
+})();
+</script>

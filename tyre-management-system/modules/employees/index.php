@@ -111,7 +111,7 @@ $incrementRows = $pdo->query('SELECT si.*, e.full_name FROM salary_increments si
 
 $activeCount = (int)$pdo->query("SELECT COUNT(*) FROM employees WHERE status = 'active'")->fetchColumn();
 $staffCount = (int)$pdo->query("SELECT COUNT(*) FROM employees WHERE employee_type='Staff'")->fetchColumn();
-$presentToday = (int)$pdo->query("SELECT COUNT(*) FROM attendance WHERE attendance_date=CURDATE() AND status IN ('Present','Late','Half Day')")->fetchColumn();
+$presentToday = (int)$pdo->query("SELECT COUNT(*) FROM attendance WHERE attendance_date=CURDATE() AND status IN ('Present','Late','Half Day','Emergency Duty')")->fetchColumn();
 $monthPayroll = (float)$pdo->query("SELECT COALESCE(SUM(net_salary),0) FROM salaries WHERE month_year = DATE_FORMAT(CURDATE(), '%Y-%m')")->fetchColumn();
 ?>
 <div class="module-shell">

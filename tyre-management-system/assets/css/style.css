@@ -503,3 +503,128 @@ a:hover { color: var(--brand-red-dark); }
     .table-actions { min-width: 0; }
 }
 
+/* —— Attendance Management (HR) —— */
+.att-mgmt__title {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+.att-mgmt__tabs .nav-link {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+.att-mgmt__tabs .nav-link.active {
+    color: var(--brand-red-dark, #b91c1c);
+    border-bottom-color: var(--brand-red, #dc2626);
+}
+.att-register-month-wrap {
+    max-height: min(75vh, 800px);
+}
+.att-register-month .att-reg-day,
+.att-register-month .att-reg-cell {
+    font-size: 0.68rem;
+    padding: 0.2rem 0.15rem;
+    min-width: 1.65rem;
+}
+.att-register-month thead th.att-reg-sticky,
+.att-register-month tbody td.att-reg-sticky {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    background: #f8fafc;
+    box-shadow: 1px 0 0 var(--line);
+}
+.att-register-month thead th.att-reg-sticky-name,
+.att-register-month tbody td.att-reg-sticky-name {
+    position: sticky;
+    left: 4.5rem;
+    z-index: 2;
+    background: #f8fafc;
+    box-shadow: 1px 0 0 var(--line);
+    max-width: 8rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.att-register-month thead th.att-reg-sticky-dept,
+.att-register-month tbody td.att-reg-sticky-dept {
+    position: sticky;
+    left: 12.5rem;
+    z-index: 2;
+    background: #f8fafc;
+    box-shadow: 1px 0 0 var(--line);
+    max-width: 5rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.att-register-month thead th.att-reg-sticky {
+    z-index: 4;
+}
+.att-register-month thead th.att-reg-sticky-name {
+    z-index: 4;
+}
+.att-register-month thead th.att-reg-sticky-dept {
+    z-index: 4;
+}
+.att-mgmt__sheet-date {
+    min-width: 9.5rem;
+}
+.att-mgmt__sheet-date .form-control {
+    max-width: 11rem;
+}
+.att-mgmt__filters {
+    background: var(--bg-surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 0.65rem 0.75rem;
+}
+.att-mgmt__table-wrap {
+    max-height: min(70vh, 720px);
+    overflow: auto;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: #fff;
+}
+.att-mgmt__table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #f8fafc;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    border-bottom: 2px solid var(--line);
+    white-space: nowrap;
+    box-shadow: 0 1px 0 var(--line);
+}
+.att-mgmt__table td {
+    vertical-align: middle;
+    font-size: 0.875rem;
+}
+.btn-ralson-primary {
+    background: linear-gradient(135deg, var(--brand-red), var(--brand-red-dark));
+    border: none;
+    color: #fff !important;
+    font-weight: 600;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(198, 40, 40, 0.35);
+}
+.btn-ralson-primary:hover {
+    background: linear-gradient(135deg, #d32f2f, var(--brand-red-dark));
+    color: #fff !important;
+    box-shadow: 0 6px 16px rgba(198, 40, 40, 0.45);
+}
+.btn-ralson-outline {
+    color: var(--brand-red) !important;
+    border: 2px solid var(--brand-red);
+    background: transparent;
+    font-weight: 600;
+    border-radius: 8px;
+}
+.btn-ralson-outline:hover {
+    background: rgba(198, 40, 40, 0.08);
+    color: var(--brand-red-dark) !important;
+}
+

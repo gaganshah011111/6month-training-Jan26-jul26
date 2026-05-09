@@ -62,8 +62,9 @@ function calculate_payroll_breakdown(array $employee, array $attendance, array $
     $leaveDeduction = ($unpaidLeaveDays * $dailyWage) + ($excessPaidLeaveDays * $dailyWage);
 
     if ($employeeType === 'Worker') {
-        $workerAbsentDays = max(0, $daysInMonth - ($presentDays + $halfDays * 0.5));
-        $leaveDeduction += $workerAbsentDays * $dailyWage;
+        // present_days from attendance is already a weighted paid-day total (incl. half-days as 0.5, paid leave, holiday).
+        $unpaidCalendarGap = max(0, (float)$daysInMonth - (float)$presentDays);
+        $leaveDeduction += $unpaidCalendarGap * $dailyWage;
         $paidLeaveDays = 0;
         $halfPaidLeaveDays = 0;
     }

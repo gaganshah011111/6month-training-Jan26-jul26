@@ -43,6 +43,29 @@ if (!can_access_page($page, $user)) {
     exit;
 }
 
+// POST handlers that redirect (PRG) must run before any HTML output; otherwise header() fails.
+$postRedirectPaths = [
+    'modules/hr/attendance/index.php',
+    'modules/hr/leave/index.php',
+    'modules/hr/payroll/index.php',
+    'modules/employees/index.php',
+    'modules/employees/create.php',
+    'modules/employee/attendance.php',
+    'modules/employee/dashboard.php',
+    'modules/production/index.php',
+    'modules/machines/index.php',
+    'modules/dispatch/index.php',
+    'modules/suppliers/index.php',
+    'modules/settings/index.php',
+    'modules/inventory/index.php',
+    'modules/quality/index.php',
+    'modules/raw_materials/index.php',
+];
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($path, $postRedirectPaths, true)) {
+    require __DIR__ . '/' . $path;
+    exit;
+}
+
 require __DIR__ . '/includes/header.php';
 require __DIR__ . '/includes/navbar.php';
 $flash = get_flash();

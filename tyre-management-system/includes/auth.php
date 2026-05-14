@@ -42,11 +42,14 @@ function login_user(array $user, bool $rememberMe): void
     $_SESSION['user'] = [
         'id' => $user['id'],
         'name' => $displayName,
-        'email' => $user['email'],
+        'email' => $user['email'] ?? '',
+        'username' => $user['username'] ?? '',
         'role' => $role,
+        'must_change_password' => (int)($user['must_change_password'] ?? 0),
     ];
     $_SESSION['user_id'] = $user['id'];
     $_SESSION['role'] = $role;
+    $_SESSION['must_change_password'] = (int)($user['must_change_password'] ?? 0);
 
     if ($rememberMe) {
         $token = bin2hex(random_bytes(32));

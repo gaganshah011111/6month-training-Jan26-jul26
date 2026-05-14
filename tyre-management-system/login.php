@@ -20,67 +20,80 @@ if (isset($_SESSION['user'])) {
 $error = '';
 $debugOutput = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = trim((string)($_POST['email'] ?? ''));
+    $login = trim((string)($_POST['login'] ?? ''));
     $password = (string)($_POST['password'] ?? '');
     $remember = isset($_POST['remember_me']);
     $isDebugMode = APP_ENV === 'local' && isset($_GET['debug']) && $_GET['debug'] === '1';
 
-    if ($email === '' || $password === '') {
-        $error = 'Email and password are required.';
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error = 'Please enter a valid email address.';
+    if ($login === '' || $password === '') {
+        $error = 'Username (or email) and password are required.';
     } else {
         $pdo = Database::connection();
-        $stmt = $pdo->prepare('SELECT * FROM users WHERE email = :email LIMIT 1');
-        $stmt->execute(['email' => $email]);
-        $user = $stmt->fetch();
-
-        if ($isDebugMode) {
-            $debugOutput = [
-                'email_from_form' => $email,
-                'password_from_form' => $password,
-                'db_user_data' => $user ?: null,
-            ];
-        }
-
-        if (!$user) {
-            $error = 'User not found.';
+        $isEmail = str_contains($login, '@');
+        if ($isEmail && !filter_var($login, FILTER_VALIDATE_EMAIL)) {
+            $error = 'Please enter a valid email address.';
+        } elseif (!$isEmail && !preg_match('/^[a-zA-Z0-9._-]{2,80}$/', $login)) {
+            $error = 'Invalid username format.';
         } else {
-            $statusValue = $user['status'] ?? null;
-            $isActive = $statusValue === 1
-                || $statusValue === '1'
-                || (is_string($statusValue) && strtolower(trim($statusValue)) === 'active');
-
-            if (!$isActive) {
-                $error = 'Account inactive.';
+            if ($isEmail) {
+                $stmt = $pdo->prepare('SELECT * FROM users WHERE email = :e LIMIT 1');
+                $stmt->execute(['e' => $login]);
             } else {
-                $dbPassword = (string)($user['password_hash'] ?? $user['password'] ?? '');
-                $isHashedPassword = is_string($dbPassword) && preg_match('/^\$2[aby]\$/', $dbPassword) === 1;
-                $passwordMatches = $isHashedPassword
-                    ? password_verify($password, $dbPassword)
-                    : hash_equals($dbPassword, $password);
+                $stmt = $pdo->prepare('SELECT * FROM users WHERE username = :u LIMIT 1');
+                $stmt->execute(['u' => $login]);
+            }
+            $user = $stmt->fetch();
 
-                if (!$passwordMatches) {
-                    $error = 'Wrong password.';
+            if ($isDebugMode) {
+                $debugOutput = [
+                    'login_from_form' => $login,
+                    'password_from_form' => $password,
+                    'db_user_data' => $user ?: null,
+                ];
+            }
+
+            if (!$user) {
+                $error = 'Account not found.';
+            } else {
+                $statusValue = $user['status'] ?? null;
+                $isActive = $statusValue === 1
+                    || $statusValue === '1'
+                    || (is_string($statusValue) && strtolower(trim($statusValue)) === 'active');
+
+                if (!$isActive) {
+                    $error = 'Account inactive.';
                 } else {
-                    if (!isset($user['full_name']) && isset($user['name'])) {
-                        $user['full_name'] = $user['name'];
-                    }
+                    $dbPassword = (string)($user['password_hash'] ?? $user['password'] ?? '');
+                    $isHashedPassword = is_string($dbPassword) && preg_match('/^\$2[aby]\$/', $dbPassword) === 1;
+                    $passwordMatches = $isHashedPassword
+                        ? password_verify($password, $dbPassword)
+                        : hash_equals($dbPassword, $password);
 
-                    login_user($user, $remember);
-                    $target = role_home_page((string)($user['role'] ?? ''));
-                    if ($target === 'login.php') {
-                        logout_user();
-                        $error = 'Role is not configured for dashboard access.';
+                    if (!$passwordMatches) {
+                        $error = 'Wrong password.';
                     } else {
-                        header('Location: ' . route_url($target));
-                        exit;
+                        if (!isset($user['full_name']) && isset($user['name'])) {
+                            $user['full_name'] = $user['name'];
+                        }
+
+                        login_user($user, $remember);
+                        try {
+                            $pdo->prepare('UPDATE users SET last_login = NOW() WHERE id = :id')->execute(['id' => (int)$user['id']]);
+                        } catch (Throwable) {
+                        }
+                        $target = role_home_page((string)($user['role'] ?? ''));
+                        if ($target === 'login.php') {
+                            logout_user();
+                            $error = 'Role is not configured for dashboard access.';
+                        } else {
+                            header('Location: ' . route_url($target));
+                            exit;
+                        }
                     }
                 }
             }
         }
     }
-
 }
 ?>
 <!doctype html>
@@ -103,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <span class="brand-mark">R</span>
                         <h4 class="mb-0">Ralson ERP Login</h4>
                     </div>
-                    <p class="text-muted small mb-3">Sign in to access your ERP dashboard.</p>
+                    <p class="text-muted small mb-3">Sign in with your <strong>username</strong> or corporate <strong>email</strong>.</p>
                     <?php if ($error): ?><div class="alert alert-danger"><?= e($error) ?></div><?php endif; ?>
                     <?php if (!empty($debugOutput)): ?>
                         <div class="alert alert-warning">
@@ -113,17 +126,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php endif; ?>
                     <form method="post">
                         <div class="mb-3">
-                            <label class="form-label">Email</label>
+                            <label class="form-label">Username or email</label>
                             <div class="input-group login-input-group">
-                                <span class="input-group-text"><i class="bi bi-envelope"></i></span>
-                                <input class="form-control" type="email" name="email" required>
+                                <span class="input-group-text"><i class="bi bi-person-badge"></i></span>
+                                <input class="form-control" type="text" name="login" autocomplete="username" required>
                             </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Password</label>
                             <div class="input-group login-input-group">
                                 <span class="input-group-text"><i class="bi bi-lock"></i></span>
-                                <input class="form-control" id="loginPassword" type="password" name="password" required>
+                                <input class="form-control" id="loginPassword" type="password" name="password" autocomplete="current-password" required>
                                 <button class="btn btn-outline-secondary" type="button" id="togglePassword" aria-label="Show password">
                                     <i class="bi bi-eye"></i>
                                 </button>
@@ -158,4 +171,3 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 </body>
 </html>
-

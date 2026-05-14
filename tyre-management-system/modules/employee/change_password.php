@@ -10,14 +10,18 @@ $pdo = Database::connection();
 $error = '';
 $success = '';
 
+$forceFirstChange = (int)($_SESSION['must_change_password'] ?? 0) === 1;
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $currentPassword = (string)($_POST['current_password'] ?? '');
     $newPassword = (string)($_POST['new_password'] ?? '');
     $confirmPassword = (string)($_POST['confirm_password'] ?? '');
     $userId = (int)($_SESSION['user_id'] ?? $_SESSION['user']['id'] ?? 0);
 
-    if ($currentPassword === '' || $newPassword === '' || $confirmPassword === '') {
-        $error = 'All password fields are required.';
+    if ($newPassword === '' || $confirmPassword === '') {
+        $error = 'New password and confirmation are required.';
+    } elseif (!$forceFirstChange && $currentPassword === '') {
+        $error = 'Current password is required.';
     } elseif (strlen($newPassword) < 8) {
         $error = 'New password must be at least 8 characters.';
     } elseif ($newPassword !== $confirmPassword) {
@@ -27,15 +31,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute(['id' => $userId]);
         $dbHash = (string)$stmt->fetchColumn();
         $isHash = preg_match('/^\$2[aby]\$/', $dbHash) === 1;
-        $isValidCurrent = $isHash ? password_verify($currentPassword, $dbHash) : hash_equals($dbHash, $currentPassword);
+        $isValidCurrent = true;
+        if (!$forceFirstChange) {
+            $isValidCurrent = $isHash ? password_verify($currentPassword, $dbHash) : hash_equals($dbHash, $currentPassword);
+        }
 
         if (!$isValidCurrent) {
             $error = 'Current password is incorrect.';
         } else {
             $newHash = password_hash($newPassword, PASSWORD_DEFAULT);
-            $updateStmt = $pdo->prepare('UPDATE users SET password_hash = :password_hash WHERE id = :id');
+            $updateStmt = $pdo->prepare('UPDATE users SET password_hash = :password_hash, must_change_password = 0 WHERE id = :id');
             $updateStmt->execute(['password_hash' => $newHash, 'id' => $userId]);
+            $_SESSION['must_change_password'] = 0;
+            if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
+                $_SESSION['user']['must_change_password'] = 0;
+            }
             $success = 'Password updated successfully.';
+            $forceFirstChange = false;
         }
     }
 }
@@ -43,16 +55,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <h4 class="mb-3">Change Password</h4>
 
+<?php if ($forceFirstChange): ?>
+    <div class="alert alert-warning">You must set a new password before continuing (first login or after an administrator reset).</div>
+<?php endif; ?>
+
 <?php if ($error): ?><div class="alert alert-danger"><?= e($error) ?></div><?php endif; ?>
 <?php if ($success): ?><div class="alert alert-success"><?= e($success) ?></div><?php endif; ?>
 
 <div class="card shadow-sm">
     <div class="card-body">
         <form method="post" class="row g-3">
+            <?php if (!$forceFirstChange): ?>
             <div class="col-md-4">
                 <label class="form-label">Current Password</label>
-                <input class="form-control" type="password" name="current_password" required>
+                <input class="form-control" type="password" name="current_password" autocomplete="current-password">
             </div>
+            <?php endif; ?>
             <div class="col-md-4">
                 <label class="form-label">New Password</label>
                 <input class="form-control" type="password" name="new_password" minlength="8" required>

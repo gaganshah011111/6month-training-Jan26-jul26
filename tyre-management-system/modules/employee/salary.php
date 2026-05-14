@@ -92,36 +92,77 @@ try {
     </div>
 
     <?php if ($selectedSlip): ?>
-        <div class="card shadow-sm">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                <strong>Payslip - <?= e($selectedSlip['month_year']) ?></strong>
-                <button class="btn btn-sm btn-secondary" onclick="window.print()">Download / Print</button>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6"><p><strong>Employee:</strong> <?= e($employee['full_name']) ?></p></div>
-                    <div class="col-md-6"><p><strong>Department:</strong> <?= e($employee['department']) ?></p></div>
-                    <div class="col-md-6"><p><strong>Month:</strong> <?= e($selectedSlip['month_year']) ?></p></div>
-                    <div class="col-md-6"><p><strong>Generated:</strong> <?= e((string)($selectedSlip['generated_at'] ?? $selectedSlip['created_at'] ?? '')) ?></p></div>
+        <?php
+        $slDa = (float)($selectedSlip['dearness_allowance'] ?? 0);
+        $slTa = (float)($selectedSlip['travel_allowance'] ?? 0);
+        $slGr = (float)($selectedSlip['gratuity_accrual'] ?? 0);
+        if ($slGr <= 0) {
+            $slGr = (float)($employee['gratuity_monthly'] ?? 0);
+        }
+        $slTax = (float)($selectedSlip['tax_deduction'] ?? 0);
+        $slPfEm = (float)($selectedSlip['pf_employer_amount'] ?? 0);
+        $slManual = (float)($selectedSlip['deductions'] ?? 0);
+        ?>
+        <div class="card shadow-sm payslip-erp">
+            <div class="payslip-erp__head d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <h5 class="text-white">Salary slip</h5>
+                    <div class="payslip-erp__sub">Pay period <?= e($selectedSlip['month_year']) ?> · <?= e($employee['full_name']) ?></div>
                 </div>
-                <hr>
-                <table class="table table-bordered">
-                    <tr class="table-light"><th colspan="2">Earnings</th></tr>
-                    <tr><th>Basic Salary</th><td>INR <?= e(number_format((float)($selectedSlip['basic'] ?? 0), 2)) ?></td></tr>
-                    <tr><th>HRA (<?= e((string)($selectedSlip['hra_percentage'] ?? 0)) ?>%)</th><td>INR <?= e(number_format((float)($selectedSlip['hra_amount'] ?? 0), 2)) ?></td></tr>
-                    <tr><th>Medical Allowance</th><td>INR <?= e(number_format((float)($selectedSlip['medical_allowance'] ?? 0), 2)) ?></td></tr>
-                    <tr><th>Other Allowances</th><td>INR <?= e(number_format((float)($selectedSlip['other_allowances'] ?? 0), 2)) ?></td></tr>
-                    <tr><th>Overtime Amount</th><td>INR <?= e(number_format((float)($selectedSlip['overtime_amount'] ?? 0), 2)) ?></td></tr>
-                    <tr><th>Gross Salary</th><td><strong>INR <?= e(number_format((float)($selectedSlip['gross_salary'] ?? 0), 2)) ?></strong></td></tr>
-                    <tr class="table-light"><th colspan="2">Deductions</th></tr>
-                    <tr><th>PF (<?= e((string)($selectedSlip['pf_percentage'] ?? 0)) ?>%)</th><td>INR <?= e(number_format((float)($selectedSlip['pf_amount'] ?? 0), 2)) ?></td></tr>
-                    <tr><th>ESI Employee (<?= e((string)($selectedSlip['esi_employee_percentage'] ?? 0)) ?>%)</th><td>INR <?= e(number_format((float)($selectedSlip['esi_employee_amount'] ?? 0), 2)) ?></td></tr>
-                    <tr><th>Leave Deduction</th><td>INR <?= e(number_format((float)($selectedSlip['leave_deduction'] ?? 0), 2)) ?></td></tr>
-                    <tr><th>Half Day Deduction</th><td>INR <?= e(number_format((float)($selectedSlip['half_day_deduction'] ?? 0), 2)) ?></td></tr>
-                    <tr><th>Late Entry Deduction</th><td>INR <?= e(number_format((float)($selectedSlip['late_entry_deduction'] ?? 0), 2)) ?></td></tr>
-                    <tr><th>Total Deduction</th><td>INR <?= e(number_format((float)($selectedSlip['total_deduction'] ?? $selectedSlip['deductions'] ?? 0), 2)) ?></td></tr>
-                    <tr><th>Net Salary</th><td><strong>INR <?= e(number_format((float)($selectedSlip['net_salary'] ?? 0), 2)) ?></strong></td></tr>
-                </table>
+                <button type="button" class="btn btn-sm btn-light" onclick="window.print()">Print / PDF</button>
+            </div>
+            <div class="card-body p-0">
+                <div class="row g-0 border-bottom">
+                    <div class="col-md-6 p-3 border-end"><span class="text-muted small">Employee</span><div class="fw-semibold"><?= e($employee['full_name']) ?></div></div>
+                    <div class="col-md-6 p-3"><span class="text-muted small">Department / Code</span><div class="fw-semibold"><?= e((string)$employee['department']) ?> · <?= e((string)($employee['employee_code'] ?? '')) ?></div></div>
+                </div>
+                <div class="p-3">
+                    <div class="row">
+                        <div class="col-lg-6 mb-3 mb-lg-0">
+                            <h6 class="text-uppercase small text-muted mb-2">Earnings</h6>
+                            <table class="table table-sm table-bordered mb-0">
+                                <tbody>
+                                <tr><th>Basic</th><td>₹ <?= e(number_format((float)($selectedSlip['basic'] ?? 0), 2)) ?></td></tr>
+                                <tr><th>Dearness Allowance (DA)</th><td>₹ <?= e(number_format($slDa, 2)) ?></td></tr>
+                                <tr><th>HRA (<?= e((string)($selectedSlip['hra_percentage'] ?? '0')) ?>%)</th><td>₹ <?= e(number_format((float)($selectedSlip['hra_amount'] ?? 0), 2)) ?></td></tr>
+                                <tr><th>Medical Allowance</th><td>₹ <?= e(number_format((float)($selectedSlip['medical_allowance'] ?? 0), 2)) ?></td></tr>
+                                <tr><th>Travel Allowance (TA)</th><td>₹ <?= e(number_format($slTa, 2)) ?></td></tr>
+                                <tr><th>Special Allowance</th><td>₹ <?= e(number_format((float)($selectedSlip['special_allowance'] ?? 0), 2)) ?></td></tr>
+                                <tr><th>Other Allowances</th><td>₹ <?= e(number_format((float)($selectedSlip['other_allowances'] ?? 0), 2)) ?></td></tr>
+                                <tr><th>Overtime (OT)</th><td>₹ <?= e(number_format((float)($selectedSlip['overtime_amount'] ?? 0), 2)) ?></td></tr>
+                                <tr class="table-light"><th>Gross salary</th><td><strong>₹ <?= e(number_format((float)($selectedSlip['gross_salary'] ?? 0), 2)) ?></strong></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-lg-6">
+                            <h6 class="text-uppercase small text-muted mb-2">Deductions &amp; employer</h6>
+                            <table class="table table-sm table-bordered mb-0">
+                                <tbody>
+                                <tr><th>PF (employee) (<?= e((string)($selectedSlip['pf_percentage'] ?? '0')) ?>%)</th><td>₹ <?= e(number_format((float)($selectedSlip['pf_amount'] ?? 0), 2)) ?></td></tr>
+                                <tr><th>PF (employer share)</th><td>₹ <?= e(number_format($slPfEm, 2)) ?> <span class="text-muted small">(not deducted from net)</span></td></tr>
+                                <tr><th>ESI (employee)</th><td>₹ <?= e(number_format((float)($selectedSlip['esi_employee_amount'] ?? 0), 2)) ?></td></tr>
+                                <tr><th>ESI (employer)</th><td>₹ <?= e(number_format((float)($selectedSlip['esi_employer_amount'] ?? 0), 2)) ?> <span class="text-muted small">(not deducted from net)</span></td></tr>
+                                <tr><th>Professional / Income tax (TDS)</th><td>₹ <?= e(number_format($slTax, 2)) ?></td></tr>
+                                <tr><th>Leave deduction</th><td>₹ <?= e(number_format((float)($selectedSlip['leave_deduction'] ?? 0), 2)) ?></td></tr>
+                                <tr><th>Half-day deduction</th><td>₹ <?= e(number_format((float)($selectedSlip['half_day_deduction'] ?? 0), 2)) ?></td></tr>
+                                <tr><th>Late deduction</th><td>₹ <?= e(number_format((float)($selectedSlip['late_entry_deduction'] ?? 0), 2)) ?></td></tr>
+                                <?php if ($slManual > 0): ?>
+                                    <tr><th>Other / manual deduction</th><td>₹ <?= e(number_format($slManual, 2)) ?></td></tr>
+                                <?php endif; ?>
+                                <tr class="table-light"><th>Total deductions</th><td><strong>₹ <?= e(number_format((float)($selectedSlip['total_deduction'] ?? 0), 2)) ?></strong></td></tr>
+                                </tbody>
+                            </table>
+                            <p class="small text-muted mb-2">Gratuity accrual (employer, statutory provision): <strong>₹ <?= e(number_format($slGr, 2)) ?></strong> per month — informational; not part of net pay.</p>
+                            <div class="border rounded p-3 bg-light">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="fw-semibold">Net salary (credit)</span>
+                                    <span class="fs-4 text-success fw-bold">₹ <?= e(number_format((float)($selectedSlip['net_salary'] ?? 0), 2)) ?></span>
+                                </div>
+                            </div>
+                            <p class="small text-muted mt-2 mb-0">Generated: <?= e((string)($selectedSlip['generated_at'] ?? $selectedSlip['created_at'] ?? '')) ?></p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     <?php endif; ?>

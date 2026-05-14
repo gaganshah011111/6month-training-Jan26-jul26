@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/../../../config/db.php';
 require_once __DIR__ . '/../../../includes/attendance_workflow.php';
+require_once __DIR__ . '/../../../includes/department_hierarchy.php';
 if (!has_role(['Super Admin', 'HR Manager'])) {
     echo 'Access denied';
     return;
@@ -154,10 +155,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->prepare('INSERT INTO hr_holidays (holiday_date, holiday_name, holiday_type, department_scope, remarks, created_by) VALUES (:d,:n,:t,:ds,:r,:u)')
                 ->execute(['d' => $hDate, 'n' => $hName, 't' => $hType, 'ds' => $deptScope, 'r' => $hRemarks ?: null, 'u' => $uid > 0 ? $uid : null]);
 
-            $empSql = "SELECT * FROM employees WHERE status = 'active'";
+            $empSql = "SELECT e.* FROM employees e
+                LEFT JOIN departments d ON d.id = e.department_id
+                WHERE e.status = 'active'";
             $empParams = [];
             if ($deptScope !== '') {
-                $empSql .= ' AND department = :dep';
+                $empSql .= ' AND COALESCE(d.department_name, e.department) = :dep';
                 $empParams['dep'] = $deptScope;
             }
             $empSql .= ' ORDER BY id';
@@ -241,18 +244,19 @@ $reg_q_emp = trim((string)($_GET['reg_q_emp'] ?? ''));
 $reg_emp_type = trim((string)($_GET['reg_emp_type'] ?? ''));
 $register_searched = isset($_GET['reg_search']) && $_GET['reg_search'] === '1';
 
-$departments = $pdo->query("SELECT DISTINCT TRIM(department) AS d FROM employees WHERE status = 'active' AND COALESCE(department,'') != '' ORDER BY d")->fetchAll(PDO::FETCH_COLUMN);
+$departments = hr_department_filter_options($pdo);
 
 $tableRows = [];
 if ($att_section === 'mark' && $searched) {
     $sql = "SELECT e.*, a.id AS att_pk, a.punch_in_time, a.punch_out_time, a.total_hours, a.overtime_hours,
         a.status AS att_status
         FROM employees e
+        LEFT JOIN departments d ON d.id = e.department_id
         LEFT JOIN attendance a ON a.employee_id = e.id AND a.attendance_date = :ad
         WHERE e.status = 'active' AND a.id IS NULL";
     $params = ['ad' => $att_date];
     if ($dept !== '') {
-        $sql .= ' AND e.department = :dept';
+        $sql .= ' AND COALESCE(d.department_name, e.department) = :dept';
         $params['dept'] = $dept;
     }
     if ($emp_type !== '' && in_array($emp_type, ['Worker', 'Staff'], true)) {
@@ -266,7 +270,8 @@ if ($att_section === 'mark' && $searched) {
             $params['qcode'] = '%' . $q_emp . '%';
         } else {
             $ql = '%' . $q_emp . '%';
-            $sql .= ' AND (e.employee_code LIKE :ql OR e.full_name LIKE :qf OR e.department LIKE :qd)';
+            $sql .= ' AND (e.employee_code LIKE :ql OR e.full_name LIKE :qf OR e.department LIKE :qd OR d.department_name LIKE :qdn)';
+            $params['qdn'] = $ql;
             $params['ql'] = $ql;
             $params['qf'] = $ql;
             $params['qd'] = $ql;
@@ -287,7 +292,7 @@ $registerMonthMap = [];
 if ($att_section === 'register' && $register_searched) {
     $appendEmpFilters = static function (string &$sql, array &$params, string $deptKey, string $etypeKey, string $qKey, string $dept, string $empType, string $qEmp): void {
         if ($dept !== '') {
-            $sql .= ' AND e.department = :' . $deptKey;
+            $sql .= ' AND COALESCE(d.department_name, e.department) = :' . $deptKey;
             $params[$deptKey] = $dept;
         }
         if ($empType !== '' && in_array($empType, ['Worker', 'Staff'], true)) {
@@ -301,10 +306,11 @@ if ($att_section === 'register' && $register_searched) {
                 $params[$qKey . 'code'] = '%' . $qEmp . '%';
             } else {
                 $ql = '%' . $qEmp . '%';
-                $sql .= ' AND (e.employee_code LIKE :' . $qKey . 'l OR e.full_name LIKE :' . $qKey . 'f OR e.department LIKE :' . $qKey . 'd)';
+                $sql .= ' AND (e.employee_code LIKE :' . $qKey . 'l OR e.full_name LIKE :' . $qKey . 'f OR e.department LIKE :' . $qKey . 'd OR d.department_name LIKE :' . $qKey . 'dn)';
                 $params[$qKey . 'l'] = $ql;
                 $params[$qKey . 'f'] = $ql;
                 $params[$qKey . 'd'] = $ql;
+                $params[$qKey . 'dn'] = $ql;
             }
         }
     };
@@ -312,6 +318,7 @@ if ($att_section === 'register' && $register_searched) {
     if ($reg_mode === 'daily') {
         $sql = 'SELECT e.*, a.punch_in_time, a.punch_out_time, a.total_hours, a.overtime_hours, a.status AS att_status
             FROM employees e
+            LEFT JOIN departments d ON d.id = e.department_id
             INNER JOIN attendance a ON a.employee_id = e.id AND a.attendance_date = :rd
             WHERE e.status = \'active\'';
         $params = ['rd' => $reg_date];
@@ -325,7 +332,9 @@ if ($att_section === 'register' && $register_searched) {
         $lastDay = (int)date('t', strtotime($monthStart));
         $registerMonthDays = range(1, $lastDay);
 
-        $sql = 'SELECT e.id, e.employee_code, e.full_name, e.department, e.employee_type FROM employees e WHERE e.status = \'active\'';
+        $sql = 'SELECT e.id, e.employee_code, e.full_name, COALESCE(d.department_name, e.department) AS department, e.employee_type FROM employees e
+            LEFT JOIN departments d ON d.id = e.department_id
+            WHERE e.status = \'active\'';
         $params = [];
         $appendEmpFilters($sql, $params, 'mdept', 'met', 'mq', $reg_dept, $reg_emp_type, $reg_q_emp);
         $sql .= ' ORDER BY e.full_name ASC LIMIT 400';

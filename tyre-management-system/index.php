@@ -43,13 +43,32 @@ if (!can_access_page($page, $user)) {
     exit;
 }
 
+if (str_starts_with((string)$page, 'api/')) {
+    require __DIR__ . '/' . $path;
+    exit;
+}
+
+if ($page === 'employees/credential-slip') {
+    require __DIR__ . '/' . $path;
+    exit;
+}
+
+if (is_logged_in() && (int)($_SESSION['must_change_password'] ?? 0) === 1) {
+    if ($page !== 'employee/change-password') {
+        header('Location: ' . route_url('employee/change-password'));
+        exit;
+    }
+}
+
 // POST handlers that redirect (PRG) must run before any HTML output; otherwise header() fails.
 $postRedirectPaths = [
     'modules/hr/attendance/index.php',
     'modules/hr/leave/index.php',
     'modules/hr/payroll/index.php',
+    'modules/hr/payroll_settings/index.php',
     'modules/employees/index.php',
     'modules/employees/create.php',
+    'modules/employees/credential_reveal.php',
     'modules/employee/attendance.php',
     'modules/employee/dashboard.php',
     'modules/production/index.php',

@@ -14,6 +14,7 @@ $iconMap = [
     'Attendance' => 'bi-calendar-check',
     'Leave' => 'bi-calendar-minus',
     'Payroll' => 'bi-cash-coin',
+    'Payroll Settings' => 'bi-sliders',
     'HR Reports' => 'bi-clipboard-data',
     'Raw Materials' => 'bi-box-seam',
     'Suppliers' => 'bi-truck',
@@ -33,10 +34,10 @@ $iconMap = [
     <?php
     $menu = match ($role) {
         'Super Admin' => [
-            'System' => ['super/dashboard' => 'Super Dashboard', 'users/index' => 'User Management', 'settings/profile' => 'System Settings', 'reports/hr' => 'Global Reports'],
+            'System' => ['super/dashboard' => 'Super Dashboard', 'users/index' => 'User Management', 'hr/payroll-settings' => 'Payroll Settings', 'settings/profile' => 'System Settings', 'reports/hr' => 'Global Reports'],
         ],
         'HR Manager' => [
-            'HR Management' => ['hr/dashboard' => 'Dashboard', 'employees/list' => 'Employees', 'attendance/list' => 'Attendance', 'leave/list' => 'Leave', 'payroll/list' => 'Payroll', 'reports/hr' => 'HR Reports'],
+            'HR Management' => ['hr/dashboard' => 'Dashboard', 'employees/list' => 'Employees', 'attendance/list' => 'Attendance', 'leave/list' => 'Leave', 'payroll/list' => 'Payroll', 'hr/payroll-settings' => 'Payroll Settings', 'reports/hr' => 'HR Reports'],
         ],
         'Production Manager' => [
             'Production' => ['production/dashboard' => 'Dashboard', 'raw-materials/list' => 'Raw Materials', 'suppliers/list' => 'Suppliers', 'production/list' => 'Production', 'machines/list' => 'Machines', 'reports/production' => 'Production Reports'],

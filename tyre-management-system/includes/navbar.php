@@ -4,6 +4,7 @@ require_once __DIR__ . '/functions.php';
 $user = current_user();
 $home = $user ? role_home_page((string)($user['role'] ?? '')) : 'dashboard';
 $userName = (string)($user['name'] ?? 'Guest');
+$loginUser = trim((string)($user['username'] ?? ''));
 $userRole = (string)($user['role'] ?? '');
 $roleLabel = $userRole !== '' ? $userRole : 'Visitor';
 $initial = strtoupper(substr($userName, 0, 1));
@@ -24,6 +25,7 @@ $initial = strtoupper(substr($userName, 0, 1));
                 <span class="user-avatar"><?= e($initial) ?></span>
                 <span class="d-none d-md-inline">
                     <strong><?= e($userName) ?></strong>
+                    <?php if ($loginUser !== ''): ?><small class="d-block text-white-50 font-monospace"><?= e($loginUser) ?></small><?php endif; ?>
                     <small>ERP Panel</small>
                 </span>
             </span>

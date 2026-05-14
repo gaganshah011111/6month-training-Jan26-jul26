@@ -300,12 +300,123 @@ a:hover { color: var(--brand-red-dark); }
     border-radius: 10px;
     padding: 12px;
 }
-.table-actions .dropdown-toggle::after { display: none; }
-.table-actions { min-width: 250px; }
+.table-actions .dropdown-toggle::after,
+.emp-actions-toggle::after {
+    display: none !important;
+    margin: 0 !important;
+}
+.table-actions {
+    min-width: 0;
+    width: 1%;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+.employee-directory-scroll {
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+}
+.employee-list-table .emp-dept-badge {
+    max-width: min(12rem, 22vw);
+    display: inline-block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.25;
+    padding: 0.32em 0.5em;
+}
+.employee-list-table .emp-desig-cell {
+    display: block;
+    max-width: min(11rem, 20vw);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.82rem;
+    color: #475569;
+}
+.employee-list-table .emp-gross-salary-cell .emp-gross-amt {
+    font-size: 0.95rem;
+    letter-spacing: -0.01em;
+}
+.employee-list-table .emp-gross-salary-cell .emp-gross-sub {
+    margin-top: 0.1rem;
+    line-height: 1.2;
+}
+.employee-list-table .emp-login-cell {
+    display: inline-block;
+    max-width: 6.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+}
+.emp-actions-toggle {
+    padding: 0.28rem 0.5rem !important;
+    line-height: 1;
+    border-radius: 8px;
+}
+.employee-row-actions-dd .dropdown-menu {
+    min-width: 11rem;
+    font-size: 0.875rem;
+}
+@media (min-width: 992px) {
+    .employee-list-table {
+        table-layout: fixed;
+    }
+    .employee-list-table .emp-col-employee {
+        width: 20%;
+    }
+    .employee-list-table .emp-col-dept {
+        width: 15%;
+    }
+    .employee-list-table .emp-col-desig {
+        width: 14%;
+    }
+    .employee-list-table .emp-col-type {
+        width: 7%;
+    }
+    .employee-list-table .emp-col-login {
+        width: 10%;
+    }
+    .employee-list-table .emp-col-aadhaar {
+        width: 10%;
+    }
+    .employee-list-table .emp-col-salary {
+        width: 9%;
+    }
+    .employee-list-table .emp-col-status {
+        width: 8%;
+    }
+    .employee-list-table .emp-col-actions {
+        width: 3.25rem;
+    }
+    .employee-list-table .emp-dept-badge {
+        max-width: 100%;
+    }
+    .employee-list-table .emp-desig-cell {
+        max-width: 100%;
+    }
+}
 
 .employee-list-table td, .employee-list-table th { vertical-align: middle; }
 .employee-list-table .employee-name { font-weight: 600; }
 .employee-list-table .employee-code { font-size: 0.78rem; color: var(--text-muted); }
+.form-control.employee-code-auto {
+    font-weight: 700;
+    color: #c41e3a;
+    letter-spacing: 0.04em;
+}
+.form-control.employee-code-auto[readonly] {
+    background-color: #fff5f5;
+    cursor: default;
+    opacity: 1;
+}
+.module-shell .ts-control,
+.card .ts-control {
+    min-height: 38px;
+    border-radius: 0.375rem;
+}
 .employee-page-head {
     display: flex;
     justify-content: space-between;
@@ -628,3 +739,71 @@ a:hover { color: var(--brand-red-dark); }
     color: var(--brand-red-dark) !important;
 }
 
+/* Payroll / Indian ERP cards */
+.payroll-erp-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+.payroll-erp-card__title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #0f172a;
+    letter-spacing: 0.02em;
+}
+.payroll-preview-grid .payroll-kv {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 0.45rem 0.55rem;
+}
+.payroll-kv__k {
+    display: block;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #64748b;
+}
+.payroll-kv__v {
+    font-weight: 600;
+    color: #0f172a;
+    font-variant-numeric: tabular-nums;
+}
+.payroll-settings-page .payroll-erp-card .form-label {
+    font-size: 0.82rem;
+    color: #475569;
+}
+.payslip-erp {
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+}
+.payslip-erp__head {
+    background: linear-gradient(90deg, #1e293b, #334155);
+    color: #f8fafc;
+    padding: 1rem 1.25rem;
+}
+.payslip-erp__head h5 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+.payslip-erp__sub {
+    font-size: 0.8rem;
+    opacity: 0.9;
+}
+.payslip-erp table {
+    margin-bottom: 0;
+}
+.payslip-erp th {
+    width: 52%;
+    background: #f1f5f9;
+    font-weight: 600;
+    font-size: 0.88rem;
+}
+.payslip-erp td {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}

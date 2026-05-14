@@ -183,9 +183,13 @@ function page_allowed_roles(): array
         'hr/dashboard' => ['HR Manager', 'Super Admin', 'Admin'],
         'employees/list' => ['HR Manager', 'Super Admin', 'Admin'],
         'employees/create' => ['HR Manager', 'Super Admin', 'Admin'],
+        'employees/credentials' => ['HR Manager', 'Super Admin', 'Admin'],
+        'employees/credential-slip' => ['HR Manager', 'Super Admin', 'Admin'],
+        'api/departments' => ['HR Manager', 'Super Admin', 'Admin'],
         'attendance/list' => ['HR Manager', 'Super Admin', 'Admin'],
         'leave/list' => ['HR Manager', 'Super Admin', 'Admin'],
         'payroll/list' => ['HR Manager', 'Super Admin', 'Admin'],
+        'hr/payroll-settings' => ['HR Manager', 'Super Admin', 'Admin'],
         'reports/hr' => ['HR Manager', 'Super Admin', 'Admin'],
 
         'production/dashboard' => ['Production Manager', 'Super Admin', 'Admin'],
@@ -210,7 +214,7 @@ function page_allowed_roles(): array
         'employee/attendance' => ['Employee'],
         'employee/leave' => ['Employee'],
         'employee/salary' => ['Employee'],
-        'employee/change-password' => ['Employee'],
+        'employee/change-password' => ['Employee', 'Super Admin', 'Admin', 'HR Manager', 'Production Manager', 'Inventory Manager', 'Dispatch Manager', 'Quality Manager'],
     ];
 }
 

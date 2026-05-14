@@ -43,19 +43,7 @@ function require_employee_record(PDO $pdo): array
     $employee = get_employee_record($pdo, $userId);
 
     if (!$employee) {
-        $fallbackStmt = $pdo->prepare('SELECT id FROM employees WHERE user_id IS NULL ORDER BY id ASC LIMIT 1');
-        $fallbackStmt->execute();
-        $fallbackEmployeeId = (int)$fallbackStmt->fetchColumn();
-
-        if ($fallbackEmployeeId > 0) {
-            $mapStmt = $pdo->prepare('UPDATE employees SET user_id = :user_id WHERE id = :id AND user_id IS NULL');
-            $mapStmt->execute(['user_id' => $userId, 'id' => $fallbackEmployeeId]);
-            $employee = get_employee_record($pdo, $userId);
-        }
-    }
-
-    if (!$employee) {
-        throw new RuntimeException('Your employee profile is not linked yet. Please ask admin to map this account in Employees module.');
+        throw new RuntimeException('Your employee profile is not linked to this login. Please contact HR.');
     }
 
     if (($employee['employee_type'] ?? 'Staff') === 'Worker') {

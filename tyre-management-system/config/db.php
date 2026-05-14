@@ -41,11 +41,15 @@ class Database
         $queries = [
             "CREATE TABLE IF NOT EXISTS users (
                 id INT AUTO_INCREMENT PRIMARY KEY,
+                employee_id INT NULL UNIQUE,
                 full_name VARCHAR(150) NOT NULL,
-                email VARCHAR(150) NOT NULL UNIQUE,
+                email VARCHAR(150) NULL UNIQUE,
+                username VARCHAR(80) NULL UNIQUE,
                 password_hash VARCHAR(255) NOT NULL,
                 role VARCHAR(50) NOT NULL DEFAULT 'Employee',
                 status VARCHAR(20) NOT NULL DEFAULT 'active',
+                must_change_password TINYINT(1) NOT NULL DEFAULT 0,
+                last_login DATETIME NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 
@@ -54,6 +58,9 @@ class Database
                 user_id INT NULL UNIQUE,
                 employee_code VARCHAR(50) NOT NULL UNIQUE,
                 full_name VARCHAR(150) NOT NULL,
+                father_name VARCHAR(120) NULL,
+                dob DATE NULL,
+                aadhaar_number CHAR(12) NULL,
                 email VARCHAR(150) NULL,
                 password_hash VARCHAR(255) NULL,
                 employee_type ENUM('Staff','Worker') NOT NULL DEFAULT 'Staff',
@@ -79,13 +86,21 @@ class Database
                 esi_percentage DECIMAL(6,2) NOT NULL DEFAULT 0.75,
                 esi_salary_limit DECIMAL(12,2) NOT NULL DEFAULT 21000,
                 medical_allowance DECIMAL(12,2) NOT NULL DEFAULT 0,
+                dearness_allowance DECIMAL(12,2) NOT NULL DEFAULT 0,
+                travel_allowance DECIMAL(12,2) NOT NULL DEFAULT 0,
+                special_allowance DECIMAL(12,2) NOT NULL DEFAULT 0,
                 other_allowances DECIMAL(12,2) NOT NULL DEFAULT 0,
+                metro TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1=metro HRA band',
+                payroll_auto_indian TINYINT(1) NOT NULL DEFAULT 1 COMMENT '1=auto split from gross',
+                gratuity_monthly DECIMAL(12,2) NOT NULL DEFAULT 0 COMMENT 'employer accrual 4.81% of basic (not in gross)',
+                gross_salary DECIMAL(12,2) NOT NULL DEFAULT 0 COMMENT 'fixed monthly gross: sum of earnings excl OT (no gratuity)',
                 overtime_rate DECIMAL(12,2) NOT NULL DEFAULT 0,
                 daily_wage DECIMAL(12,2) NOT NULL DEFAULT 0,
                 hourly_rate DECIMAL(12,2) NOT NULL DEFAULT 0,
                 status VARCHAR(20) NOT NULL DEFAULT 'active',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uk_employees_aadhaar (aadhaar_number)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 
             "CREATE TABLE IF NOT EXISTS attendance (
@@ -164,7 +179,13 @@ class Database
                 esi_employer_percentage DECIMAL(6,2) NOT NULL DEFAULT 0,
                 esi_employer_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
                 medical_allowance DECIMAL(12,2) NOT NULL DEFAULT 0,
+                dearness_allowance DECIMAL(12,2) NOT NULL DEFAULT 0,
+                travel_allowance DECIMAL(12,2) NOT NULL DEFAULT 0,
+                special_allowance DECIMAL(12,2) NOT NULL DEFAULT 0,
                 other_allowances DECIMAL(12,2) NOT NULL DEFAULT 0,
+                pf_employer_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+                tax_deduction DECIMAL(12,2) NOT NULL DEFAULT 0,
+                gratuity_accrual DECIMAL(12,2) NOT NULL DEFAULT 0,
                 leave_deduction DECIMAL(12,2) NOT NULL DEFAULT 0,
                 half_day_deduction DECIMAL(12,2) NOT NULL DEFAULT 0,
                 late_entry_deduction DECIMAL(12,2) NOT NULL DEFAULT 0,
@@ -294,26 +315,30 @@ class Database
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 
             "INSERT IGNORE INTO settings (setting_key, setting_value) VALUES ('company_name', 'Ralson India Private Limited - Tyre ERP')",
-            "INSERT INTO users(full_name,email,password_hash,role,status) VALUES
-                ('Super Admin','superadmin@ralson.local','\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi','Super Admin','active'),
-                ('HR Manager','hr@ralson.local','\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi','HR Manager','active'),
-                ('Production Manager','production@ralson.local','\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi','Production Manager','active'),
-                ('Inventory Manager','inventory@ralson.local','\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi','Inventory Manager','active'),
-                ('Dispatch Manager','dispatch@ralson.local','\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi','Dispatch Manager','active'),
-                ('Quality Manager','quality@ralson.local','\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi','Quality Manager','active'),
-                ('Employee User','employee@ralson.local','\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi','Employee','active')
-            ON DUPLICATE KEY UPDATE
-                full_name=VALUES(full_name),
-                password_hash=VALUES(password_hash),
-                role=VALUES(role),
-                status='active'",
         ];
 
         foreach ($queries as $query) {
             $pdo->exec($query);
         }
 
+        // Must run before seed INSERTs: legacy DBs may already have `users` without newer columns
+        // (`CREATE TABLE IF NOT EXISTS` does not alter existing tables).
         self::applyCompatibilityMigrations($pdo);
+
+        $pdo->exec("INSERT INTO users(full_name,email,username,password_hash,role,status,must_change_password) VALUES
+                ('Super Admin','superadmin@ralson.local','superadmin','\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi','Super Admin','active',0),
+                ('HR Manager','hr@ralson.local','hrmanager','\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi','HR Manager','active',0),
+                ('Production Manager','production@ralson.local','prodmanager','\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi','Production Manager','active',0),
+                ('Inventory Manager','inventory@ralson.local','invmanager','\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi','Inventory Manager','active',0),
+                ('Dispatch Manager','dispatch@ralson.local','dispatchmgr','\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi','Dispatch Manager','active',0),
+                ('Quality Manager','quality@ralson.local','qualitymgr','\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi','Quality Manager','active',0),
+                ('Employee User','employee@ralson.local','employeeuser','\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi','Employee','active',0)
+            ON DUPLICATE KEY UPDATE
+                full_name=VALUES(full_name),
+                username=VALUES(username),
+                password_hash=VALUES(password_hash),
+                role=VALUES(role),
+                status='active'");
 
         self::$initialized = true;
     }
@@ -345,6 +370,39 @@ class Database
             $pdo->exec("ALTER TABLE users ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'active'");
         }
         $pdo->exec("ALTER TABLE users MODIFY role VARCHAR(50) NOT NULL DEFAULT 'Employee'");
+
+        if (!self::hasColumn($pdo, 'users', 'employee_id')) {
+            $pdo->exec('ALTER TABLE users ADD COLUMN employee_id INT NULL UNIQUE AFTER id');
+        }
+        if (!self::hasColumn($pdo, 'users', 'username')) {
+            $pdo->exec('ALTER TABLE users ADD COLUMN username VARCHAR(80) NULL UNIQUE AFTER email');
+        }
+        if (!self::hasColumn($pdo, 'users', 'must_change_password')) {
+            $pdo->exec('ALTER TABLE users ADD COLUMN must_change_password TINYINT(1) NOT NULL DEFAULT 0 AFTER status');
+        }
+        if (!self::hasColumn($pdo, 'users', 'last_login')) {
+            $pdo->exec('ALTER TABLE users ADD COLUMN last_login DATETIME NULL AFTER must_change_password');
+        }
+        try {
+            $pdo->exec('ALTER TABLE users MODIFY email VARCHAR(150) NULL');
+        } catch (Throwable) {
+            // ignore if already nullable or unsupported variant
+        }
+
+        if (!self::hasColumn($pdo, 'employees', 'father_name')) {
+            $pdo->exec('ALTER TABLE employees ADD COLUMN father_name VARCHAR(120) NULL AFTER full_name');
+        }
+        if (!self::hasColumn($pdo, 'employees', 'dob')) {
+            $pdo->exec('ALTER TABLE employees ADD COLUMN dob DATE NULL AFTER father_name');
+        }
+        if (!self::hasColumn($pdo, 'employees', 'aadhaar_number')) {
+            $pdo->exec('ALTER TABLE employees ADD COLUMN aadhaar_number CHAR(12) NULL AFTER dob');
+        }
+        try {
+            $pdo->exec('ALTER TABLE employees ADD UNIQUE INDEX uk_employees_aadhaar (aadhaar_number)');
+        } catch (Throwable) {
+            // index may already exist
+        }
 
         // attendance
         if (!self::hasColumn($pdo, 'attendance', 'remarks')) {
@@ -483,11 +541,30 @@ class Database
         if (!self::hasColumn($pdo, 'employees', 'medical_allowance')) {
             $pdo->exec("ALTER TABLE employees ADD COLUMN medical_allowance DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER esi_salary_limit");
         }
+        if (!self::hasColumn($pdo, 'employees', 'special_allowance')) {
+            try {
+                $pdo->exec('ALTER TABLE employees ADD COLUMN special_allowance DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER medical_allowance');
+            } catch (Throwable) {
+                $pdo->exec('ALTER TABLE employees ADD COLUMN special_allowance DECIMAL(12,2) NOT NULL DEFAULT 0');
+            }
+        }
         if (!self::hasColumn($pdo, 'employees', 'other_allowances')) {
-            $pdo->exec("ALTER TABLE employees ADD COLUMN other_allowances DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER medical_allowance");
+            $after = self::hasColumn($pdo, 'employees', 'special_allowance') ? 'special_allowance' : 'medical_allowance';
+            $pdo->exec("ALTER TABLE employees ADD COLUMN other_allowances DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER {$after}");
+        }
+        if (!self::hasColumn($pdo, 'employees', 'gross_salary')) {
+            try {
+                $pdo->exec('ALTER TABLE employees ADD COLUMN gross_salary DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER other_allowances');
+            } catch (Throwable) {
+                $pdo->exec('ALTER TABLE employees ADD COLUMN gross_salary DECIMAL(12,2) NOT NULL DEFAULT 0');
+            }
         }
         if (!self::hasColumn($pdo, 'employees', 'overtime_rate')) {
-            $pdo->exec("ALTER TABLE employees ADD COLUMN overtime_rate DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER other_allowances");
+            try {
+                $pdo->exec('ALTER TABLE employees ADD COLUMN overtime_rate DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER gross_salary');
+            } catch (Throwable) {
+                $pdo->exec("ALTER TABLE employees ADD COLUMN overtime_rate DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER other_allowances");
+            }
         }
         if (!self::hasColumn($pdo, 'employees', 'daily_wage')) {
             $pdo->exec("ALTER TABLE employees ADD COLUMN daily_wage DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER overtime_rate");
@@ -497,6 +574,15 @@ class Database
         }
         if (!self::hasColumn($pdo, 'employees', 'status')) {
             $pdo->exec("ALTER TABLE employees ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'active' AFTER hourly_rate");
+        }
+        if (!self::hasColumn($pdo, 'employees', 'user_id')) {
+            $pdo->exec('ALTER TABLE employees ADD COLUMN user_id INT NULL UNIQUE AFTER id');
+        }
+        if (!self::hasColumn($pdo, 'employees', 'address')) {
+            $pdo->exec('ALTER TABLE employees ADD COLUMN address VARCHAR(255) NULL AFTER contact_no');
+        }
+        if (!self::hasColumn($pdo, 'employees', 'profile_image')) {
+            $pdo->exec('ALTER TABLE employees ADD COLUMN profile_image VARCHAR(255) NULL AFTER address');
         }
 
         // salaries/payroll compatibility columns
@@ -534,6 +620,7 @@ class Database
             'esi_employer_percentage DECIMAL(6,2) NOT NULL DEFAULT 0',
             'esi_employer_amount DECIMAL(12,2) NOT NULL DEFAULT 0',
             'medical_allowance DECIMAL(12,2) NOT NULL DEFAULT 0',
+            'special_allowance DECIMAL(12,2) NOT NULL DEFAULT 0',
             'other_allowances DECIMAL(12,2) NOT NULL DEFAULT 0',
             'leave_deduction DECIMAL(12,2) NOT NULL DEFAULT 0',
             'half_day_deduction DECIMAL(12,2) NOT NULL DEFAULT 0',
@@ -544,6 +631,146 @@ class Database
             $columnName = explode(' ', $columnDef)[0];
             if (!self::hasColumn($pdo, 'salaries', $columnName)) {
                 $pdo->exec("ALTER TABLE salaries ADD COLUMN {$columnDef}");
+            }
+        }
+
+        if (!self::hasColumn($pdo, 'salaries', 'special_allowance')) {
+            try {
+                $pdo->exec('ALTER TABLE salaries ADD COLUMN special_allowance DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER medical_allowance');
+            } catch (Throwable) {
+                try {
+                    $pdo->exec('ALTER TABLE salaries ADD COLUMN special_allowance DECIMAL(12,2) NOT NULL DEFAULT 0');
+                } catch (Throwable) {
+                }
+            }
+        }
+
+        if (!self::hasColumn($pdo, 'employees', 'metro')) {
+            $after = self::hasColumn($pdo, 'employees', 'esi_salary_limit') ? 'esi_salary_limit' : 'esi_percentage';
+            try {
+                $pdo->exec("ALTER TABLE employees ADD COLUMN metro TINYINT(1) NOT NULL DEFAULT 0 AFTER {$after}");
+            } catch (Throwable) {
+                $pdo->exec('ALTER TABLE employees ADD COLUMN metro TINYINT(1) NOT NULL DEFAULT 0');
+            }
+        }
+        if (!self::hasColumn($pdo, 'employees', 'payroll_auto_indian')) {
+            try {
+                $pdo->exec('ALTER TABLE employees ADD COLUMN payroll_auto_indian TINYINT(1) NOT NULL DEFAULT 1 AFTER metro');
+            } catch (Throwable) {
+                $pdo->exec('ALTER TABLE employees ADD COLUMN payroll_auto_indian TINYINT(1) NOT NULL DEFAULT 1');
+            }
+        }
+        if (self::hasColumn($pdo, 'employees', 'payroll_auto_indian')) {
+            $leg = (int)$pdo->query("SELECT COUNT(*) FROM settings WHERE setting_key = 'employee_payroll_auto_legacy_v1'")->fetchColumn();
+            if ($leg === 0) {
+                try {
+                    $empCount = (int)$pdo->query('SELECT COUNT(*) FROM employees')->fetchColumn();
+                    if ($empCount > 0) {
+                        $pdo->exec('UPDATE employees SET payroll_auto_indian = 0');
+                    }
+                    $pdo->exec("INSERT IGNORE INTO settings (setting_key, setting_value) VALUES ('employee_payroll_auto_legacy_v1', '1')");
+                } catch (Throwable) {
+                }
+            }
+        }
+        if (!self::hasColumn($pdo, 'employees', 'dearness_allowance')) {
+            try {
+                $pdo->exec('ALTER TABLE employees ADD COLUMN dearness_allowance DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER medical_allowance');
+            } catch (Throwable) {
+                $pdo->exec('ALTER TABLE employees ADD COLUMN dearness_allowance DECIMAL(12,2) NOT NULL DEFAULT 0');
+            }
+        }
+        if (!self::hasColumn($pdo, 'employees', 'travel_allowance')) {
+            try {
+                $pdo->exec('ALTER TABLE employees ADD COLUMN travel_allowance DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER dearness_allowance');
+            } catch (Throwable) {
+                $pdo->exec('ALTER TABLE employees ADD COLUMN travel_allowance DECIMAL(12,2) NOT NULL DEFAULT 0');
+            }
+        }
+        if (!self::hasColumn($pdo, 'employees', 'gratuity_monthly')) {
+            try {
+                $pdo->exec('ALTER TABLE employees ADD COLUMN gratuity_monthly DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER gross_salary');
+            } catch (Throwable) {
+                $pdo->exec('ALTER TABLE employees ADD COLUMN gratuity_monthly DECIMAL(12,2) NOT NULL DEFAULT 0');
+            }
+        }
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS payroll_settings (
+            id INT NOT NULL PRIMARY KEY DEFAULT 1,
+            basic_pct_of_gross DECIMAL(6,2) NOT NULL DEFAULT 50.00,
+            da_pct_of_basic DECIMAL(6,2) NOT NULL DEFAULT 0.00,
+            da_enabled TINYINT(1) NOT NULL DEFAULT 0,
+            hra_pct_non_metro DECIMAL(6,2) NOT NULL DEFAULT 40.00,
+            hra_pct_metro DECIMAL(6,2) NOT NULL DEFAULT 50.00,
+            medical_enabled TINYINT(1) NOT NULL DEFAULT 1,
+            medical_mode VARCHAR(12) NOT NULL DEFAULT 'fixed',
+            medical_fixed DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            medical_pct_of_basic DECIMAL(6,2) NOT NULL DEFAULT 0.00,
+            travel_enabled TINYINT(1) NOT NULL DEFAULT 0,
+            travel_mode VARCHAR(12) NOT NULL DEFAULT 'fixed',
+            travel_fixed DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            travel_pct_of_basic DECIMAL(6,2) NOT NULL DEFAULT 0.00,
+            gratuity_pct_of_basic DECIMAL(7,3) NOT NULL DEFAULT 4.810,
+            pf_employee_pct DECIMAL(6,2) NOT NULL DEFAULT 12.00,
+            pf_employer_pct DECIMAL(6,2) NOT NULL DEFAULT 12.00,
+            esi_employee_pct DECIMAL(6,2) NOT NULL DEFAULT 0.75,
+            esi_employer_pct DECIMAL(6,2) NOT NULL DEFAULT 3.25,
+            esi_gross_limit DECIMAL(12,2) NOT NULL DEFAULT 21000.00,
+            working_days_default DECIMAL(6,2) NOT NULL DEFAULT 26.00,
+            shift_hours_default DECIMAL(6,2) NOT NULL DEFAULT 8.00,
+            ot_multiplier DECIMAL(6,2) NOT NULL DEFAULT 1.00,
+            late_deduction_pct_of_daily DECIMAL(6,2) NOT NULL DEFAULT 10.00,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        try {
+            $pdo->exec('INSERT IGNORE INTO payroll_settings (id) VALUES (1)');
+        } catch (Throwable) {
+        }
+
+        if (!self::hasColumn($pdo, 'salaries', 'dearness_allowance')) {
+            try {
+                $pdo->exec('ALTER TABLE salaries ADD COLUMN dearness_allowance DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER medical_allowance');
+            } catch (Throwable) {
+                $pdo->exec('ALTER TABLE salaries ADD COLUMN dearness_allowance DECIMAL(12,2) NOT NULL DEFAULT 0');
+            }
+        }
+        if (!self::hasColumn($pdo, 'salaries', 'travel_allowance')) {
+            try {
+                $pdo->exec('ALTER TABLE salaries ADD COLUMN travel_allowance DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER dearness_allowance');
+            } catch (Throwable) {
+                $pdo->exec('ALTER TABLE salaries ADD COLUMN travel_allowance DECIMAL(12,2) NOT NULL DEFAULT 0');
+            }
+        }
+        if (!self::hasColumn($pdo, 'salaries', 'pf_employer_amount')) {
+            try {
+                $pdo->exec('ALTER TABLE salaries ADD COLUMN pf_employer_amount DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER other_allowances');
+            } catch (Throwable) {
+                $pdo->exec('ALTER TABLE salaries ADD COLUMN pf_employer_amount DECIMAL(12,2) NOT NULL DEFAULT 0');
+            }
+        }
+        if (!self::hasColumn($pdo, 'salaries', 'tax_deduction')) {
+            try {
+                $pdo->exec('ALTER TABLE salaries ADD COLUMN tax_deduction DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER pf_employer_amount');
+            } catch (Throwable) {
+                $pdo->exec('ALTER TABLE salaries ADD COLUMN tax_deduction DECIMAL(12,2) NOT NULL DEFAULT 0');
+            }
+        }
+        if (!self::hasColumn($pdo, 'salaries', 'gratuity_accrual')) {
+            try {
+                $pdo->exec('ALTER TABLE salaries ADD COLUMN gratuity_accrual DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER tax_deduction');
+            } catch (Throwable) {
+                $pdo->exec('ALTER TABLE salaries ADD COLUMN gratuity_accrual DECIMAL(12,2) NOT NULL DEFAULT 0');
+            }
+        }
+
+        if (self::hasColumn($pdo, 'employees', 'gross_salary')) {
+            $bk = (int)$pdo->query("SELECT COUNT(*) FROM settings WHERE setting_key = 'employee_gross_backfill_v1'")->fetchColumn();
+            if ($bk === 0) {
+                try {
+                    $pdo->exec('UPDATE employees SET gross_salary = ROUND(basic_salary + COALESCE(hra_amount, basic_salary * COALESCE(hra_percentage, 0) / 100) + COALESCE(medical_allowance, 0) + COALESCE(special_allowance, 0) + COALESCE(other_allowances, 0), 2)');
+                    $pdo->exec("INSERT IGNORE INTO settings (setting_key, setting_value) VALUES ('employee_gross_backfill_v1', '1')");
+                } catch (Throwable) {
+                }
             }
         }
 
@@ -594,6 +821,9 @@ class Database
             UNIQUE KEY uk_payroll_employee_month_year (employee_id, month, year),
             CONSTRAINT fk_payroll_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        require_once __DIR__ . '/../includes/department_hierarchy.php';
+        install_department_hierarchy($pdo);
 
         $pdo->exec("CREATE TABLE IF NOT EXISTS salary_increments (
             id INT AUTO_INCREMENT PRIMARY KEY,

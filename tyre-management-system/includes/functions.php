@@ -186,9 +186,13 @@ function page_allowed_roles(): array
         'employees/credentials' => ['HR Manager', 'Super Admin', 'Admin'],
         'employees/credential-slip' => ['HR Manager', 'Super Admin', 'Admin'],
         'api/departments' => ['HR Manager', 'Super Admin', 'Admin'],
+        'api/payroll-settings' => ['HR Manager', 'Super Admin', 'Admin'],
         'attendance/list' => ['HR Manager', 'Super Admin', 'Admin'],
         'leave/list' => ['HR Manager', 'Super Admin', 'Admin'],
         'payroll/list' => ['HR Manager', 'Super Admin', 'Admin'],
+        'payroll/payslip' => ['HR Manager', 'Super Admin', 'Admin'],
+        'api/payroll-calculate' => ['HR Manager', 'Super Admin', 'Admin'],
+        'api/payroll-test-preview' => ['HR Manager', 'Super Admin', 'Admin'],
         'hr/payroll-settings' => ['HR Manager', 'Super Admin', 'Admin'],
         'reports/hr' => ['HR Manager', 'Super Admin', 'Admin'],
 
@@ -234,3 +238,26 @@ function can_access_page(string $page, ?array $user = null): bool
     return in_array($role, $rules[$page], true);
 }
 
+/** Standard ERP text collation (must match DB migration). */
+function erp_collation(): string
+{
+    return 'utf8mb4_general_ci';
+}
+
+/** Apply ERP collation to a SQL column/expression for cross-table text ops. */
+function erp_collate(string $sqlExpr): string
+{
+    return $sqlExpr . ' COLLATE ' . erp_collation();
+}
+
+/** COALESCE of department master name and employee free-text department. */
+function erp_dept_label_sql(string $deptAlias = 'd', string $empAlias = 'e'): string
+{
+    return 'COALESCE(' . erp_collate("{$deptAlias}.department_name") . ', ' . erp_collate("{$empAlias}.department") . ')';
+}
+
+/** COALESCE of designation master name and employee free-text designation. */
+function erp_desig_label_sql(string $desAlias = 'des', string $empAlias = 'e'): string
+{
+    return 'COALESCE(' . erp_collate("{$desAlias}.designation_name") . ', ' . erp_collate("{$empAlias}.designation") . ')';
+}

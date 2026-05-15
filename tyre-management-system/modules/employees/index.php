@@ -234,6 +234,9 @@ $activeCount = (int)$pdo->query("SELECT COUNT(*) FROM employees WHERE status = '
 $staffCount = (int)$pdo->query("SELECT COUNT(*) FROM employees WHERE employee_type='Staff'")->fetchColumn();
 $presentToday = (int)$pdo->query("SELECT COUNT(*) FROM attendance WHERE attendance_date=CURDATE() AND status IN ('Present','Late','Half Day','Emergency Duty')")->fetchColumn();
 $monthPayroll = (float)$pdo->query("SELECT COALESCE(SUM(net_salary),0) FROM salaries WHERE month_year = DATE_FORMAT(CURDATE(), '%Y-%m')")->fetchColumn();
+$payrollSettingsApiUrl = route_url('api/payroll-settings');
+$showFrom = $total > 0 ? $offset + 1 : 0;
+$showTo = min($offset + count($rows), $total);
 ?>
 <div class="module-shell">
     <div class="employee-page-head mb-3">
@@ -269,49 +272,46 @@ $monthPayroll = (float)$pdo->query("SELECT COALESCE(SUM(net_salary),0) FROM sala
         <div class="col-lg col-md-6"><div class="card employee-stat-card"><div class="card-body"><span class="stat-icon soft-purple"><i class="bi bi-currency-rupee"></i></span><small>Total Payroll (Month)</small><h5>₹<?= e(number_format($monthPayroll, 0)) ?></h5><p>This Month</p></div></div></div>
     </div>
 
-    <div class="card mb-3">
-        <div class="card-header section-title d-flex justify-content-between align-items-center">
-            <span>Employee Directory</span>
-            <form method="get" class="d-flex align-items-center gap-2">
+    <div class="card mb-3 employee-directory-card">
+        <div class="card-header employee-directory-card__head d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+                <div class="employee-directory-card__title mb-0">Employee Directory</div>
+                <div class="employee-directory-card__meta"><?= e((string)$total) ?> employees<?= $search !== '' ? ' · filtered' : '' ?></div>
+            </div>
+            <form method="get" class="employee-directory-sort d-flex align-items-center gap-2">
                 <input type="hidden" name="page" value="employees/list">
                 <input type="hidden" name="q" value="<?= e($search) ?>">
-                <label class="small text-muted mb-0">Sort By</label>
+                <label class="small text-muted mb-0">Sort</label>
                 <select class="form-select form-select-sm" name="sort" onchange="this.form.submit()">
-                    <option value="recent" <?= $sort === 'recent' ? 'selected' : '' ?>>Recently Added</option>
-                    <option value="name" <?= $sort === 'name' ? 'selected' : '' ?>>Name</option>
-                    <option value="salary_high" <?= $sort === 'salary_high' ? 'selected' : '' ?>>Salary (High)</option>
-                    <option value="salary_low" <?= $sort === 'salary_low' ? 'selected' : '' ?>>Salary (Low)</option>
+                    <option value="recent" <?= $sort === 'recent' ? 'selected' : '' ?>>Recently added</option>
+                    <option value="name" <?= $sort === 'name' ? 'selected' : '' ?>>Name (A–Z)</option>
+                    <option value="salary_high" <?= $sort === 'salary_high' ? 'selected' : '' ?>>Gross (high → low)</option>
+                    <option value="salary_low" <?= $sort === 'salary_low' ? 'selected' : '' ?>>Gross (low → high)</option>
                 </select>
             </form>
         </div>
         <div class="table-responsive employee-directory-scroll">
-            <table class="table table-sm align-middle mb-0 employee-list-table">
-                <thead class="table-light">
+            <table class="table table-hover align-middle mb-0 employee-list-table">
+                <thead>
                 <tr>
                     <th class="emp-col-employee">Employee</th>
-                    <th class="emp-col-dept">Department</th>
-                    <th class="emp-col-desig">Designation</th>
+                    <th class="emp-col-org">Organization</th>
                     <th class="emp-col-type">Type</th>
-                    <th class="d-none d-md-table-cell emp-col-login">Login</th>
-                    <th class="d-none d-lg-table-cell emp-col-aadhaar">Aadhaar</th>
-                    <th class="emp-col-salary">Gross / mo.</th>
+                    <th class="emp-col-salary text-end">Monthly gross</th>
                     <th class="emp-col-status">Status</th>
                     <th class="emp-col-actions text-end">Actions</th>
                 </tr>
                 </thead>
                 <tbody>
-                <?php if (!$rows): ?><tr><td colspan="9" class="text-center text-muted">No employee records found.</td></tr><?php endif; ?>
+                <?php if (!$rows): ?><tr><td colspan="6" class="text-center text-muted py-5">No employees match your search.</td></tr><?php endif; ?>
                 <?php foreach ($rows as $r): ?>
                     <?php $initials = strtoupper(substr((string)$r['full_name'], 0, 1)); ?>
                     <?php
                     $dept = (string)($r['dept_canonical_name'] ?? $r['department'] ?? '');
                     $deptLabel = $dept !== '' ? $dept : 'General';
-                    $desigLabel = (string)($r['designation_canonical_name'] ?? $r['designation'] ?? '—');
-                    $deptBadge = match ($dept) {
-                        'HR', 'Human Resources (HR)', 'Human Resources' => 'badge-hr',
-                        'Production Planning & Control (PPC)', 'Tire Building / Product Assembly', 'Mixing & Compounding' => 'badge-production',
-                        default => 'bg-secondary',
-                    };
+                    $desigRaw = trim((string)($r['designation_canonical_name'] ?? $r['designation'] ?? ''));
+                    $hasDesig = $desigRaw !== '' && $desigRaw !== '—';
+                    $loginUser = trim((string)($r['login_username'] ?? ''));
                     $type = (string)($r['employee_type'] ?? 'Staff');
                     $typeBadge = $type === 'Worker' ? 'badge-worker' : 'badge-staff';
                     $rowGross = (float)($r['gross_salary'] ?? 0);
@@ -323,24 +323,31 @@ $monthPayroll = (float)$pdo->query("SELECT COALESCE(SUM(net_salary),0) FROM sala
                         <td data-label="Employee">
                             <div class="d-flex align-items-center gap-2">
                                 <span class="employee-avatar"><?= e($initials) ?></span>
-                                <div class="min-w-0">
+                                <div class="min-w-0 flex-grow-1">
                                     <div class="employee-name text-truncate" title="<?= e((string)$r['full_name']) ?>"><?= e((string)$r['full_name']) ?></div>
-                                    <small class="employee-code"><?= e((string)$r['employee_code']) ?></small>
+                                    <div class="emp-employee-meta">
+                                        <span class="employee-code"><?= e((string)$r['employee_code']) ?></span>
+                                        <?php if ($loginUser !== ''): ?>
+                                            <span class="emp-meta-dot" aria-hidden="true">·</span>
+                                            <span class="emp-login-hint font-monospace" title="ERP login"><?= e($loginUser) ?></span>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                             </div>
                         </td>
-                        <td data-label="Department">
-                            <span class="badge <?= e($deptBadge) ?> emp-dept-badge" title="<?= e($deptLabel) ?>"><?= e($deptLabel) ?></span>
+                        <td data-label="Organization" class="emp-org-cell">
+                            <div class="emp-org-dept" title="<?= e($deptLabel) ?>"><?= e($deptLabel) ?></div>
+                            <?php if ($hasDesig): ?>
+                                <div class="emp-org-desig" title="<?= e($desigRaw) ?>"><?= e($desigRaw) ?></div>
+                            <?php else: ?>
+                                <div class="emp-org-desig emp-text-empty">No designation</div>
+                            <?php endif; ?>
                         </td>
-                        <td data-label="Designation"><span class="emp-desig-cell" title="<?= e($desigLabel) ?>"><?= e($desigLabel) ?></span></td>
                         <td data-label="Type"><span class="badge <?= e($typeBadge) ?>"><?= e($type) ?></span></td>
-                        <td data-label="Login" class="d-none d-md-table-cell"><span class="font-monospace small text-body-secondary emp-login-cell"><?= e((string)($r['login_username'] ?? '') !== '' ? (string)$r['login_username'] : '—') ?></span></td>
-                        <td data-label="Aadhaar" class="d-none d-lg-table-cell"><span class="small text-body-secondary text-nowrap"><?= e(ec_mask_aadhaar($r['aadhaar_number'] ?? null)) ?></span></td>
-                        <td data-label="Gross" class="emp-col-salary emp-gross-salary-cell">
-                            <div class="emp-gross-amt fw-bold text-nowrap">₹<?= e(number_format($rowGross, 0, '.', ',')) ?> <span class="text-muted fw-normal small">/ Month</span></div>
-                            <div class="emp-gross-sub small text-muted">Gross Salary</div>
+                        <td data-label="Gross" class="emp-gross-cell text-end">
+                            <span class="emp-gross-value">₹<?= e(number_format($rowGross, 0, '.', ',')) ?></span><span class="emp-gross-period">/mo</span>
                         </td>
-                        <td data-label="Status"><span class="badge <?= (($r['status'] ?? 'active') === 'active') ? 'bg-success' : 'bg-secondary' ?>"><?= e((string)($r['status'] ?? 'active')) ?></span></td>
+                        <td data-label="Status"><span class="badge <?= (($r['status'] ?? 'active') === 'active') ? 'bg-success' : 'bg-secondary' ?>"><?= e(ucfirst((string)($r['status'] ?? 'active'))) ?></span></td>
                         <td data-label="Actions" class="table-actions text-end">
                             <div class="dropdown employee-row-actions-dd">
                                 <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle emp-actions-toggle" data-bs-toggle="dropdown" data-bs-display="static" data-bs-auto-close="true" aria-expanded="false" aria-label="Row actions"><i class="bi bi-three-dots"></i></button>
@@ -375,13 +382,21 @@ $monthPayroll = (float)$pdo->query("SELECT COALESCE(SUM(net_salary),0) FROM sala
                 </tbody>
             </table>
         </div>
+        <div class="card-footer employee-directory-card__foot d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <span class="small text-muted mb-0">Showing <?= e((string)$showFrom) ?>–<?= e((string)$showTo) ?> of <?= e((string)$total) ?></span>
+            <?php if ($totalPages > 1): ?>
+            <nav aria-label="Employee pages">
+                <ul class="pagination pagination-sm employee-directory-pagination mb-0">
+                <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                    <li class="page-item <?= $i === $pageNo ? 'active' : '' ?>">
+                        <a class="page-link" href="<?= e(route_url('employees/list') . '&q=' . urlencode($search) . '&sort=' . urlencode($sort) . '&p=' . $i) ?>"><?= $i ?></a>
+                    </li>
+                <?php endfor; ?>
+                </ul>
+            </nav>
+            <?php endif; ?>
+        </div>
     </div>
-
-    <nav><ul class="pagination pagination-sm">
-    <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-        <li class="page-item <?= $i === $pageNo ? 'active' : '' ?>"><a class="page-link" href="<?= e(route_url('employees/list') . '&q=' . urlencode($search) . '&p=' . $i) ?>"><?= $i ?></a></li>
-    <?php endfor; ?>
-    </ul></nav>
 
     <div class="card mt-4">
         <div class="card-header section-title">Salary Increment History</div>
@@ -437,7 +452,7 @@ $monthPayroll = (float)$pdo->query("SELECT COALESCE(SUM(net_salary),0) FROM sala
         data-initial-department-id="<?= (int)($r['department_id'] ?? 0) ?>"
         data-initial-designation-id="<?= (int)($r['designation_id'] ?? 0) ?>">
         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
-            <form method="post" class="modal-content">
+            <form method="post" class="modal-content" data-payroll-preview>
                 <div class="modal-header">
                     <h5 class="modal-title">Edit Employee</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -457,18 +472,28 @@ $monthPayroll = (float)$pdo->query("SELECT COALESCE(SUM(net_salary),0) FROM sala
                         <div class="card-body row g-3">
                             <div class="col-12">
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" name="payroll_auto_indian" value="1" id="editPayrollAuto<?= (int)$r['id'] ?>" <?= $rowPayrollAuto ? 'checked' : '' ?>>
-                                    <label class="form-check-label" for="editPayrollAuto<?= (int)$r['id'] ?>">Automatic Indian split from gross</label>
+                                    <input class="form-check-input" type="checkbox" name="payroll_auto_indian" value="1" id="editPayrollAuto<?= (int)$r['id'] ?>" data-payroll-auto <?= $rowPayrollAuto ? 'checked' : '' ?>>
+                                    <label class="form-check-label" for="editPayrollAuto<?= (int)$r['id'] ?>">Automatic split from gross (uses Payroll Settings)</label>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Gross monthly (₹)</label>
-                                <input class="form-control" type="number" step="0.01" name="gross_salary" value="<?= e((string)$rowGrossVal) ?>">
+                                <input class="form-control" type="number" step="0.01" name="gross_salary" data-payroll-gross value="<?= e((string)$rowGrossVal) ?>">
                             </div>
                             <div class="col-md-3 d-flex align-items-end">
                                 <div class="form-check mb-2">
-                                    <input class="form-check-input" type="checkbox" name="metro" value="1" id="editMetro<?= (int)$r['id'] ?>" <?= !empty($r['metro']) ? 'checked' : '' ?>>
+                                    <input class="form-check-input" type="checkbox" name="metro" value="1" id="editMetro<?= (int)$r['id'] ?>" data-payroll-metro <?= !empty($r['metro']) ? 'checked' : '' ?>>
                                     <label class="form-check-label" for="editMetro<?= (int)$r['id'] ?>">Metro</label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="row g-2 small text-muted payroll-preview-grid">
+                                    <div class="col-6 col-md-4 col-lg-2"><div class="payroll-kv"><span class="payroll-kv__k">Basic</span><span class="payroll-kv__v" data-pv="basic">—</span></div></div>
+                                    <div class="col-6 col-md-4 col-lg-2"><div class="payroll-kv"><span class="payroll-kv__k">DA</span><span class="payroll-kv__v" data-pv="da">—</span></div></div>
+                                    <div class="col-6 col-md-4 col-lg-2"><div class="payroll-kv"><span class="payroll-kv__k">HRA</span><span class="payroll-kv__v" data-pv="hra">—</span></div></div>
+                                    <div class="col-6 col-md-4 col-lg-2"><div class="payroll-kv"><span class="payroll-kv__k">Medical</span><span class="payroll-kv__v" data-pv="medical">—</span></div></div>
+                                    <div class="col-6 col-md-4 col-lg-2"><div class="payroll-kv"><span class="payroll-kv__k">Travel</span><span class="payroll-kv__v" data-pv="travel">—</span></div></div>
+                                    <div class="col-6 col-md-4 col-lg-2"><div class="payroll-kv"><span class="payroll-kv__k">Special</span><span class="payroll-kv__v" data-pv="special">—</span></div></div>
                                 </div>
                             </div>
                             <div class="col-md-2"><label class="form-label">Basic</label><input class="form-control" type="number" step="0.01" name="basic_salary" value="<?= e((string)($r['basic_salary'] ?? 0)) ?>"></div>
@@ -497,7 +522,7 @@ $monthPayroll = (float)$pdo->query("SELECT COALESCE(SUM(net_salary),0) FROM sala
                             <div class="col-md-3"><label class="form-label">Father name</label><input class="form-control" name="father_name" value="<?= e((string)($r['father_name'] ?? '')) ?>" required pattern="[\p{L}\s.\-]+"></div>
                             <div class="col-md-3"><label class="form-label">Date of birth</label><input class="form-control" type="date" name="dob" max="<?= e(date('Y-m-d')) ?>" value="<?= e((string)($r['dob'] ?? '')) ?>" required></div>
                             <div class="col-md-6"><label class="form-label">Aadhaar (12 digits)</label><input class="form-control" name="aadhaar_number" inputmode="numeric" maxlength="12" pattern="\d{12}" value="<?= e((string)($r['aadhaar_number'] ?? '')) ?>" required></div>
-                            <div class="col-md-3"><label class="form-label">Type</label><select class="form-select" name="employee_type"><option <?= ($r['employee_type'] ?? 'Staff')==='Staff'?'selected':'' ?>>Staff</option><option <?= ($r['employee_type'] ?? '')==='Worker'?'selected':'' ?>>Worker</option></select></div>
+                            <div class="col-md-3"><label class="form-label">Type</label><select class="form-select" name="employee_type" data-payroll-emp-type><option value="Staff" <?= ($r['employee_type'] ?? 'Staff')==='Staff'?'selected':'' ?>>Staff</option><option value="Worker" <?= ($r['employee_type'] ?? '')==='Worker'?'selected':'' ?>>Worker</option></select>
                             <div class="col-md-3"><label class="form-label">Job role label</label><input class="form-control" name="role" value="<?= e((string)($r['role'] ?? 'Employee')) ?>" title="Stored on employee record"></div>
                             <div class="col-md-4">
                                 <label class="form-label">Department category <span class="text-danger">*</span></label>
@@ -585,13 +610,24 @@ $monthPayroll = (float)$pdo->query("SELECT COALESCE(SUM(net_salary),0) FROM sala
     </div>
 <?php endforeach; ?>
 
-<?php $dcVerIdx = is_file(__DIR__ . '/../../assets/js/department-cascade.js') ? (int)filemtime(__DIR__ . '/../../assets/js/department-cascade.js') : (int)time(); ?>
+<?php
+$dcVerIdx = is_file(__DIR__ . '/../../assets/js/department-cascade.js') ? (int)filemtime(__DIR__ . '/../../assets/js/department-cascade.js') : (int)time();
+$ipsVerIdx = is_file(__DIR__ . '/../../assets/js/indian-payroll-split.js') ? (int)filemtime(__DIR__ . '/../../assets/js/indian-payroll-split.js') : (int)time();
+$ppVerIdx = is_file(__DIR__ . '/../../assets/js/payroll-preview.js') ? (int)filemtime(__DIR__ . '/../../assets/js/payroll-preview.js') : (int)time();
+?>
 <script src="assets/js/department-cascade.js?v=<?= e((string)$dcVerIdx) ?>"></script>
+<script src="assets/js/indian-payroll-split.js?v=<?= e((string)$ipsVerIdx) ?>"></script>
+<script src="assets/js/payroll-preview.js?v=<?= e((string)$ppVerIdx) ?>"></script>
 <script>
 document.querySelectorAll('[id^="editEmp"]').forEach(function (modal) {
     var id = modal.id.replace(/^editEmp/, '');
     if (id) {
         window.DepartmentCascade.bindModal(modal, 'edit_org_' + id + '_');
+    }
+});
+document.addEventListener('DOMContentLoaded', function () {
+    if (window.PayrollPreview) {
+        PayrollPreview.init({ settingsUrl: <?= json_encode($payrollSettingsApiUrl, JSON_THROW_ON_ERROR) ?> });
     }
 });
 </script>

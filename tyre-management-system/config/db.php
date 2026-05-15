@@ -26,6 +26,7 @@ class Database
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES => false,
+            PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8mb4 COLLATE utf8mb4_general_ci',
         ]);
         self::initializeSchema(self::$instance);
 
@@ -51,7 +52,7 @@ class Database
                 must_change_password TINYINT(1) NOT NULL DEFAULT 0,
                 last_login DATETIME NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
 
             "CREATE TABLE IF NOT EXISTS employees (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -101,7 +102,7 @@ class Database
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 UNIQUE KEY uk_employees_aadhaar (aadhaar_number)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
 
             "CREATE TABLE IF NOT EXISTS attendance (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -121,13 +122,13 @@ class Database
                 UNIQUE KEY uk_attendance_employee_day (employee_id, attendance_date),
                 INDEX idx_attendance_date (attendance_date),
                 CONSTRAINT fk_attendance_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
 
             "CREATE TABLE IF NOT EXISTS company_holidays (
                 holiday_date DATE NOT NULL PRIMARY KEY,
                 label VARCHAR(120) NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
 
             "CREATE TABLE IF NOT EXISTS hr_holidays (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -140,7 +141,7 @@ class Database
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE KEY uk_hr_holiday_scope (holiday_date, department_scope),
                 INDEX idx_hr_holiday_date (holiday_date)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
 
             "CREATE TABLE IF NOT EXISTS leaves (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -156,7 +157,7 @@ class Database
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 INDEX idx_leave_dates (from_date, to_date),
                 CONSTRAINT fk_leaves_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
 
             "CREATE TABLE IF NOT EXISTS salaries (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -195,7 +196,7 @@ class Database
                 generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE KEY uk_salary_employee_month (employee_id, month_year),
                 CONSTRAINT fk_salaries_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
 
             "CREATE TABLE IF NOT EXISTS salary_increments (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -209,7 +210,7 @@ class Database
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 INDEX idx_increment_employee (employee_id),
                 CONSTRAINT fk_increment_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
 
             "CREATE TABLE IF NOT EXISTS suppliers (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -219,7 +220,7 @@ class Database
                 email VARCHAR(120) NULL,
                 address VARCHAR(255) NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
 
             "CREATE TABLE IF NOT EXISTS raw_materials (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -232,7 +233,7 @@ class Database
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 INDEX idx_raw_stock (stock_qty),
                 CONSTRAINT fk_raw_supplier FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE SET NULL
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
 
             "CREATE TABLE IF NOT EXISTS machines (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -241,7 +242,7 @@ class Database
                 status ENUM('Active','Under Maintenance','Inactive') NOT NULL DEFAULT 'Active',
                 last_maintenance_date DATE NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
 
             "CREATE TABLE IF NOT EXISTS production (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -255,7 +256,7 @@ class Database
                 INDEX idx_production_date (production_date),
                 CONSTRAINT fk_production_machine FOREIGN KEY (machine_id) REFERENCES machines(id),
                 CONSTRAINT fk_production_raw FOREIGN KEY (raw_material_id) REFERENCES raw_materials(id)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
 
             "CREATE TABLE IF NOT EXISTS quality_checks (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -268,7 +269,7 @@ class Database
                 defects VARCHAR(255) NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 CONSTRAINT fk_quality_production FOREIGN KEY (production_id) REFERENCES production(id) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
 
             "CREATE TABLE IF NOT EXISTS inventory (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -279,7 +280,7 @@ class Database
                 warehouse_location VARCHAR(120) NOT NULL,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 INDEX idx_inventory_qty (qty)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
 
             "CREATE TABLE IF NOT EXISTS dispatch (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -294,7 +295,7 @@ class Database
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 INDEX idx_dispatch_date (dispatch_date),
                 CONSTRAINT fk_dispatch_inventory FOREIGN KEY (inventory_id) REFERENCES inventory(id)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
 
             "CREATE TABLE IF NOT EXISTS defect_logs (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -305,14 +306,14 @@ class Database
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 CONSTRAINT fk_defect_quality FOREIGN KEY (quality_check_id) REFERENCES quality_checks(id) ON DELETE CASCADE,
                 CONSTRAINT fk_defect_production FOREIGN KEY (production_id) REFERENCES production(id) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
 
             "CREATE TABLE IF NOT EXISTS settings (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 setting_key VARCHAR(100) NOT NULL UNIQUE,
                 setting_value VARCHAR(255) NOT NULL,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
 
             "INSERT IGNORE INTO settings (setting_key, setting_value) VALUES ('company_name', 'Ralson India Private Limited - Tyre ERP')",
         ];
@@ -355,6 +356,63 @@ class Database
             'column_name' => $column,
         ]);
         return (int)$stmt->fetchColumn() > 0;
+    }
+
+    private static function hasTable(PDO $pdo, string $table): bool
+    {
+        $stmt = $pdo->prepare("SELECT COUNT(*)
+            FROM information_schema.tables
+            WHERE table_schema = DATABASE()
+              AND table_name = :table_name");
+        $stmt->execute(['table_name' => $table]);
+
+        return (int)$stmt->fetchColumn() > 0;
+    }
+
+    private static function normalizeErpCollation(PDO $pdo): void
+    {
+        $flagKey = 'erp_collation_utf8mb4_general_ci_v1';
+        $flagCheck = $pdo->prepare('SELECT COUNT(*) FROM settings WHERE setting_key = ?');
+        $flagCheck->execute([$flagKey]);
+        if ((int)$flagCheck->fetchColumn() > 0) {
+            return;
+        }
+
+        $dbName = (string)$pdo->query('SELECT DATABASE()')->fetchColumn();
+        if ($dbName !== '') {
+            try {
+                $pdo->exec('ALTER DATABASE `' . str_replace('`', '``', $dbName) . '` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci');
+            } catch (Throwable) {
+            }
+        }
+
+        $tables = [
+            'users',
+            'employees',
+            'department_categories',
+            'departments',
+            'designations',
+            'attendance',
+            'leaves',
+            'salaries',
+            'payroll',
+            'payroll_settings',
+            'settings',
+            'company_holidays',
+            'hr_holidays',
+        ];
+        foreach ($tables as $table) {
+            if (!self::hasTable($pdo, $table)) {
+                continue;
+            }
+            try {
+                $pdo->exec("ALTER TABLE `{$table}` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci");
+            } catch (Throwable) {
+            }
+        }
+
+        $pdo->prepare('INSERT IGNORE INTO settings (setting_key, setting_value) VALUES (?, ?)')
+            ->execute([$flagKey, '1']);
     }
 
     private static function applyCompatibilityMigrations(PDO $pdo): void
@@ -439,7 +497,7 @@ class Database
             holiday_date DATE NOT NULL PRIMARY KEY,
             label VARCHAR(120) NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
         $pdo->exec("CREATE TABLE IF NOT EXISTS hr_holidays (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -452,7 +510,7 @@ class Database
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE KEY uk_hr_holiday_scope (holiday_date, department_scope),
             INDEX idx_hr_holiday_date (holiday_date)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
         // leaves: support legacy and new naming
         if (!self::hasColumn($pdo, 'leaves', 'leave_type')) {
@@ -721,7 +779,7 @@ class Database
             ot_multiplier DECIMAL(6,2) NOT NULL DEFAULT 1.00,
             late_deduction_pct_of_daily DECIMAL(6,2) NOT NULL DEFAULT 10.00,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
         try {
             $pdo->exec('INSERT IGNORE INTO payroll_settings (id) VALUES (1)');
         } catch (Throwable) {
@@ -760,6 +818,28 @@ class Database
                 $pdo->exec('ALTER TABLE salaries ADD COLUMN gratuity_accrual DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER tax_deduction');
             } catch (Throwable) {
                 $pdo->exec('ALTER TABLE salaries ADD COLUMN gratuity_accrual DECIMAL(12,2) NOT NULL DEFAULT 0');
+            }
+        }
+        if (!self::hasColumn($pdo, 'salaries', 'payment_status')) {
+            $pdo->exec("ALTER TABLE salaries ADD COLUMN payment_status VARCHAR(20) NOT NULL DEFAULT 'unpaid' AFTER net_salary");
+        }
+        if (!self::hasColumn($pdo, 'salaries', 'is_draft')) {
+            $pdo->exec('ALTER TABLE salaries ADD COLUMN is_draft TINYINT(1) NOT NULL DEFAULT 0 AFTER payment_status');
+        }
+        if (!self::hasColumn($pdo, 'salaries', 'paid_at')) {
+            $pdo->exec('ALTER TABLE salaries ADD COLUMN paid_at DATETIME NULL DEFAULT NULL AFTER is_draft');
+        }
+        if (!self::hasColumn($pdo, 'salaries', 'generated_at')) {
+            try {
+                if (self::hasColumn($pdo, 'salaries', 'paid_at')) {
+                    $pdo->exec('ALTER TABLE salaries ADD COLUMN generated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP AFTER paid_at');
+                } elseif (self::hasColumn($pdo, 'salaries', 'net_salary')) {
+                    $pdo->exec('ALTER TABLE salaries ADD COLUMN generated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP AFTER net_salary');
+                } else {
+                    $pdo->exec('ALTER TABLE salaries ADD COLUMN generated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP');
+                }
+            } catch (Throwable) {
+                $pdo->exec('ALTER TABLE salaries ADD COLUMN generated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP');
             }
         }
 
@@ -820,10 +900,12 @@ class Database
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE KEY uk_payroll_employee_month_year (employee_id, month, year),
             CONSTRAINT fk_payroll_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
         require_once __DIR__ . '/../includes/department_hierarchy.php';
         install_department_hierarchy($pdo);
+
+        self::normalizeErpCollation($pdo);
 
         $pdo->exec("CREATE TABLE IF NOT EXISTS salary_increments (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -837,7 +919,7 @@ class Database
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_increment_employee (employee_id),
             CONSTRAINT fk_increment_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
     }
 }
 

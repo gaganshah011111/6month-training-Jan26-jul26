@@ -48,7 +48,7 @@ if (str_starts_with((string)$page, 'api/')) {
     exit;
 }
 
-if ($page === 'employees/credential-slip') {
+if ($page === 'employees/credential-slip' || $page === 'payroll/payslip') {
     require __DIR__ . '/' . $path;
     exit;
 }

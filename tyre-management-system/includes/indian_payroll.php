@@ -66,6 +66,49 @@ function payroll_settings_fetch(PDO $pdo): array
     return $row;
 }
 
+/**
+ * Medical / travel allowance: percent of basic when % > 0, otherwise fixed ₹ amount.
+ * Handles settings saved as "percent" with 0% but a positive fixed amount.
+ */
+function payroll_allowance_amount(bool $enabled, string $mode, float $basic, float $fixed, float $pctOfBasic): float
+{
+    if (!$enabled) {
+        return 0.0;
+    }
+    if ($mode === 'percent' && $pctOfBasic > 0) {
+        return round($basic * $pctOfBasic / 100, 2);
+    }
+
+    return round(max(0.0, $fixed), 2);
+}
+
+/** Normalized payroll settings for JSON / client-side split (matches indian_split_monthly_gross). */
+function payroll_settings_for_client(array $ps): array
+{
+    return [
+        'basic_pct_of_gross' => (float)($ps['basic_pct_of_gross'] ?? 50),
+        'da_pct_of_basic' => (float)($ps['da_pct_of_basic'] ?? 0),
+        'da_enabled' => !empty($ps['da_enabled']) ? 1 : 0,
+        'hra_pct_non_metro' => (float)($ps['hra_pct_non_metro'] ?? 40),
+        'hra_pct_metro' => (float)($ps['hra_pct_metro'] ?? 50),
+        'medical_enabled' => !empty($ps['medical_enabled']) ? 1 : 0,
+        'medical_mode' => (($ps['medical_mode'] ?? 'fixed') === 'percent') ? 'percent' : 'fixed',
+        'medical_fixed' => (float)($ps['medical_fixed'] ?? 0),
+        'medical_pct_of_basic' => (float)($ps['medical_pct_of_basic'] ?? 0),
+        'travel_enabled' => !empty($ps['travel_enabled']) ? 1 : 0,
+        'travel_mode' => (($ps['travel_mode'] ?? 'fixed') === 'percent') ? 'percent' : 'fixed',
+        'travel_fixed' => (float)($ps['travel_fixed'] ?? 0),
+        'travel_pct_of_basic' => (float)($ps['travel_pct_of_basic'] ?? 0),
+        'gratuity_pct_of_basic' => (float)($ps['gratuity_pct_of_basic'] ?? 4.81),
+        'pf_employee_pct' => (float)($ps['pf_employee_pct'] ?? 12),
+        'esi_employee_pct' => (float)($ps['esi_employee_pct'] ?? 0.75),
+        'esi_gross_limit' => (float)($ps['esi_gross_limit'] ?? 21000),
+        'working_days_default' => max(1.0, (float)($ps['working_days_default'] ?? 26)),
+        'shift_hours_default' => max(0.5, (float)($ps['shift_hours_default'] ?? 8)),
+        'ot_multiplier' => max(0.5, (float)($ps['ot_multiplier'] ?? 1)),
+    ];
+}
+
 /** @param array<string, scalar|null> $input */
 function payroll_settings_save(PDO $pdo, array $input): void
 {
@@ -125,6 +168,41 @@ function payroll_settings_save(PDO $pdo, array $input): void
         'otm' => $row['ot_multiplier'],
         'late' => $row['late_deduction_pct_of_daily'],
     ]);
+
+    payroll_settings_normalize_modes($pdo);
+}
+
+/** Align allowance mode with stored values (percent 0 + fixed ₹ → use fixed). */
+function payroll_settings_normalize_modes(PDO $pdo): void
+{
+    try {
+        $st = $pdo->query('SELECT medical_mode, medical_pct_of_basic, medical_fixed, travel_mode, travel_pct_of_basic, travel_fixed FROM payroll_settings WHERE id = 1 LIMIT 1');
+        $ps = $st ? $st->fetch(PDO::FETCH_ASSOC) : false;
+    } catch (Throwable) {
+        return;
+    }
+    if (!$ps) {
+        return;
+    }
+    $medMode = (string)($ps['medical_mode'] ?? 'fixed');
+    $trMode = (string)($ps['travel_mode'] ?? 'fixed');
+    $medPct = (float)($ps['medical_pct_of_basic'] ?? 0);
+    $trPct = (float)($ps['travel_pct_of_basic'] ?? 0);
+    $medFixed = (float)($ps['medical_fixed'] ?? 0);
+    $trFixed = (float)($ps['travel_fixed'] ?? 0);
+    $newMed = $medMode;
+    $newTr = $trMode;
+    if ($medMode === 'percent' && $medPct <= 0 && $medFixed > 0) {
+        $newMed = 'fixed';
+    }
+    if ($trMode === 'percent' && $trPct <= 0 && $trFixed > 0) {
+        $newTr = 'fixed';
+    }
+    if ($newMed === $medMode && $newTr === $trMode) {
+        return;
+    }
+    $st = $pdo->prepare('UPDATE payroll_settings SET medical_mode = :mm, travel_mode = :tm WHERE id = 1');
+    $st->execute(['mm' => $newMed, 'tm' => $newTr]);
 }
 
 /**
@@ -169,23 +247,21 @@ function indian_split_monthly_gross(float $G, bool $metro, bool $isWorker, array
     }
     $hra = $isWorker ? 0.0 : round($basic * $hraPct / 100, 2);
 
-    $medical = 0.0;
-    if (!empty($s['medical_enabled'])) {
-        if (($s['medical_mode'] ?? 'fixed') === 'percent') {
-            $medical = round($basic * (float)($s['medical_pct_of_basic'] ?? 0) / 100, 2);
-        } else {
-            $medical = round((float)($s['medical_fixed'] ?? 0), 2);
-        }
-    }
+    $medical = payroll_allowance_amount(
+        !empty($s['medical_enabled']),
+        (string)($s['medical_mode'] ?? 'fixed'),
+        $basic,
+        (float)($s['medical_fixed'] ?? 0),
+        (float)($s['medical_pct_of_basic'] ?? 0)
+    );
 
-    $travel = 0.0;
-    if (!empty($s['travel_enabled'])) {
-        if (($s['travel_mode'] ?? 'fixed') === 'percent') {
-            $travel = round($basic * (float)($s['travel_pct_of_basic'] ?? 0) / 100, 2);
-        } else {
-            $travel = round((float)($s['travel_fixed'] ?? 0), 2);
-        }
-    }
+    $travel = payroll_allowance_amount(
+        !empty($s['travel_enabled']),
+        (string)($s['travel_mode'] ?? 'fixed'),
+        $basic,
+        (float)($s['travel_fixed'] ?? 0),
+        (float)($s['travel_pct_of_basic'] ?? 0)
+    );
 
     $fixedSum = $basic + $da + $hra + $medical + $travel;
     $special = round(max(0, $G - $fixedSum), 2);

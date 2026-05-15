@@ -35,7 +35,7 @@ function install_department_hierarchy(PDO $pdo): void
         status VARCHAR(20) NOT NULL DEFAULT 'active',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE KEY uk_dept_cat_code (category_code)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
     $pdo->exec("CREATE TABLE IF NOT EXISTS departments (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -50,7 +50,7 @@ function install_department_hierarchy(PDO $pdo): void
         INDEX idx_dept_category (category_id),
         CONSTRAINT fk_dept_category FOREIGN KEY (category_id) REFERENCES department_categories(id)
             ON UPDATE CASCADE ON DELETE RESTRICT
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
     $pdo->exec("CREATE TABLE IF NOT EXISTS designations (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -63,7 +63,7 @@ function install_department_hierarchy(PDO $pdo): void
         INDEX idx_desig_department (department_id),
         CONSTRAINT fk_desig_department FOREIGN KEY (department_id) REFERENCES departments(id)
             ON UPDATE CASCADE ON DELETE CASCADE
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
     if (!dh_column_exists($pdo, 'employees', 'department_id')) {
         $pdo->exec('ALTER TABLE employees ADD COLUMN department_id INT NULL AFTER designation');
@@ -280,7 +280,7 @@ function dh_migrate_legacy_employee_departments(PDO $pdo): void
     }
 
     // Force one collation when joining legacy free-text columns to master tables (avoids 1267 errors).
-    $ci = 'utf8mb4_unicode_ci';
+    $ci = 'utf8mb4_general_ci';
 
     $pdo->exec("UPDATE employees e
         INNER JOIN departments d ON LOWER(TRIM(e.department)) COLLATE {$ci} = LOWER(TRIM(d.department_name)) COLLATE {$ci}
@@ -333,8 +333,8 @@ function dh_migrate_legacy_employee_departments(PDO $pdo): void
         $like = '%' . $needle . '%';
         $st = $pdo->prepare("UPDATE employees SET department_id = :did
             WHERE department_id IS NULL
-            AND LOWER(TRIM(CAST(department AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_unicode_ci))
-                LIKE CAST(:pat AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_unicode_ci");
+            AND LOWER(TRIM(CAST(department AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_general_ci))
+                LIKE CAST(:pat AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_general_ci");
         $st->execute(['did' => $did, 'pat' => $like]);
     }
 

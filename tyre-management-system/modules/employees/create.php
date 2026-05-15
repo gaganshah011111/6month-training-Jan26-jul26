@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../includes/department_hierarchy.php';
 require_once __DIR__ . '/../../includes/employee_credentials.php';
 require_once __DIR__ . '/../../includes/payroll_logic.php';
+require_once __DIR__ . '/../../includes/indian_payroll.php';
 if (!has_role(['Super Admin', 'HR Manager'])) { echo 'Access denied'; return; }
 $pdo = Database::connection();
 verify_csrf();
@@ -201,6 +202,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $autoEmployeeCode = $nextEmployeeCode($pdo);
+$payrollSettingsClient = payroll_settings_for_client(payroll_settings_fetch($pdo));
+$payrollSettingsApiUrl = route_url('api/payroll-settings');
 ?>
 <div class="module-shell">
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -210,7 +213,7 @@ $autoEmployeeCode = $nextEmployeeCode($pdo);
         </div>
         <a class="btn btn-outline-secondary" href="<?= e(route_url('employees/list')) ?>">Back to Employees</a>
     </div>
-    <form method="post" class="row g-3" id="employeeCreateForm" autocomplete="off">
+    <form method="post" class="row g-3" id="employeeCreateForm" data-payroll-preview autocomplete="off">
         <?= csrf_input() ?>
         <div class="col-12">
             <div class="card">
@@ -246,7 +249,7 @@ $autoEmployeeCode = $nextEmployeeCode($pdo);
                     </div>
                     <div class="col-md-2">
                         <label class="form-label">Employee Type</label>
-                        <select class="form-select" name="employee_type" id="selEmpType"><option value="Staff" selected>Staff</option><option value="Worker">Worker</option></select>
+                        <select class="form-select" name="employee_type" id="selEmpType" data-payroll-emp-type><option value="Staff" selected>Staff</option><option value="Worker">Worker</option></select>
                     </div>
                     <div class="col-md-2"><label class="form-label">Salary Type</label><select class="form-select" name="salary_type"><option>Monthly</option><option>Daily Wage</option><option>Hourly</option></select></div>
                     <div class="col-md-2"><label class="form-label">Joining Date</label><input class="form-control" type="date" name="joining_date" required></div>
@@ -266,44 +269,44 @@ $autoEmployeeCode = $nextEmployeeCode($pdo);
                 </div>
                 <div class="card-body">
                     <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" name="payroll_auto_indian" value="1" id="chkPayrollAuto" checked>
-                        <label class="form-check-label" for="chkPayrollAuto"><strong>Automatic salary split</strong> from gross (Basic 50%, HRA metro rules, DA/Medical/TA from Payroll Settings, Special = balance)</label>
+                        <input class="form-check-input" type="checkbox" name="payroll_auto_indian" value="1" id="chkPayrollAuto" data-payroll-auto checked>
+                        <label class="form-check-label" for="chkPayrollAuto"><strong>Automatic salary split</strong> from gross using current <a href="<?= e(route_url('hr/payroll-settings')) ?>">Payroll Settings</a> (Special allowance = remaining balance)</label>
                     </div>
                     <div id="payrollAutoBlock" class="row g-3">
                         <div class="col-md-4">
                             <label class="form-label">Gross monthly salary (₹) <span class="text-danger">*</span></label>
-                            <input class="form-control" type="number" step="0.01" name="gross_monthly_salary" id="inpGrossMonthly" required min="0" placeholder="e.g. 45000">
+                            <input class="form-control" type="number" step="0.01" name="gross_monthly_salary" id="inpGrossMonthly" data-payroll-gross required min="0" placeholder="e.g. 45000">
                             <small class="text-muted">Fixed earnings per month before overtime (PF/ESI calculated in payroll run)</small>
                         </div>
                         <div class="col-md-3 d-flex align-items-end">
                             <div class="form-check mb-2">
-                                <input class="form-check-input" type="checkbox" name="metro" value="1" id="chkMetro">
-                                <label class="form-check-label" for="chkMetro">Metro city (HRA 50% of Basic)</label>
+                                <input class="form-check-input" type="checkbox" name="metro" value="1" id="chkMetro" data-payroll-metro>
+                                <label class="form-check-label" for="chkMetro">Metro city (higher HRA % from Payroll Settings)</label>
                             </div>
                         </div>
-                        <div class="col-md-2"><label class="form-label">PF %</label><input class="form-control" type="number" step="0.01" name="pf_percentage" value="12"></div>
-                        <div class="col-md-2"><label class="form-label">ESI % (employee)</label><input class="form-control" type="number" step="0.01" name="esi_percentage" value="0.75"></div>
+                        <div class="col-md-2"><label class="form-label">PF %</label><input class="form-control" type="number" step="0.01" name="pf_percentage" value="<?= e((string)$payrollSettingsClient['pf_employee_pct']) ?>"></div>
+                        <div class="col-md-2"><label class="form-label">ESI % (employee)</label><input class="form-control" type="number" step="0.01" name="esi_percentage" value="<?= e((string)$payrollSettingsClient['esi_employee_pct']) ?>"></div>
                         <div class="col-md-1 d-flex flex-column justify-content-end">
                             <div class="form-check"><input class="form-check-input" type="checkbox" name="pf_applicable" id="chkPf" checked><label class="form-check-label" for="chkPf">PF</label></div>
                             <div class="form-check"><input class="form-check-input" type="checkbox" name="esi_applicable" id="chkEsi" checked><label class="form-check-label" for="chkEsi">ESI</label></div>
                         </div>
                         <div class="col-12">
                             <div class="row g-2 small text-muted payroll-preview-grid" id="payrollPreviewRow">
-                                <div class="col-6 col-md-4 col-lg-2"><div class="payroll-kv"><span class="payroll-kv__k">Basic (est.)</span><span class="payroll-kv__v" id="pv_basic">—</span></div></div>
-                                <div class="col-6 col-md-4 col-lg-2"><div class="payroll-kv"><span class="payroll-kv__k">DA</span><span class="payroll-kv__v" id="pv_da">—</span></div></div>
-                                <div class="col-6 col-md-4 col-lg-2"><div class="payroll-kv"><span class="payroll-kv__k">HRA</span><span class="payroll-kv__v" id="pv_hra">—</span></div></div>
-                                <div class="col-6 col-md-4 col-lg-2"><div class="payroll-kv"><span class="payroll-kv__k">Medical</span><span class="payroll-kv__v" id="pv_med">—</span></div></div>
-                                <div class="col-6 col-md-4 col-lg-2"><div class="payroll-kv"><span class="payroll-kv__k">Travel</span><span class="payroll-kv__v" id="pv_tr">—</span></div></div>
-                                <div class="col-6 col-md-4 col-lg-2"><div class="payroll-kv"><span class="payroll-kv__k">Special</span><span class="payroll-kv__v" id="pv_sp">—</span></div></div>
-                                <div class="col-6 col-md-4 col-lg-2"><div class="payroll-kv"><span class="payroll-kv__k">Daily wage</span><span class="payroll-kv__v" id="pv_dw">—</span></div></div>
-                                <div class="col-6 col-md-4 col-lg-2"><div class="payroll-kv"><span class="payroll-kv__k">Hourly (OT base)</span><span class="payroll-kv__v" id="pv_hw">—</span></div></div>
+                                <div class="col-6 col-md-4 col-lg-2"><div class="payroll-kv"><span class="payroll-kv__k">Basic (est.)</span><span class="payroll-kv__v" data-pv="basic">—</span></div></div>
+                                <div class="col-6 col-md-4 col-lg-2"><div class="payroll-kv"><span class="payroll-kv__k">DA</span><span class="payroll-kv__v" data-pv="da">—</span></div></div>
+                                <div class="col-6 col-md-4 col-lg-2"><div class="payroll-kv"><span class="payroll-kv__k">HRA</span><span class="payroll-kv__v" data-pv="hra">—</span></div></div>
+                                <div class="col-6 col-md-4 col-lg-2"><div class="payroll-kv"><span class="payroll-kv__k">Medical</span><span class="payroll-kv__v" data-pv="medical">—</span></div></div>
+                                <div class="col-6 col-md-4 col-lg-2"><div class="payroll-kv"><span class="payroll-kv__k">Travel</span><span class="payroll-kv__v" data-pv="travel">—</span></div></div>
+                                <div class="col-6 col-md-4 col-lg-2"><div class="payroll-kv"><span class="payroll-kv__k">Special</span><span class="payroll-kv__v" data-pv="special">—</span></div></div>
+                                <div class="col-6 col-md-4 col-lg-2"><div class="payroll-kv"><span class="payroll-kv__k">Daily wage</span><span class="payroll-kv__v" data-pv="dw">—</span></div></div>
+                                <div class="col-6 col-md-4 col-lg-2"><div class="payroll-kv"><span class="payroll-kv__k">Hourly (OT base)</span><span class="payroll-kv__v" data-pv="hw">—</span></div></div>
                             </div>
                         </div>
                         <div class="col-12">
                             <div class="d-flex flex-wrap align-items-center gap-2 py-2 px-3 rounded border border-danger border-opacity-25 bg-light">
                                 <span class="small text-muted mb-0">Declared gross</span>
-                                <strong class="text-danger fs-5 mb-0" id="salaryCtcPreview">₹0</strong>
-                                <span class="small text-muted mb-0">Preview uses defaults (50% Basic, HRA 40/50, DA off, Medical/TA from Payroll Settings). Saved values follow live settings.</span>
+                                <strong class="text-danger fs-5 mb-0" data-payroll-ctc>₹0</strong>
+                                <span class="small text-muted mb-0">Live preview from saved Payroll Settings (refreshed on each change).</span>
                             </div>
                         </div>
                     </div>
@@ -401,8 +404,14 @@ $autoEmployeeCode = $nextEmployeeCode($pdo);
     });
 })();
 </script>
-<?php $dcVer = is_file(__DIR__ . '/../../assets/js/department-cascade.js') ? (int)filemtime(__DIR__ . '/../../assets/js/department-cascade.js') : (int)time(); ?>
+<?php
+$dcVer = is_file(__DIR__ . '/../../assets/js/department-cascade.js') ? (int)filemtime(__DIR__ . '/../../assets/js/department-cascade.js') : (int)time();
+$ipsVer = is_file(__DIR__ . '/../../assets/js/indian-payroll-split.js') ? (int)filemtime(__DIR__ . '/../../assets/js/indian-payroll-split.js') : (int)time();
+$ppVer = is_file(__DIR__ . '/../../assets/js/payroll-preview.js') ? (int)filemtime(__DIR__ . '/../../assets/js/payroll-preview.js') : (int)time();
+?>
 <script src="assets/js/department-cascade.js?v=<?= e((string)$dcVer) ?>"></script>
+<script src="assets/js/indian-payroll-split.js?v=<?= e((string)$ipsVer) ?>"></script>
+<script src="assets/js/payroll-preview.js?v=<?= e((string)$ppVer) ?>"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     if (window.DepartmentCascade) {
@@ -478,61 +487,19 @@ document.addEventListener('DOMContentLoaded', function () {
         var sb = document.getElementById('sal_inp_basic');
         if (sb) sb.required = !auto;
     }
-    if (chkAuto) chkAuto.addEventListener('change', function () { syncAutoManual(); updatePayrollPreview(); });
+    if (chkAuto) {
+        chkAuto.addEventListener('change', function () {
+            syncAutoManual();
+            if (window.PayrollPreview) {
+                PayrollPreview.refreshAll();
+            }
+        });
+    }
     syncAutoManual();
+    if (window.PayrollPreview) {
+        PayrollPreview.init({ settingsUrl: <?= json_encode($payrollSettingsApiUrl, JSON_THROW_ON_ERROR) ?> });
+    }
 
-    function formatInrInt(n) {
-        return new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(Math.round(n));
-    }
-    function formatInr2(n) {
-        return new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(n);
-    }
-    function updatePayrollPreview() {
-        var out = document.getElementById('salaryCtcPreview');
-        if (!chkAuto) return;
-        if (!chkAuto.checked) {
-            var b = parseFloat(document.getElementById('sal_inp_basic').value) || 0;
-            var da = parseFloat(document.getElementById('sal_inp_da').value) || 0;
-            var hp = parseFloat(document.getElementById('sal_inp_hra_pct').value) || 0;
-            var hraField = document.getElementById('sal_inp_hra_amt');
-            var hraRaw = hraField.value.trim();
-            var hraAmt = hraRaw === '' ? (b * hp / 100) : (parseFloat(hraRaw) || 0);
-            var med = parseFloat(document.getElementById('sal_inp_medical').value) || 0;
-            var trv = parseFloat(document.getElementById('sal_inp_travel').value) || 0;
-            var spec = parseFloat(document.getElementById('sal_inp_special').value) || 0;
-            var oth = parseFloat(document.getElementById('sal_inp_other').value) || 0;
-            var gMan = b + da + hraAmt + med + trv + spec + oth;
-            if (out) out.textContent = '₹' + formatInrInt(gMan);
-            return;
-        }
-        var G = parseFloat(inpGross.value) || 0;
-        var metro = document.getElementById('chkMetro').checked;
-        var worker = document.getElementById('selEmpType').value === 'Worker';
-        var basic = G * 0.5;
-        var da = 0;
-        var hra = worker ? 0 : basic * (metro ? 0.5 : 0.4);
-        var med = 0;
-        var tr = 0;
-        var sp = Math.max(0, Math.round((G - basic - da - hra - med - tr) * 100) / 100);
-        var wd = 26, sh = 8, otm = 1;
-        var dw = wd > 0 ? G / wd : 0;
-        var hw = sh > 0 ? dw / sh : 0;
-        var pv = function (id, v) { var el = document.getElementById(id); if (el) el.textContent = '₹' + formatInr2(v); };
-        pv('pv_basic', basic);
-        pv('pv_da', da);
-        pv('pv_hra', hra);
-        pv('pv_med', med);
-        pv('pv_tr', tr);
-        pv('pv_sp', sp);
-        pv('pv_dw', dw);
-        pv('pv_hw', hw * otm);
-        if (out) out.textContent = '₹' + formatInrInt(G);
-    }
-    ['inpGrossMonthly', 'chkMetro', 'sal_inp_basic', 'sal_inp_da', 'sal_inp_hra_pct', 'sal_inp_hra_amt', 'sal_inp_medical', 'sal_inp_travel', 'sal_inp_special', 'sal_inp_other'].forEach(function (id) {
-        var node = document.getElementById(id);
-        if (node) node.addEventListener('input', updatePayrollPreview);
-        if (node) node.addEventListener('change', updatePayrollPreview);
-    });
     var selType = document.getElementById('selEmpType');
     var chkLogin = document.getElementById('chkCreateLogin');
     function syncTypeLogin() {
@@ -552,10 +519,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (el) el.classList.toggle('d-none', !show);
         });
     }
-    selType.addEventListener('change', function () {
-        syncTypeLogin();
-        updatePayrollPreview();
-    });
+    selType.addEventListener('change', syncTypeLogin);
     chkLogin.addEventListener('change', function () {
         if (selType.value === 'Worker') {
             ['rowUsernamePreview','rowTempPw','rowErpRole','rowAccStatus'].forEach(function (id) {
@@ -565,6 +529,5 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
     syncTypeLogin();
-    updatePayrollPreview();
 })();
 </script>

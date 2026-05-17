@@ -448,6 +448,68 @@ a:hover { color: var(--brand-red-dark); }
     line-height: 1;
     border-radius: 8px;
 }
+/* Employee edit modal — full-width form layout */
+.employee-edit-modal__dialog {
+    max-width: min(1100px, 96vw);
+    width: 100%;
+    margin: 1rem auto;
+    max-height: calc(100dvh - 2rem);
+}
+
+.employee-edit-modal .modal-content {
+    max-height: calc(100dvh - 2rem);
+    display: flex;
+    flex-direction: column;
+}
+
+.employee-edit-modal .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 1.25rem 1.5rem 1.5rem;
+}
+
+.employee-edit-modal .modal-body .row > [class*="col-"] {
+    min-width: 0;
+}
+
+.employee-edit-modal .form-control,
+.employee-edit-modal .form-select,
+.employee-edit-modal .ts-wrapper {
+    width: 100%;
+    max-width: 100%;
+}
+
+.employee-edit-modal .card-body.row.g-3 {
+    --bs-gutter-x: 1rem;
+    --bs-gutter-y: 1rem;
+}
+
+.employee-edit-modal .payroll-erp-card .col-md-2 {
+    flex: 0 0 auto;
+    width: 16.666%;
+}
+
+@media (max-width: 991.98px) {
+    .employee-edit-modal .payroll-erp-card .col-md-2 {
+        width: 33.333%;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .employee-edit-modal .payroll-erp-card .col-md-2 {
+        width: 50%;
+    }
+}
+
+.increment-modal .modal-dialog {
+    max-width: min(560px, 96vw);
+}
+
+.increment-modal .modal-body {
+    padding: 1.25rem 1.5rem;
+}
+
 .employee-row-actions-dd .dropdown-menu {
     min-width: 11rem;
     font-size: 0.875rem;

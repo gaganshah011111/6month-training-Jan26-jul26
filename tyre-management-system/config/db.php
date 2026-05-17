@@ -415,8 +415,42 @@ class Database
             ->execute([$flagKey, '1']);
     }
 
+    /** Ensure attendance FK cascades on employee delete (legacy DBs may lack ON DELETE CASCADE). */
+    private static function normalizeEmployeeFkCascade(PDO $pdo): void
+    {
+        if (!self::hasTable($pdo, 'attendance') || !self::hasTable($pdo, 'employees')) {
+            return;
+        }
+        $flagKey = 'attendance_fk_cascade_v1';
+        $flagCheck = $pdo->prepare('SELECT COUNT(*) FROM settings WHERE setting_key = ?');
+        $flagCheck->execute([$flagKey]);
+        if ((int)$flagCheck->fetchColumn() > 0) {
+            return;
+        }
+        try {
+            $pdo->exec('ALTER TABLE attendance DROP FOREIGN KEY fk_att_employee');
+        } catch (Throwable) {
+        }
+        try {
+            $pdo->exec('ALTER TABLE attendance DROP FOREIGN KEY fk_attendance_employee');
+        } catch (Throwable) {
+        }
+        try {
+            $pdo->exec(
+                'ALTER TABLE attendance ADD CONSTRAINT fk_att_employee FOREIGN KEY (employee_id) '
+                . 'REFERENCES employees(id) ON DELETE CASCADE'
+            );
+        } catch (Throwable) {
+        }
+        $pdo->prepare('INSERT IGNORE INTO settings (setting_key, setting_value) VALUES (?, ?)')
+            ->execute([$flagKey, '1']);
+    }
+
     private static function applyCompatibilityMigrations(PDO $pdo): void
     {
+        // Runtime compatibility patches (legacy). Portable schema history lives in
+        // database/sql/migrations/*.sql — add new files there and run: php tools/db_sync.php export
+
         // users compatibility for department roles
         if (!self::hasColumn($pdo, 'users', 'full_name')) {
             $pdo->exec("ALTER TABLE users ADD COLUMN full_name VARCHAR(150) NULL");
@@ -536,6 +570,75 @@ class Database
         }
         if (!self::hasColumn($pdo, 'leaves', 'leave_category')) {
             $pdo->exec("ALTER TABLE leaves ADD COLUMN leave_category ENUM('Paid','Half Paid','Unpaid') NOT NULL DEFAULT 'Paid' AFTER reason");
+        }
+        if (!self::hasColumn($pdo, 'leaves', 'paid_days')) {
+            $pdo->exec('ALTER TABLE leaves ADD COLUMN paid_days DECIMAL(6,2) NOT NULL DEFAULT 0 AFTER status');
+        }
+        if (!self::hasColumn($pdo, 'leaves', 'half_paid_days')) {
+            $pdo->exec('ALTER TABLE leaves ADD COLUMN half_paid_days DECIMAL(6,2) NOT NULL DEFAULT 0 AFTER paid_days');
+        }
+        if (!self::hasColumn($pdo, 'leaves', 'unpaid_days')) {
+            $pdo->exec('ALTER TABLE leaves ADD COLUMN unpaid_days DECIMAL(6,2) NOT NULL DEFAULT 0 AFTER half_paid_days');
+        }
+        if (!self::hasColumn($pdo, 'leaves', 'total_days')) {
+            $pdo->exec('ALTER TABLE leaves ADD COLUMN total_days DECIMAL(6,2) NOT NULL DEFAULT 0 AFTER unpaid_days');
+        }
+        if (!self::hasColumn($pdo, 'leaves', 'is_emergency')) {
+            $pdo->exec('ALTER TABLE leaves ADD COLUMN is_emergency TINYINT(1) NOT NULL DEFAULT 0 AFTER total_days');
+        }
+        if (!self::hasColumn($pdo, 'leaves', 'auto_approved')) {
+            $pdo->exec('ALTER TABLE leaves ADD COLUMN auto_approved TINYINT(1) NOT NULL DEFAULT 0 AFTER is_emergency');
+        }
+        if (!self::hasColumn($pdo, 'leaves', 'staffing_risk')) {
+            $pdo->exec("ALTER TABLE leaves ADD COLUMN staffing_risk VARCHAR(20) NOT NULL DEFAULT 'Safe' AFTER auto_approved");
+        }
+        if (!self::hasColumn($pdo, 'leaves', 'system_note')) {
+            $pdo->exec('ALTER TABLE leaves ADD COLUMN system_note VARCHAR(255) NULL AFTER staffing_risk');
+        }
+        if (!self::hasColumn($pdo, 'leaves', 'day_allocation_json')) {
+            $pdo->exec('ALTER TABLE leaves ADD COLUMN day_allocation_json TEXT NULL AFTER system_note');
+        }
+        if (!self::hasColumn($pdo, 'leaves', 'approved_by')) {
+            $pdo->exec('ALTER TABLE leaves ADD COLUMN approved_by INT NULL AFTER status');
+        }
+        if (!self::hasColumn($pdo, 'leaves', 'rejection_reason')) {
+            $pdo->exec('ALTER TABLE leaves ADD COLUMN rejection_reason VARCHAR(255) NULL AFTER day_allocation_json');
+        }
+        if (!self::hasColumn($pdo, 'leaves', 'approved_at')) {
+            $after = self::hasColumn($pdo, 'leaves', 'approved_by') ? 'approved_by' : 'status';
+            $pdo->exec("ALTER TABLE leaves ADD COLUMN approved_at DATETIME NULL AFTER {$after}");
+        }
+        try {
+            $pdo->exec("ALTER TABLE leaves MODIFY status ENUM('Applied','Pending','Approved','Rejected') NOT NULL DEFAULT 'Pending'");
+        } catch (Throwable) {
+            // enum may already include Pending
+        }
+        $pdo->exec("UPDATE leaves SET status = 'Pending' WHERE status = 'Applied'");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS leave_notifications (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            employee_id INT NULL,
+            leave_id INT NULL,
+            notice_type VARCHAR(40) NOT NULL,
+            message VARCHAR(500) NOT NULL,
+            audience ENUM('employee','hr') NOT NULL DEFAULT 'employee',
+            is_read TINYINT(1) NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_ln_employee (employee_id),
+            INDEX idx_ln_audience (audience, is_read)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+        $leaveSettings = [
+            'leave_auto_approve_enabled' => '0',
+            'leave_min_present_pct' => '50',
+        ];
+        foreach ($leaveSettings as $key => $val) {
+            $chk = $pdo->prepare('SELECT 1 FROM settings WHERE setting_key = :k LIMIT 1');
+            $chk->execute(['k' => $key]);
+            if (!$chk->fetchColumn()) {
+                $ins = $pdo->prepare('INSERT INTO settings (setting_key, setting_value) VALUES (:k, :v)');
+                $ins->execute(['k' => $key, 'v' => $val]);
+            }
         }
 
         // employee salary structure compatibility
@@ -905,7 +1008,12 @@ class Database
         require_once __DIR__ . '/../includes/department_hierarchy.php';
         install_department_hierarchy($pdo);
 
+        if (self::hasTable($pdo, 'departments') && !self::hasColumn($pdo, 'departments', 'min_staff_required')) {
+            $pdo->exec('ALTER TABLE departments ADD COLUMN min_staff_required INT NULL DEFAULT NULL AFTER status');
+        }
+
         self::normalizeErpCollation($pdo);
+        self::normalizeEmployeeFkCascade($pdo);
 
         $pdo->exec("CREATE TABLE IF NOT EXISTS salary_increments (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -920,6 +1028,12 @@ class Database
             INDEX idx_increment_employee (employee_id),
             CONSTRAINT fk_increment_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+        require_once __DIR__ . '/../includes/database_migration.php';
+        $ranSqlMigrations = DatabaseMigrationRunner::runPending($pdo, false);
+        if ($ranSqlMigrations !== [] && (getenv('ERP_AUTO_DB_BACKUP') === '1' || (defined('APP_ENV') && APP_ENV === 'local'))) {
+            DatabaseMigrationRunner::exportFullBackup($pdo);
+        }
     }
 }
 

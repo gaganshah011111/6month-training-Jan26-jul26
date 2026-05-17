@@ -1,100 +1,314 @@
 <?php
 declare(strict_types=1);
+
 require_once __DIR__ . '/../../../config/db.php';
+require_once __DIR__ . '/../../../includes/functions.php';
+require_once __DIR__ . '/../../../includes/leave_service.php';
+
+if (!has_role(['Super Admin', 'HR Manager', 'Admin'])) {
+    echo 'Access denied';
+    return;
+}
+
 $pdo = Database::connection();
-if (!has_role(['Super Admin','HR Manager'])) { echo 'Access denied'; return; }
 verify_csrf();
+
+$approverId = (int)(current_user()['id'] ?? $_SESSION['user_id'] ?? 0);
+$staffDate = (string)($_GET['staff_date'] ?? date('Y-m-d'));
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $staffDate)) {
+    $staffDate = date('Y-m-d');
+}
+$tab = (string)($_GET['tab'] ?? 'overview');
+if (!in_array($tab, ['overview', 'requests'], true)) {
+    $tab = 'overview';
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = $_POST['action'] ?? 'create';
+    $action = (string)($_POST['action'] ?? '');
     if ($action === 'create') {
-        try {
-            $employeeId = post_int('employee_id');
-            $empStmt = $pdo->prepare('SELECT employee_type FROM employees WHERE id=:id');
-            $empStmt->execute(['id' => $employeeId]);
-            $employee = $empStmt->fetch() ?: [];
-            $employeeType = (string)($employee['employee_type'] ?? 'Staff');
-            $leaveCategory = post_string('leave_category', 20) ?: 'Paid';
-            if ($employeeType === 'Worker' && $leaveCategory !== 'Unpaid') {
-                $leaveCategory = 'Unpaid';
-            }
-            $isPaid = $leaveCategory === 'Paid' ? 1 : 0;
-            $stmt = $pdo->prepare('INSERT INTO leaves(employee_id,from_date,to_date,start_date,end_date,leave_type,leave_category,reason,is_paid,status) VALUES(:e,:f,:t,:sd,:ed,:lt,:lc,:r,:ip,:s)');
-            $stmt->execute([
-                'e' => $employeeId,
-                'f' => $_POST['from_date'],
-                't' => $_POST['to_date'],
-                'sd' => $_POST['from_date'],
-                'ed' => $_POST['to_date'],
-                'lt' => post_string('leave_type', 50),
-                'lc' => $leaveCategory,
-                'r' => post_string('reason'),
-                'ip' => $isPaid,
-                's' => 'Applied'
-            ]);
-            set_flash('success', 'Leave request created.');
-        } catch (Throwable $e) {
-            set_flash('danger', 'Leave request failed: ' . $e->getMessage());
+        $employeeId = post_int('employee_id');
+        $from = (string)($_POST['from_date'] ?? '');
+        $to = (string)($_POST['to_date'] ?? '');
+        if ($to === '' && $from !== '') {
+            $to = $from;
         }
-    } elseif ($action === 'status') {
-        $leaveId = post_int('id');
-        $status = post_string('status', 20);
-        $pdo->beginTransaction();
-        try {
-            $leaveStmt = $pdo->prepare('SELECT * FROM leaves WHERE id=:id FOR UPDATE');
-            $leaveStmt->execute(['id' => $leaveId]);
-            $leave = $leaveStmt->fetch();
-            if ($leave) {
-                $pdo->prepare('UPDATE leaves SET status=:s WHERE id=:id')->execute(['s' => $status, 'id' => $leaveId]);
-                if ($status === 'Approved') {
-                    $leaveCat = (string)($leave['leave_category'] ?? 'Paid');
-                    $leaveStatus = ($leaveCat === 'Unpaid' || !(int)($leave['is_paid'] ?? 1)) ? 'Unpaid Leave' : 'Paid Leave';
-                    $rangeStmt = $pdo->prepare("INSERT INTO attendance(employee_id, attendance_date, shift, status, remarks, punch_in_time, punch_out_time, total_hours, overtime_hours, is_late, is_early_exit, is_emergency_duty)
-                        SELECT :eid, d.day_date, 'Morning', :st, 'Approved leave', NULL, NULL, NULL, 0, 0, 0, 0
-                        FROM (
-                            SELECT DATE_ADD(:fromDate, INTERVAL seq.day DAY) AS day_date
-                            FROM (
-                                SELECT 0 day UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL
-                                SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL
-                                SELECT 10 UNION ALL SELECT 11 UNION ALL SELECT 12 UNION ALL SELECT 13 UNION ALL SELECT 14 UNION ALL
-                                SELECT 15 UNION ALL SELECT 16 UNION ALL SELECT 17 UNION ALL SELECT 18 UNION ALL SELECT 19 UNION ALL
-                                SELECT 20 UNION ALL SELECT 21 UNION ALL SELECT 22 UNION ALL SELECT 23 UNION ALL SELECT 24 UNION ALL
-                                SELECT 25 UNION ALL SELECT 26 UNION ALL SELECT 27 UNION ALL SELECT 28 UNION ALL SELECT 29 UNION ALL SELECT 30
-                            ) seq
-                        ) d
-                        WHERE d.day_date BETWEEN :fromDate AND :toDate
-                        ON DUPLICATE KEY UPDATE status=VALUES(status), remarks=VALUES(remarks), punch_in_time=NULL, punch_out_time=NULL, total_hours=NULL, overtime_hours=0, is_late=0, is_early_exit=0, is_emergency_duty=0");
-                    $fromDate = (string)($leave['from_date'] ?? $leave['start_date'] ?? '');
-                    $toDate = (string)($leave['to_date'] ?? $leave['end_date'] ?? '');
-                    $rangeStmt->execute(['eid' => (int)$leave['employee_id'], 'st' => $leaveStatus, 'fromDate' => $fromDate, 'toDate' => $toDate]);
-                }
-            }
-            $pdo->commit();
-            set_flash('success', 'Leave status updated.');
-        } catch (Throwable $e) {
-            $pdo->rollBack();
-            set_flash('danger', 'Leave action failed: ' . $e->getMessage());
-        }
+        $reason = trim((string)($_POST['reason'] ?? ''));
+        $isEmergency = !empty($_POST['is_emergency']);
+        $res = leave_apply($pdo, $employeeId, $from, $to, $reason !== '' ? $reason : 'HR entry', $isEmergency);
+        set_flash($res['ok'] ? 'success' : 'danger', $res['message']);
+    } elseif ($action === 'approve') {
+        $res = leave_approve($pdo, post_int('id'), $approverId);
+        set_flash($res['ok'] ? 'success' : 'danger', $res['message']);
+    } elseif ($action === 'reject') {
+        $res = leave_reject($pdo, post_int('id'), $approverId, post_string('rejection_reason', 255));
+        set_flash($res['ok'] ? 'success' : 'danger', $res['message']);
     }
     redirect('leave/list');
 }
-$emps = $pdo->query('SELECT id, full_name FROM employees ORDER BY full_name')->fetchAll();
-$rows = $pdo->query("SELECT l.*, e.full_name,
+
+$summary = leave_hr_dashboard_summary($pdo);
+$staffingRows = leave_department_staffing_overview($pdo, $staffDate);
+$pending = leave_pending_requests($pdo, 50);
+$emps = $pdo->query("SELECT id, full_name, employee_code FROM employees WHERE status = 'active' ORDER BY full_name")->fetchAll(PDO::FETCH_ASSOC);
+$rows = $pdo->query("SELECT l.*, e.full_name, e.employee_code, d.department_name, u.full_name AS approver_name,
     COALESCE(l.from_date, l.start_date) AS leave_from,
     COALESCE(l.to_date, l.end_date) AS leave_to
     FROM leaves l
-    JOIN employees e ON e.id=l.employee_id
-    ORDER BY l.id DESC LIMIT 60")->fetchAll();
+    JOIN employees e ON e.id = l.employee_id
+    LEFT JOIN departments d ON d.id = e.department_id
+    LEFT JOIN users u ON u.id = l.approved_by
+    ORDER BY FIELD(l.status, 'Pending', 'Applied', 'Approved', 'Rejected'), l.id DESC
+    LIMIT 100")->fetchAll(PDO::FETCH_ASSOC);
+
+$cssPath = __DIR__ . '/../../../assets/css/leave-dashboard.css';
+$cssVer = is_file($cssPath) ? (int)filemtime($cssPath) : time();
+$jsPath = __DIR__ . '/../../../assets/js/leave-dashboard.js';
+$jsVer = is_file($jsPath) ? (int)filemtime($jsPath) : time();
+$baseUrl = route_url('leave/list');
 ?>
-<h4>Leave Management</h4>
-<form method="post" class="row g-2 mb-3">
-<?= csrf_input() ?>
-<input type="hidden" name="action" value="create">
-<div class="col"><select class="form-select" name="employee_id"><?php foreach($emps as $e): ?><option value="<?= $e['id'] ?>"><?= e($e['full_name']) ?></option><?php endforeach; ?></select></div>
-<div class="col"><input class="form-control" type="date" name="from_date" required></div>
-<div class="col"><input class="form-control" type="date" name="to_date" required></div>
-<div class="col"><input class="form-control" name="leave_type" placeholder="Type (Casual/Sick)" required></div>
-<div class="col"><select class="form-select" name="leave_category"><option>Paid</option><option>Half Paid</option><option>Unpaid</option></select></div>
-<div class="col"><input class="form-control" name="reason" placeholder="Reason" required></div>
-<div class="col"><button class="btn btn-primary w-100">Submit</button></div>
-</form>
-<table class="table table-sm align-middle"><tr><th>Employee</th><th>Duration</th><th>Type</th><th>Category</th><th>Paid</th><th>Status</th><th>Action</th></tr><?php foreach($rows as $r): ?><tr><td><?= e($r['full_name']) ?></td><td><?= e(((string)($r['leave_from'] ?? '')) . ' to ' . ((string)($r['leave_to'] ?? ''))) ?></td><td><?= e((string)($r['leave_type'] ?? 'Casual')) ?></td><td><?= e((string)($r['leave_category'] ?? 'Paid')) ?></td><td><?= (int)($r['is_paid'] ?? 0) === 1 ? 'Yes' : 'No' ?></td><td><?= e((string)($r['status'] ?? 'Applied')) ?></td><td class="d-flex gap-1"><?php if (($r['status'] ?? 'Applied') === 'Applied'): ?><form method="post"><?= csrf_input() ?><input type="hidden" name="action" value="status"><input type="hidden" name="id" value="<?= (int)$r['id'] ?>"><input type="hidden" name="status" value="Approved"><button class="btn btn-sm btn-outline-success">Approve</button></form><form method="post"><?= csrf_input() ?><input type="hidden" name="action" value="status"><input type="hidden" name="id" value="<?= (int)$r['id'] ?>"><input type="hidden" name="status" value="Rejected"><button class="btn btn-sm btn-outline-danger">Reject</button></form><?php endif; ?></td></tr><?php endforeach; ?></table>
+
+<link href="assets/css/leave-dashboard.css?v=<?= e((string)$cssVer) ?>" rel="stylesheet">
+
+<div class="leave-erp module-shell">
+    <header class="leave-erp__header leave-erp__header--hr">
+        <div>
+            <h1 class="leave-erp__title">Leave & workforce</h1>
+            <p class="leave-erp__subtitle">Staffing-aware approvals · payroll-linked leave types</p>
+        </div>
+        <form method="get" class="leave-erp__toolbar">
+            <input type="hidden" name="page" value="leave/list">
+            <label class="leave-field__label mb-0">Staffing date</label>
+            <input type="date" name="staff_date" class="form-control form-control-sm" value="<?= e($staffDate) ?>">
+            <button type="submit" class="btn btn-sm btn-outline-secondary">Update</button>
+        </form>
+    </header>
+
+    <?php $flash = get_flash(); if ($flash): ?>
+        <div class="alert alert-<?= e($flash['type']) ?> py-2 mb-3"><?= e($flash['message']) ?></div>
+    <?php endif; ?>
+
+    <div class="leave-erp__stats leave-erp__stats--hr">
+        <div class="leave-stat leave-stat--pending">
+            <span class="leave-stat__k">Pending</span>
+            <strong><?= e((string)$summary['pending']) ?></strong>
+        </div>
+        <div class="leave-stat">
+            <span class="leave-stat__k">Approved today</span>
+            <strong><?= e((string)$summary['approved_today']) ?></strong>
+        </div>
+        <div class="leave-stat">
+            <span class="leave-stat__k">On leave today</span>
+            <strong><?= e((string)$summary['on_leave_today']) ?></strong>
+        </div>
+        <div class="leave-stat leave-stat--critical">
+            <span class="leave-stat__k">Critical depts</span>
+            <strong><?= e((string)$summary['critical_depts']) ?></strong>
+            <?php if ((int)($summary['warning_depts'] ?? 0) > 0): ?>
+                <small class="text-warning-emphasis"><?= (int)$summary['warning_depts'] ?> warning</small>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <section class="leave-card leave-card--compact">
+        <h2 class="leave-card__title">Record leave (HR)</h2>
+        <form method="post" class="leave-apply-form">
+            <?= csrf_input() ?>
+            <input type="hidden" name="action" value="create">
+            <div class="leave-apply-row">
+                <div class="leave-field leave-field--emp">
+                    <label class="leave-field__label">Employee</label>
+                    <select class="form-select form-select-sm" name="employee_id" required>
+                        <?php foreach ($emps as $emp): ?>
+                            <option value="<?= (int)$emp['id'] ?>"><?= e((string)$emp['full_name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="leave-field leave-field--type">
+                    <label class="leave-field__label" for="hr_leave_duration_mode">Type</label>
+                    <select class="form-select form-select-sm leave-duration-select" name="leave_duration_mode" id="hr_leave_duration_mode">
+                        <option value="single" selected>Single day</option>
+                        <option value="multiple">Multiple days</option>
+                    </select>
+                </div>
+                <div class="leave-field leave-apply-form__from">
+                    <label class="leave-field__label leave-apply-form__from-label">Leave date</label>
+                    <input class="form-control form-control-sm" type="date" name="from_date" required>
+                </div>
+                <div class="leave-field leave-apply-form__to is-hidden">
+                    <label class="leave-field__label">To date</label>
+                    <input class="form-control form-control-sm" type="date" name="to_date">
+                </div>
+                <div class="leave-field leave-field--grow">
+                    <label class="leave-field__label">Reason</label>
+                    <input class="form-control form-control-sm" name="reason" placeholder="Reason" required>
+                </div>
+            </div>
+            <div class="leave-apply-row leave-apply-row--actions">
+                <label class="leave-check"><input type="checkbox" name="is_emergency" value="1"><span>Emergency</span></label>
+                <span class="leave-days-pill is-hidden leave-duration-summary__text" aria-live="polite"></span>
+                <button type="submit" class="btn btn-sm btn-danger">Save</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="leave-card">
+        <div class="leave-card__head">
+            <h2 class="leave-card__title mb-0">Department staffing</h2>
+            <span class="text-muted small"><?= e($staffDate) ?></span>
+        </div>
+        <div class="table-responsive">
+            <table class="table leave-erp-table table-sm mb-0">
+                <thead>
+                <tr>
+                    <th>Department</th>
+                    <th>Total</th>
+                    <th>Present</th>
+                    <th>On leave</th>
+                    <th>Min required</th>
+                    <th>Status</th>
+                </tr>
+                </thead>
+                <tbody>
+                <?php if (!$staffingRows): ?>
+                    <tr><td colspan="6" class="text-muted text-center py-2">No departments configured.</td></tr>
+                <?php else: ?>
+                    <?php foreach ($staffingRows as $sr): ?>
+                        <?php $sb = leave_risk_badge((string)$sr['status']); ?>
+                        <tr>
+                            <td><?= e((string)$sr['department_name']) ?></td>
+                            <td><?= (int)$sr['total'] ?></td>
+                            <td><?= (int)$sr['present'] ?></td>
+                            <td><?= (int)$sr['on_leave'] ?></td>
+                            <td><?= (int)$sr['min_required'] ?></td>
+                            <td><span class="<?= e($sb['class']) ?>"><?= e($sb['label']) ?></span></td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <?php if ($pending): ?>
+    <section class="leave-card">
+        <h2 class="leave-card__title">Pending approval <span class="leave-count"><?= count($pending) ?></span></h2>
+        <div class="table-responsive">
+            <table class="table leave-erp-table table-sm mb-0">
+                <thead>
+                <tr>
+                    <th>Employee</th>
+                    <th>Department</th>
+                    <th>Dates</th>
+                    <th>Days</th>
+                    <th>Staffing</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($pending as $p): ?>
+                    <?php
+                    $rb = leave_risk_badge((string)($p['staffing_risk'] ?? 'Safe'));
+                    $lf = (string)($p['leave_from'] ?? '');
+                    $lt = (string)($p['leave_to'] ?? '');
+                    ?>
+                    <tr class="<?= !empty($p['is_emergency']) ? 'leave-row--emergency' : '' ?>">
+                        <td>
+                            <strong><?= e((string)$p['full_name']) ?></strong>
+                            <span class="text-muted small d-block"><?= e((string)($p['reason'] ?? '')) ?></span>
+                        </td>
+                        <td><?= e((string)($p['department_name'] ?? '—')) ?></td>
+                        <td class="text-nowrap"><?= e($lf === $lt ? $lf : $lf . ' → ' . $lt) ?></td>
+                        <td><?= e(number_format((float)($p['total_days'] ?? 0), 0)) ?></td>
+                        <td><span class="<?= e($rb['class']) ?>"><?= e($rb['label']) ?></span></td>
+                        <td class="text-end text-nowrap">
+                            <form method="post" class="d-inline"><?= csrf_input() ?><input type="hidden" name="action" value="approve"><input type="hidden" name="id" value="<?= (int)$p['id'] ?>"><button class="btn btn-sm btn-success">Approve</button></form>
+                            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#leaveRejectModal" data-leave-id="<?= (int)$p['id'] ?>" data-employee-name="<?= e((string)$p['full_name']) ?>">Reject</button>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <?php endif; ?>
+
+    <section class="leave-card">
+        <h2 class="leave-card__title">All requests</h2>
+        <div class="table-responsive">
+            <table class="table leave-erp-table table-sm mb-0">
+                <thead>
+                <tr>
+                    <th>Employee</th>
+                    <th>Department</th>
+                    <th>Dates</th>
+                    <th>Days</th>
+                    <th>Type</th>
+                    <th>Staffing</th>
+                    <th>Status</th>
+                    <th>Approved by</th>
+                    <th>Payroll</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($rows as $r): ?>
+                    <?php
+                    $st = leave_display_status((string)($r['status'] ?? 'Pending'));
+                    $badge = leave_status_badge($st);
+                    $rb = leave_risk_badge((string)($r['staffing_risk'] ?? 'Safe'));
+                    $isPending = in_array((string)($r['status'] ?? ''), ['Pending', 'Applied'], true);
+                    $lf = (string)($r['leave_from'] ?? '');
+                    $lt = (string)($r['leave_to'] ?? '');
+                    $approver = (string)($r['approver_name'] ?? '');
+                    if ($approver === '' && !empty($r['auto_approved'])) {
+                        $approver = 'System';
+                    }
+                    if ($approver === '') {
+                        $approver = '—';
+                    }
+                    ?>
+                    <tr>
+                        <td><?= e((string)$r['full_name']) ?></td>
+                        <td><?= e((string)($r['department_name'] ?? '—')) ?></td>
+                        <td class="text-nowrap small"><?= e($lf === $lt ? $lf : $lf . ' → ' . $lt) ?></td>
+                        <td><?= e(number_format((float)($r['total_days'] ?? 0), 0)) ?></td>
+                        <td><span class="leave-tag"><?= e((string)($r['leave_category'] ?? '—')) ?></span></td>
+                        <td><span class="<?= e($rb['class']) ?>"><?= e($rb['label']) ?></span></td>
+                        <td><span class="<?= e($badge['class']) ?>"><?= e($badge['label']) ?></span></td>
+                        <td class="small text-muted"><?= e($approver) ?></td>
+                        <td class="small text-muted"><?= e(leave_payroll_impact($r)) ?></td>
+                        <td class="text-end">
+                            <?php if ($isPending): ?>
+                                <form method="post" class="d-inline"><?= csrf_input() ?><input type="hidden" name="action" value="approve"><input type="hidden" name="id" value="<?= (int)$r['id'] ?>"><button class="btn btn-sm btn-outline-success py-0">OK</button></form>
+                            <?php else: ?>—<?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+<div class="modal fade" id="leaveRejectModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <form method="post" class="modal-content">
+            <?= csrf_input() ?>
+            <input type="hidden" name="action" value="reject">
+            <input type="hidden" name="id" value="">
+            <div class="modal-header py-2">
+                <h6 class="modal-title">Reject — <span class="js-reject-employee"></span></h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-2">
+                <textarea class="form-control form-control-sm" name="rejection_reason" rows="2" required placeholder="Staffing / production reason"></textarea>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-sm btn-danger">Reject</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="assets/js/leave-dashboard.js?v=<?= e((string)$jsVer) ?>"></script>

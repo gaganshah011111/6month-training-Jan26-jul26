@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../includes/department_hierarchy.php';
 require_once __DIR__ . '/../../includes/employee_credentials.php';
 require_once __DIR__ . '/../../includes/payroll_logic.php';
 require_once __DIR__ . '/../../includes/indian_payroll.php';
+require_once __DIR__ . '/../../includes/employee_lifecycle.php';
 if (!has_role(['Super Admin', 'HR Manager'])) { echo 'Access denied'; return; }
 $pdo = Database::connection();
 verify_csrf();
@@ -177,9 +178,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             set_flash('danger', 'Increment failed: ' . $e->getMessage());
         }
     } elseif ($action === 'delete') {
-        $stmt = $pdo->prepare('DELETE FROM employees WHERE id=:id');
-        $stmt->execute(['id' => post_int('id')]);
-        set_flash('warning', 'Employee deleted successfully.');
+        try {
+            employee_delete_safe($pdo, post_int('id'));
+            set_flash('warning', 'Employee and related HR records were deleted.');
+        } catch (Throwable $e) {
+            set_flash('danger', 'Could not delete employee: ' . $e->getMessage());
+        }
     }
     redirect('employees/list');
 }
@@ -235,6 +239,10 @@ $staffCount = (int)$pdo->query("SELECT COUNT(*) FROM employees WHERE employee_ty
 $presentToday = (int)$pdo->query("SELECT COUNT(*) FROM attendance WHERE attendance_date=CURDATE() AND status IN ('Present','Late','Half Day','Emergency Duty')")->fetchColumn();
 $monthPayroll = (float)$pdo->query("SELECT COALESCE(SUM(net_salary),0) FROM salaries WHERE month_year = DATE_FORMAT(CURDATE(), '%Y-%m')")->fetchColumn();
 $payrollSettingsApiUrl = route_url('api/payroll-settings');
+$scriptBaseEmp = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/index.php')), '/');
+$payrollSettingsApiUrlAbs = ($scriptBaseEmp !== '' ? $scriptBaseEmp . '/' : '/') . ltrim($payrollSettingsApiUrl, '/');
+$previewScheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+$payrollSettingsApiUrlFull = $previewScheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $payrollSettingsApiUrlAbs;
 $showFrom = $total > 0 ? $offset + 1 : 0;
 $showTo = min($offset + count($rows), $total);
 ?>
@@ -367,7 +375,7 @@ $showTo = min($offset + count($rows), $total);
                                     <?php endif; ?>
                                     <li><hr class="dropdown-divider"></li>
                                     <li>
-                                        <form method="post" class="m-0" onsubmit="return confirm('Delete this employee?');">
+                                        <form method="post" class="m-0" onsubmit="return confirm('Delete this employee and all related attendance, leave, and payroll records?');">
                                             <?= csrf_input() ?>
                                             <input type="hidden" name="action" value="delete">
                                             <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
@@ -447,11 +455,11 @@ $showTo = min($offset + count($rows), $total);
         </div>
     </div>
 
-    <div class="modal fade" id="editEmp<?= (int)$r['id'] ?>" tabindex="-1" aria-hidden="true"
+    <div class="modal fade employee-edit-modal" id="editEmp<?= (int)$r['id'] ?>" tabindex="-1" aria-hidden="true"
         data-initial-category-id="<?= (int)($r['dept_category_id'] ?? 0) ?>"
         data-initial-department-id="<?= (int)($r['department_id'] ?? 0) ?>"
         data-initial-designation-id="<?= (int)($r['designation_id'] ?? 0) ?>">
-        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
+        <div class="modal-dialog modal-dialog-scrollable employee-edit-modal__dialog">
             <form method="post" class="modal-content" data-payroll-preview>
                 <div class="modal-header">
                     <h5 class="modal-title">Edit Employee</h5>
@@ -522,8 +530,17 @@ $showTo = min($offset + count($rows), $total);
                             <div class="col-md-3"><label class="form-label">Father name</label><input class="form-control" name="father_name" value="<?= e((string)($r['father_name'] ?? '')) ?>" required pattern="[\p{L}\s.\-]+"></div>
                             <div class="col-md-3"><label class="form-label">Date of birth</label><input class="form-control" type="date" name="dob" max="<?= e(date('Y-m-d')) ?>" value="<?= e((string)($r['dob'] ?? '')) ?>" required></div>
                             <div class="col-md-6"><label class="form-label">Aadhaar (12 digits)</label><input class="form-control" name="aadhaar_number" inputmode="numeric" maxlength="12" pattern="\d{12}" value="<?= e((string)($r['aadhaar_number'] ?? '')) ?>" required></div>
-                            <div class="col-md-3"><label class="form-label">Type</label><select class="form-select" name="employee_type" data-payroll-emp-type><option value="Staff" <?= ($r['employee_type'] ?? 'Staff')==='Staff'?'selected':'' ?>>Staff</option><option value="Worker" <?= ($r['employee_type'] ?? '')==='Worker'?'selected':'' ?>>Worker</option></select>
-                            <div class="col-md-3"><label class="form-label">Job role label</label><input class="form-control" name="role" value="<?= e((string)($r['role'] ?? 'Employee')) ?>" title="Stored on employee record"></div>
+                            <div class="col-md-3">
+                                <label class="form-label">Type</label>
+                                <select class="form-select" name="employee_type" data-payroll-emp-type>
+                                    <option value="Staff" <?= ($r['employee_type'] ?? 'Staff') === 'Staff' ? 'selected' : '' ?>>Staff</option>
+                                    <option value="Worker" <?= ($r['employee_type'] ?? '') === 'Worker' ? 'selected' : '' ?>>Worker</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Job role label</label>
+                                <input class="form-control" name="role" value="<?= e((string)($r['role'] ?? 'Employee')) ?>" title="Stored on employee record">
+                            </div>
                             <div class="col-md-4">
                                 <label class="form-label">Department category <span class="text-danger">*</span></label>
                                 <select id="edit_org_<?= (int)$r['id'] ?>_category_id" class="form-select" required></select>
@@ -590,7 +607,7 @@ $showTo = min($offset + count($rows), $total);
     $incPreviewLabel = $incOnGross ? 'monthly gross' : 'basic salary';
     ?>
     <div class="modal fade increment-modal" id="incEmp<?= (int)$r['id'] ?>" tabindex="-1" aria-hidden="true" data-current-salary="<?= e((string)$incCurrent) ?>">
-        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
             <form method="post" class="modal-content">
                 <div class="modal-header"><h5 class="modal-title">Salary Increment</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body">
@@ -627,7 +644,26 @@ document.querySelectorAll('[id^="editEmp"]').forEach(function (modal) {
 });
 document.addEventListener('DOMContentLoaded', function () {
     if (window.PayrollPreview) {
-        PayrollPreview.init({ settingsUrl: <?= json_encode($payrollSettingsApiUrl, JSON_THROW_ON_ERROR) ?> });
+        PayrollPreview.init({ settingsUrl: <?= json_encode($payrollSettingsApiUrlFull, JSON_THROW_ON_ERROR) ?> });
     }
+
+    document.querySelectorAll('.employee-row-actions-dd .dropdown-item[data-bs-toggle="modal"]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var dd = btn.closest('.dropdown');
+            if (!dd || !window.bootstrap) {
+                return;
+            }
+            var toggle = dd.querySelector('[data-bs-toggle="dropdown"]');
+            var inst = toggle ? bootstrap.Dropdown.getInstance(toggle) : null;
+            if (inst) {
+                inst.hide();
+            }
+            document.querySelectorAll('.modal-backdrop').forEach(function (el, i, list) {
+                if (list.length > 1 && i < list.length - 1) {
+                    el.remove();
+                }
+            });
+        });
+    });
 });
 </script>

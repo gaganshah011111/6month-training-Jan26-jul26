@@ -32,9 +32,21 @@ function payroll_fetch_attendance_summary(PDO $pdo, int $employeeId, string $mon
 function payroll_fetch_leave_summary(PDO $pdo, int $employeeId, string $month): array
 {
     $st = $pdo->prepare("SELECT
-            SUM(CASE WHEN status='Approved' AND COALESCE(leave_category,'Paid')='Paid' THEN DATEDIFF(COALESCE(to_date,end_date), COALESCE(from_date,start_date))+1 ELSE 0 END) AS paid_leave_days,
-            SUM(CASE WHEN status='Approved' AND COALESCE(leave_category,'Unpaid')='Half Paid' THEN DATEDIFF(COALESCE(to_date,end_date), COALESCE(from_date,start_date))+1 ELSE 0 END) AS half_paid_leave_days,
-            SUM(CASE WHEN status='Approved' AND (COALESCE(leave_category,'Unpaid')='Unpaid' OR is_paid=0) THEN DATEDIFF(COALESCE(to_date,end_date), COALESCE(from_date,start_date))+1 ELSE 0 END) AS unpaid_leave_days
+            SUM(CASE WHEN status='Approved' THEN
+                CASE WHEN COALESCE(paid_days, 0) > 0 THEN paid_days
+                WHEN COALESCE(leave_category,'Paid')='Paid' THEN DATEDIFF(COALESCE(to_date,end_date), COALESCE(from_date,start_date))+1
+                ELSE 0 END
+            ELSE 0 END) AS paid_leave_days,
+            SUM(CASE WHEN status='Approved' THEN
+                CASE WHEN COALESCE(half_paid_days, 0) > 0 THEN half_paid_days
+                WHEN COALESCE(leave_category,'')='Half Paid' THEN DATEDIFF(COALESCE(to_date,end_date), COALESCE(from_date,start_date))+1
+                ELSE 0 END
+            ELSE 0 END) AS half_paid_leave_days,
+            SUM(CASE WHEN status='Approved' THEN
+                CASE WHEN COALESCE(unpaid_days, 0) > 0 THEN unpaid_days
+                WHEN COALESCE(leave_category,'Unpaid')='Unpaid' OR is_paid=0 THEN DATEDIFF(COALESCE(to_date,end_date), COALESCE(from_date,start_date))+1
+                ELSE 0 END
+            ELSE 0 END) AS unpaid_leave_days
         FROM leaves
         WHERE employee_id=:eid AND DATE_FORMAT(COALESCE(from_date,start_date), '%Y-%m')<=:month_from AND DATE_FORMAT(COALESCE(to_date,end_date), '%Y-%m')>=:month_to");
     $st->execute(['eid' => $employeeId, 'month_from' => $month, 'month_to' => $month]);

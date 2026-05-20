@@ -1,0 +1,309 @@
+/* Attendance Management — industrial ERP */
+.att-page {
+    --att-navy: #1e293b;
+    --att-red: #dc2626;
+    --att-red-dark: #b91c1c;
+    --att-border: #e2e8f0;
+    --att-bg: #f8fafc;
+    font-size: 0.8125rem;
+    color: var(--att-navy);
+    max-width: 100%;
+}
+
+.att-page__top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    margin-bottom: 0.55rem;
+    padding-bottom: 0.55rem;
+    border-bottom: 1px solid var(--att-border);
+}
+.att-page__title {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--att-navy);
+}
+.att-page__title span {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: #64748b;
+    margin-top: 0.1rem;
+}
+.att-page__top-actions {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+}
+.att-page__top-actions .form-label {
+    font-size: 0.65rem;
+    margin-bottom: 0.1rem;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.att-page__top-actions .form-control {
+    min-height: 32px;
+    font-size: 0.8rem;
+    min-width: 10rem;
+}
+
+/* Segmented control */
+.att-seg {
+    display: inline-flex;
+    padding: 3px;
+    background: var(--att-bg);
+    border: 1px solid var(--att-border);
+    border-radius: 10px;
+    margin-bottom: 0.55rem;
+    gap: 2px;
+}
+.att-seg__btn {
+    padding: 0.35rem 1rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #64748b;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: background 0.15s, color 0.15s;
+}
+.att-seg__btn:hover { color: var(--att-navy); background: #fff; }
+.att-seg__btn.is-active {
+    background: linear-gradient(180deg, #fff 0%, #fef2f2 100%);
+    color: var(--att-red-dark);
+    box-shadow: 0 1px 3px rgba(220, 38, 38, 0.12);
+}
+
+/* Summary KPI strip */
+.att-kpis {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.45rem;
+    margin-bottom: 0.55rem;
+}
+@media (max-width: 900px) {
+    .att-kpis { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 520px) {
+    .att-kpis { grid-template-columns: repeat(2, 1fr); }
+}
+.att-kpi {
+    background: #fff;
+    border: 1px solid var(--att-border);
+    border-radius: 8px;
+    padding: 0.45rem 0.55rem;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    border-left: 3px solid #cbd5e1;
+}
+.att-kpi strong {
+    display: block;
+    font-size: 1.15rem;
+    line-height: 1.1;
+    color: var(--att-navy);
+}
+.att-kpi span {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #64748b;
+}
+.att-kpi--present { border-left-color: #22c55e; }
+.att-kpi--absent { border-left-color: #ef4444; }
+.att-kpi--late { border-left-color: #f97316; }
+.att-kpi--half { border-left-color: #eab308; }
+.att-kpi--holiday { border-left-color: #6366f1; }
+
+/* Toolbar row */
+.att-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+.att-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.4rem;
+    flex: 1;
+    min-width: 0;
+    padding: 0.45rem 0.55rem;
+    background: var(--att-bg);
+    border: 1px solid var(--att-border);
+    border-radius: 8px;
+}
+.att-filters .form-label {
+    font-size: 0.65rem;
+    margin-bottom: 0.08rem;
+    color: #64748b;
+    font-weight: 600;
+}
+.att-filters .form-control,
+.att-filters .form-select {
+    min-height: 30px;
+    font-size: 0.78rem;
+    padding: 0.2rem 0.4rem;
+}
+.att-filters__field { min-width: 6.5rem; }
+.att-filters__field--wide { min-width: 8rem; flex: 1; max-width: 10rem; }
+
+.att-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    align-items: center;
+}
+.att-actions .btn {
+    font-size: 0.72rem;
+    padding: 0.28rem 0.55rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Main layout: table + recent */
+.att-layout {
+    display: grid;
+    grid-template-columns: 1fr 220px;
+    gap: 0.55rem;
+    align-items: start;
+}
+@media (max-width: 1100px) {
+    .att-layout { grid-template-columns: 1fr; }
+}
+.att-panel {
+    background: #fff;
+    border: 1px solid var(--att-border);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+.att-panel__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.55rem;
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    border-bottom: 1px solid var(--att-border);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #475569;
+}
+.att-table-scroll {
+    overflow: auto;
+    max-height: min(62vh, 520px);
+}
+.att-table {
+    margin: 0;
+    font-size: 0.78rem;
+    width: 100%;
+}
+.att-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #1e293b;
+    color: #f8fafc;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.4rem 0.45rem;
+    white-space: nowrap;
+    border: none;
+}
+.att-table tbody td {
+    padding: 0.32rem 0.4rem;
+    vertical-align: middle;
+    border-color: #f1f5f9;
+}
+.att-table tbody tr:hover { background: #fef8f8; }
+.att-table input[type="time"],
+.att-table .form-select {
+    min-height: 28px;
+    font-size: 0.74rem;
+    padding: 0.12rem 0.28rem;
+    border-radius: 5px;
+}
+.att-table .att-status-select {
+    min-width: 6.5rem;
+    font-weight: 600;
+    border-width: 1px;
+}
+.att-status-select.att-st-present { background: #f0fdf4; border-color: #86efac; color: #166534; }
+.att-status-select.att-st-half { background: #fefce8; border-color: #fde047; color: #854d0e; }
+.att-status-select.att-st-late { background: #fff7ed; border-color: #fdba74; color: #9a3412; }
+.att-status-select.att-st-absent { background: #fef2f2; border-color: #fca5a5; color: #991b1b; }
+.att-status-select.att-st-holiday { background: #eef2ff; border-color: #a5b4fc; color: #3730a3; }
+.att-status-select.att-st-leave { background: #faf5ff; border-color: #d8b4fe; color: #6b21a8; }
+
+.att-badge {
+    display: inline-block;
+    padding: 0.1rem 0.38rem;
+    border-radius: 4px;
+    font-size: 0.66rem;
+    font-weight: 700;
+    line-height: 1.25;
+}
+.att-badge--present { background: #dcfce7; color: #166534; }
+.att-badge--half { background: #fef9c3; color: #854d0e; }
+.att-badge--late { background: #ffedd5; color: #9a3412; }
+.att-badge--absent { background: #fee2e2; color: #991b1b; }
+.att-badge--holiday { background: #e0e7ff; color: #3730a3; }
+.att-badge--leave { background: #f3e8ff; color: #6b21a8; }
+.att-badge--none, .att-badge--default { background: #f1f5f9; color: #64748b; }
+
+.att-empty-card {
+    margin: 1.25rem auto;
+    max-width: 280px;
+    text-align: center;
+    padding: 0.85rem 1rem;
+    background: var(--att-bg);
+    border: 1px dashed var(--att-border);
+    border-radius: 8px;
+    color: #64748b;
+    font-size: 0.8rem;
+}
+
+/* Recent sidebar */
+.att-recent { font-size: 0.74rem; }
+.att-recent__list { list-style: none; margin: 0; padding: 0; max-height: 420px; overflow-y: auto; }
+.att-recent__item {
+    padding: 0.4rem 0.55rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+.att-recent__item:last-child { border-bottom: none; }
+.att-recent__item strong { font-size: 0.76rem; display: block; }
+.att-recent__item small { color: #94a3b8; }
+
+/* Register */
+.att-reg-layout { display: block; }
+.att-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.55rem;
+    font-size: 0.72rem;
+    border-top: 1px solid var(--att-border);
+    background: var(--att-bg);
+}
+.att-reg-month .att-reg-day { min-width: 1.55rem; padding: 0.18rem !important; font-size: 0.68rem; }
+.att-reg-cell { font-weight: 700; font-size: 0.68rem; }
+.att-reg-sticky { position: sticky; left: 0; background: #fff; z-index: 1; }
+.att-reg-sticky-name { position: sticky; left: 4rem; background: #fff; z-index: 1; min-width: 6rem; }
+.att-reg-sticky-dept { position: sticky; left: 11rem; background: #fff; z-index: 1; }
+
+.col-main.p-4:has(.att-page) {
+    padding-top: 0.85rem !important;
+    padding-bottom: 1rem !important;
+}

@@ -8,7 +8,7 @@ $employees = (int)$pdo->query('SELECT COUNT(*) FROM employees')->fetchColumn();
 $production = (int)$pdo->query('SELECT COALESCE(SUM(output_quantity),0) FROM production WHERE production_date = CURDATE()')->fetchColumn();
 $dispatch = (int)$pdo->query("SELECT COUNT(*) FROM dispatch WHERE dispatch_status IN ('Created','In Transit')")->fetchColumn();
 ?>
-<h3>Super Admin Dashboard</h3>
+<header class="erp-page__top"><div><h1 class="erp-page__title">Super Admin Dashboard<span>System overview</span></h1></div></header>
 <div class="row g-3">
     <div class="col-md-3"><div class="card kpi-card"><div class="card-body d-flex justify-content-between align-items-start"><div><small>Total Users</small><h4><?= e((string)$users) ?></h4></div><span class="kpi-icon"><i class="bi bi-person-lines-fill"></i></span></div></div></div>
     <div class="col-md-3"><div class="card kpi-card"><div class="card-body d-flex justify-content-between align-items-start"><div><small>Total Employees</small><h4><?= e((string)$employees) ?></h4></div><span class="kpi-icon"><i class="bi bi-people-fill"></i></span></div></div></div>

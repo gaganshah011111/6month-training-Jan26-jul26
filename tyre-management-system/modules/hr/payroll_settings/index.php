@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $ps = payroll_settings_fetch($pdo);
 ?>
-<div class="module-shell payroll-settings-page">
+<div class="hr-page module-shell payroll-settings-page">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
         <div>
             <h4 class="mb-0">Payroll Settings</h4>

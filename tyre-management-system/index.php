@@ -85,6 +85,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($path, $postRedirectPaths,
     exit;
 }
 
+if ($page === 'reports/hr' && isset($_GET['export'])) {
+    require __DIR__ . '/modules/reports/hr.php';
+    exit;
+}
+
+if ($page === 'attendance/list' && isset($_GET['export'])) {
+    require __DIR__ . '/modules/hr/attendance/index.php';
+    exit;
+}
+
 require __DIR__ . '/includes/header.php';
 require __DIR__ . '/includes/navbar.php';
 $flash = get_flash();
@@ -92,14 +102,16 @@ $flash = get_flash();
 <div class="container-fluid">
     <div class="row">
         <?php require __DIR__ . '/includes/sidebar.php'; ?>
-        <main class="col-lg-10 col-md-9 p-4 offset-content">
-            <?php if ($flash): ?>
-                <div class="alert alert-<?= e($flash['type']) ?> alert-dismissible fade show" role="alert">
-                    <?= e($flash['message']) ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            <?php endif; ?>
-            <?php require __DIR__ . '/' . $path; ?>
+        <main class="col-lg-10 col-md-9 p-4 offset-content col-main erp-layout">
+            <div class="<?= e(erp_ui_page_class()) ?> module-shell">
+                <?php if ($flash): ?>
+                    <div class="alert alert-<?= e($flash['type']) ?> erp-page__flash alert-dismissible fade show py-2 mb-2" role="alert">
+                        <?= e($flash['message']) ?>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                <?php endif; ?>
+                <?php require __DIR__ . '/' . $path; ?>
+            </div>
         </main>
     </div>
 </div>

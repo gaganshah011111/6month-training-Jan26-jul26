@@ -1,5 +1,5 @@
 -- Tyre ERP full_latest_backup.sql
--- Generated: 2026-05-17T19:39:07+05:30
+-- Generated: 2026-05-20T19:38:45+05:30
 -- Database: tyre_erp
 -- Import: mysql -u root < full_latest_backup.sql
 
@@ -29,7 +29,7 @@ CREATE TABLE `attendance` (
   UNIQUE KEY `uk_attendance` (`employee_id`,`attendance_date`),
   KEY `idx_att_date` (`attendance_date`),
   CONSTRAINT `fk_att_employee` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=427 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=438 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (51, 1, '2026-05-01', 'Morning', 'Absent', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, NULL, '0.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
 INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (52, 1, '2026-05-02', 'Morning', 'Half Day', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-02 09:00:00', '2026-05-02 13:00:00', '4.50', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
@@ -72,7 +72,7 @@ INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `stat
 INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (89, 2, '2026-05-16', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-16 09:00:00', '2026-05-16 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
 INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (90, 2, '2026-05-18', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-18 09:00:00', '2026-05-18 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
 INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (91, 2, '2026-05-19', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-19 09:00:00', '2026-05-19 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (92, 2, '2026-05-20', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-20 09:00:00', '2026-05-20 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (92, 2, '2026-05-20', 'Morning', 'Absent', NULL, NULL, NULL, '0.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
 INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (93, 2, '2026-05-21', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-21 09:00:00', '2026-05-21 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
 INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (94, 2, '2026-05-22', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-22 09:00:00', '2026-05-22 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
 INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (95, 2, '2026-05-23', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-23 09:00:00', '2026-05-23 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
@@ -82,6 +82,12 @@ INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `stat
 INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (99, 2, '2026-05-28', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-28 09:00:00', '2026-05-28 18:00:00', '11.00', '2.00', 0, 0, 0, '2026-05-15 19:17:24');
 INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (100, 2, '2026-05-29', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-29 09:00:00', '2026-05-29 18:00:00', '11.00', '2.00', 0, 0, 0, '2026-05-15 19:17:24');
 INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (426, 5, '2026-05-17', 'Morning', 'Present', NULL, '2026-05-17 08:00:00', '2026-05-17 18:00:00', '10.00', '0.00', 0, 0, 0, '2026-05-17 18:49:03');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (427, 5, '2026-05-18', '', 'Paid Leave', 'Leave #2 — Paid', NULL, NULL, NULL, '0.00', 0, 0, 0, '2026-05-17 19:48:49');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (428, 5, '2026-05-19', '', 'Paid Leave', 'Leave #3 — Paid', NULL, NULL, NULL, '0.00', 0, 0, 0, '2026-05-17 19:49:26');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (429, 5, '2026-05-21', '', 'Unpaid Leave', 'Leave #5 — Half Paid | HR converted to unpaid', NULL, NULL, NULL, '0.00', 0, 0, 0, '2026-05-17 20:04:42');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (430, 5, '2026-05-20', '', 'Unpaid Leave', 'Leave #4 — Half Paid | HR converted to unpaid', NULL, NULL, NULL, '0.00', 0, 0, 0, '2026-05-17 20:04:48');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (431, 5, '2026-05-29', '', 'Unpaid Leave', 'Leave #7 — Unpaid — converted to unpaid (no balance)', NULL, NULL, NULL, '0.00', 0, 0, 0, '2026-05-20 17:42:57');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (432, 5, '2026-05-30', '', 'Unpaid Leave', 'Leave #7 — Unpaid — converted to unpaid (no balance)', NULL, NULL, NULL, '0.00', 0, 0, 0, '2026-05-20 17:42:57');
 
 DROP TABLE IF EXISTS `company_holidays`;
 CREATE TABLE `company_holidays` (
@@ -115,7 +121,7 @@ CREATE TABLE `department_categories` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_dept_cat_code` (`category_code`)
-) ENGINE=InnoDB AUTO_INCREMENT=2599 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4633 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `department_categories` (`id`, `category_name`, `category_code`, `status`, `created_at`) VALUES (1, 'Core Production', 'CORE_PROD', 'active', '2026-05-14 18:28:16');
 INSERT INTO `department_categories` (`id`, `category_name`, `category_code`, `status`, `created_at`) VALUES (2, 'Quality & Safety', 'QUAL_SAFETY', 'active', '2026-05-14 18:28:16');
@@ -139,7 +145,7 @@ CREATE TABLE `departments` (
   UNIQUE KEY `uk_dept_cat_name` (`category_id`,`department_name`),
   KEY `idx_dept_category` (`category_id`),
   CONSTRAINT `fk_dept_category` FOREIGN KEY (`category_id`) REFERENCES `department_categories` (`id`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=8661 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=15441 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `departments` (`id`, `category_id`, `department_name`, `department_short_name`, `department_code`, `status`, `min_staff_required`, `created_at`) VALUES (1, 1, 'Production Planning & Control (PPC)', 'PPC', 'DEPT_PPC', 'active', NULL, '2026-05-14 18:28:16');
 INSERT INTO `departments` (`id`, `category_id`, `department_name`, `department_short_name`, `department_code`, `status`, `min_staff_required`, `created_at`) VALUES (2, 1, 'Raw Materials & Inventory Management', 'Raw Materials', 'DEPT_RAW_MAT', 'active', NULL, '2026-05-14 18:28:16');
@@ -174,7 +180,7 @@ CREATE TABLE `designations` (
   UNIQUE KEY `uk_desig_dept_code` (`department_id`,`designation_code`),
   KEY `idx_desig_department` (`department_id`),
   CONSTRAINT `fk_desig_department` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=27713 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=49409 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `designations` (`id`, `department_id`, `designation_name`, `designation_code`, `status`, `created_at`) VALUES (1, 1, 'PPC Executive', 'DES_PPC_EXEC', 'active', '2026-05-14 18:28:16');
 INSERT INTO `designations` (`id`, `department_id`, `designation_name`, `designation_code`, `status`, `created_at`) VALUES (2, 1, 'PPC Manager', 'DES_PPC_MGR', 'active', '2026-05-14 18:28:16');
@@ -335,6 +341,20 @@ CREATE TABLE `hr_holidays` (
   KEY `idx_hr_holiday_date` (`holiday_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+DROP TABLE IF EXISTS `hr_notification_reads`;
+CREATE TABLE `hr_notification_reads` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `notification_key` varchar(120) NOT NULL,
+  `read_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `dismissed_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_hr_notif_user_key` (`user_id`,`notification_key`),
+  KEY `idx_hr_notif_user` (`user_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `hr_notification_reads` (`id`, `user_id`, `notification_key`, `read_at`, `dismissed_at`) VALUES (1, 2, 'leave_notice_17', '2026-05-20 19:02:32', NULL);
+
 DROP TABLE IF EXISTS `inventory`;
 CREATE TABLE `inventory` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -361,7 +381,28 @@ CREATE TABLE `leave_notifications` (
   PRIMARY KEY (`id`),
   KEY `idx_ln_employee` (`employee_id`),
   KEY `idx_ln_audience` (`audience`,`is_read`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `leave_notifications` (`id`, `employee_id`, `leave_id`, `notice_type`, `message`, `audience`, `is_read`, `created_at`) VALUES (1, 5, 2, 'approved', 'Leave auto-approved. System classified as Paid.', 'employee', 0, '2026-05-17 19:48:49');
+INSERT INTO `leave_notifications` (`id`, `employee_id`, `leave_id`, `notice_type`, `message`, `audience`, `is_read`, `created_at`) VALUES (2, 5, 2, 'balance_low', 'Paid leave balance is running low.', 'employee', 0, '2026-05-17 19:48:49');
+INSERT INTO `leave_notifications` (`id`, `employee_id`, `leave_id`, `notice_type`, `message`, `audience`, `is_read`, `created_at`) VALUES (3, 5, 3, 'approved', 'Leave auto-approved. System classified as Paid.', 'employee', 0, '2026-05-17 19:49:26');
+INSERT INTO `leave_notifications` (`id`, `employee_id`, `leave_id`, `notice_type`, `message`, `audience`, `is_read`, `created_at`) VALUES (4, 5, 3, 'balance_low', 'Paid leave balance is running low.', 'employee', 0, '2026-05-17 19:49:26');
+INSERT INTO `leave_notifications` (`id`, `employee_id`, `leave_id`, `notice_type`, `message`, `audience`, `is_read`, `created_at`) VALUES (5, 5, 4, 'pending', 'Leave submitted — Pending HR approval. Critical staffing shortage if approved.', 'employee', 0, '2026-05-17 20:02:10');
+INSERT INTO `leave_notifications` (`id`, `employee_id`, `leave_id`, `notice_type`, `message`, `audience`, `is_read`, `created_at`) VALUES (6, NULL, NULL, 'hr_staffing', 'Staffing Critical for leave 2026-05-20 to 2026-05-20 (emp #5)', 'hr', 0, '2026-05-17 20:02:10');
+INSERT INTO `leave_notifications` (`id`, `employee_id`, `leave_id`, `notice_type`, `message`, `audience`, `is_read`, `created_at`) VALUES (7, 5, 5, 'pending', 'Leave submitted — Pending HR approval. Critical staffing shortage if approved.', 'employee', 0, '2026-05-17 20:04:05');
+INSERT INTO `leave_notifications` (`id`, `employee_id`, `leave_id`, `notice_type`, `message`, `audience`, `is_read`, `created_at`) VALUES (8, NULL, NULL, 'hr_staffing', 'Staffing Critical for leave 2026-05-21 to 2026-05-21 (emp #5)', 'hr', 0, '2026-05-17 20:04:05');
+INSERT INTO `leave_notifications` (`id`, `employee_id`, `leave_id`, `notice_type`, `message`, `audience`, `is_read`, `created_at`) VALUES (9, 5, 5, 'approved', 'Your leave request was approved.', 'employee', 0, '2026-05-17 20:04:42');
+INSERT INTO `leave_notifications` (`id`, `employee_id`, `leave_id`, `notice_type`, `message`, `audience`, `is_read`, `created_at`) VALUES (10, 5, 4, 'approved', 'Your leave request was approved.', 'employee', 0, '2026-05-17 20:04:48');
+INSERT INTO `leave_notifications` (`id`, `employee_id`, `leave_id`, `notice_type`, `message`, `audience`, `is_read`, `created_at`) VALUES (11, 5, 6, 'pending', 'Leave submitted — Pending HR approval. Critical staffing shortage if approved.', 'employee', 0, '2026-05-17 20:06:19');
+INSERT INTO `leave_notifications` (`id`, `employee_id`, `leave_id`, `notice_type`, `message`, `audience`, `is_read`, `created_at`) VALUES (12, 5, 6, 'converted_unpaid', 'Part or all of this leave is unpaid due to exhausted balance.', 'employee', 0, '2026-05-17 20:06:19');
+INSERT INTO `leave_notifications` (`id`, `employee_id`, `leave_id`, `notice_type`, `message`, `audience`, `is_read`, `created_at`) VALUES (13, NULL, NULL, 'hr_staffing', 'Staffing Critical for leave 2026-05-29 to 2026-06-11 (emp #5)', 'hr', 0, '2026-05-17 20:06:19');
+INSERT INTO `leave_notifications` (`id`, `employee_id`, `leave_id`, `notice_type`, `message`, `audience`, `is_read`, `created_at`) VALUES (14, 5, 6, 'rejected', 'Your leave request was rejected. Reason: long', 'employee', 0, '2026-05-17 20:07:01');
+INSERT INTO `leave_notifications` (`id`, `employee_id`, `leave_id`, `notice_type`, `message`, `audience`, `is_read`, `created_at`) VALUES (15, 5, 7, 'pending', 'Leave submitted — Pending HR approval. Critical staffing shortage if approved.', 'employee', 0, '2026-05-20 17:42:04');
+INSERT INTO `leave_notifications` (`id`, `employee_id`, `leave_id`, `notice_type`, `message`, `audience`, `is_read`, `created_at`) VALUES (16, 5, 7, 'converted_unpaid', 'Part or all of this leave is unpaid due to exhausted balance.', 'employee', 0, '2026-05-20 17:42:04');
+INSERT INTO `leave_notifications` (`id`, `employee_id`, `leave_id`, `notice_type`, `message`, `audience`, `is_read`, `created_at`) VALUES (17, NULL, NULL, 'hr_staffing', 'Staffing Critical for leave 2026-05-29 to 2026-05-31 (emp #5)', 'hr', 0, '2026-05-20 17:42:04');
+INSERT INTO `leave_notifications` (`id`, `employee_id`, `leave_id`, `notice_type`, `message`, `audience`, `is_read`, `created_at`) VALUES (18, 5, 7, 'approved', 'Your leave request was approved.', 'employee', 0, '2026-05-20 17:42:57');
+INSERT INTO `leave_notifications` (`id`, `employee_id`, `leave_id`, `notice_type`, `message`, `audience`, `is_read`, `created_at`) VALUES (19, 5, 5, 'converted_unpaid', 'Your leave was converted to unpaid by HR.', 'employee', 0, '2026-05-20 17:57:35');
+INSERT INTO `leave_notifications` (`id`, `employee_id`, `leave_id`, `notice_type`, `message`, `audience`, `is_read`, `created_at`) VALUES (20, 5, 4, 'converted_unpaid', 'Your leave was converted to unpaid by HR.', 'employee', 0, '2026-05-20 17:57:48');
 
 DROP TABLE IF EXISTS `leaves`;
 CREATE TABLE `leaves` (
@@ -384,6 +425,8 @@ CREATE TABLE `leaves` (
   `total_days` decimal(6,2) NOT NULL DEFAULT 0.00,
   `is_emergency` tinyint(1) NOT NULL DEFAULT 0,
   `auto_approved` tinyint(1) NOT NULL DEFAULT 0,
+  `entry_source` varchar(20) NOT NULL DEFAULT 'employee',
+  `recorded_by` int(11) DEFAULT NULL,
   `staffing_risk` varchar(20) NOT NULL DEFAULT 'Safe',
   `system_note` varchar(255) DEFAULT NULL,
   `rejection_reason` varchar(255) DEFAULT NULL,
@@ -392,7 +435,7 @@ CREATE TABLE `leaves` (
   PRIMARY KEY (`id`),
   KEY `fk_leave_employee` (`employee_id`),
   CONSTRAINT `fk_leave_employee` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 DROP TABLE IF EXISTS `machines`;
 CREATE TABLE `machines` (
@@ -591,6 +634,7 @@ INSERT INTO `schema_migrations` (`migration`, `batch`, `applied_at`) VALUES ('00
 INSERT INTO `schema_migrations` (`migration`, `batch`, `applied_at`) VALUES ('005_create_payroll_tables.sql', 1, '2026-05-17 19:39:05');
 INSERT INTO `schema_migrations` (`migration`, `batch`, `applied_at`) VALUES ('006_leave_module_update.sql', 1, '2026-05-17 19:39:05');
 INSERT INTO `schema_migrations` (`migration`, `batch`, `applied_at`) VALUES ('007_employee_department_links.sql', 1, '2026-05-17 19:39:05');
+INSERT INTO `schema_migrations` (`migration`, `batch`, `applied_at`) VALUES ('008_hr_notifications_and_leave_audit.sql', 2, '2026-05-20 19:38:44');
 
 DROP TABLE IF EXISTS `settings`;
 CREATE TABLE `settings` (
@@ -599,14 +643,14 @@ CREATE TABLE `settings` (
   `setting_value` text NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `setting_key` (`setting_key`)
-) ENGINE=InnoDB AUTO_INCREMENT=498 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=839 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `settings` (`id`, `setting_key`, `setting_value`) VALUES (1, 'company_name', 'Ralson India Private Limited');
 INSERT INTO `settings` (`id`, `setting_key`, `setting_value`) VALUES (104, 'employee_gross_backfill_v1', '1');
 INSERT INTO `settings` (`id`, `setting_key`, `setting_value`) VALUES (135, 'employee_payroll_auto_legacy_v1', '1');
 INSERT INTO `settings` (`id`, `setting_key`, `setting_value`) VALUES (292, 'erp_collation_utf8mb4_general_ci_v1', '1');
 INSERT INTO `settings` (`id`, `setting_key`, `setting_value`) VALUES (407, 'attendance_fk_cascade_v1', '1');
-INSERT INTO `settings` (`id`, `setting_key`, `setting_value`) VALUES (488, 'leave_auto_approve_enabled', '1');
+INSERT INTO `settings` (`id`, `setting_key`, `setting_value`) VALUES (488, 'leave_auto_approve_enabled', '0');
 INSERT INTO `settings` (`id`, `setting_key`, `setting_value`) VALUES (489, 'leave_min_present_pct', '50');
 
 DROP TABLE IF EXISTS `suppliers`;
@@ -642,16 +686,16 @@ CREATE TABLE `users` (
   UNIQUE KEY `employee_id` (`employee_id`),
   UNIQUE KEY `username` (`username`),
   KEY `idx_users_role_status` (`role`,`status`)
-) ENGINE=InnoDB AUTO_INCREMENT=3268 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5629 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (1, NULL, 'Super Admin', 'superadmin@ralson.local', 'superadmin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Super Admin', 'active', 0, NULL, '2026-05-14 17:43:38');
-INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (2, NULL, 'HR Manager', 'hr@ralson.local', 'hrmanager', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'HR Manager', 'active', 0, '2026-05-17 18:45:26', '2026-05-14 17:43:38');
+INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (2, NULL, 'HR Manager', 'hr@ralson.local', 'hrmanager', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'HR Manager', 'active', 0, '2026-05-20 18:32:47', '2026-05-14 17:43:38');
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (3, NULL, 'Production Manager', 'production@ralson.local', 'prodmanager', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Production Manager', 'active', 0, NULL, '2026-05-14 17:43:38');
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (4, NULL, 'Inventory Manager', 'inventory@ralson.local', 'invmanager', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Inventory Manager', 'active', 0, NULL, '2026-05-14 17:43:38');
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (5, NULL, 'Dispatch Manager', 'dispatch@ralson.local', 'dispatchmgr', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Dispatch Manager', 'active', 0, NULL, '2026-05-14 17:43:38');
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (6, NULL, 'Quality Manager', 'quality@ralson.local', 'qualitymgr', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Quality Manager', 'active', 0, NULL, '2026-05-14 17:43:38');
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (7, NULL, 'Employee User', 'employee@ralson.local', 'employeeuser', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Employee', 'active', 0, NULL, '2026-05-14 17:43:38');
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (561, NULL, 'Gagan Kumar Shah', NULL, 'gag43456', '$2y$10$PW5mc3q6.lKCixv6SLvF0eY5uGjOQJW5xDQ2oNaFLwEuKYvr5xY3C', 'Employee', 'active', 1, NULL, '2026-05-14 19:37:52');
-INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (2910, 5, 'Gagan Kumar Shah', NULL, 'gag53456', '$2y$10$GQQuDXgWFyGbUbXCkX/ML.aHjN.Qk7xzzhLuHJmM8VJXBaMBJA.V.', 'Employee', 'active', 0, '2026-05-17 18:50:12', '2026-05-17 18:41:30');
+INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (2910, 5, 'Gagan Kumar Shah', NULL, 'gag53456', '$2y$10$GQQuDXgWFyGbUbXCkX/ML.aHjN.Qk7xzzhLuHJmM8VJXBaMBJA.V.', 'Employee', 'active', 0, '2026-05-20 17:37:20', '2026-05-17 18:41:30');
 
 SET FOREIGN_KEY_CHECKS=1;

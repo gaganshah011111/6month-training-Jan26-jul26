@@ -147,13 +147,7 @@ try {
                             $from = (string)($row['from_date'] ?? $row['start_date'] ?? '');
                             $to = (string)($row['to_date'] ?? $row['end_date'] ?? '');
                             $dateLabel = $from === $to ? $from : $from . ' → ' . $to;
-                            $approver = (string)($row['approver_name'] ?? '');
-                            if ($approver === '' && !empty($row['auto_approved'])) {
-                                $approver = 'System';
-                            }
-                            if ($approver === '') {
-                                $approver = '—';
-                            }
+                            $approver = leave_approval_type_label($row);
                             ?>
                             <tr>
                                 <td class="text-nowrap"><?= e($dateLabel) ?></td>

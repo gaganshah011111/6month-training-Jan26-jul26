@@ -1,0 +1,532 @@
+/**
+ * Ralson ERP — unified module shell (all roles: Admin, HR, Production, Employee, etc.)
+ * Auto-applied via index.php wrapper (.erp-page) + col-main.erp-layout
+ * Legacy aliases: .hr-page (same as .erp-page)
+ */
+:is(.erp-page, .hr-page, .att-page, .hr-cc, .leave-erp, .payroll-dashboard, .hr-reports, .payroll-settings-page, .module-shell) {
+    --erp-navy: #0f172a;
+    --erp-navy-mid: #1e293b;
+    --erp-red: #dc2626;
+    --erp-red-dark: #b91c1c;
+    --erp-border: #e2e8f0;
+    --erp-bg: #f8fafc;
+    --erp-glass: rgba(255, 255, 255, 0.92);
+    --hr-navy: var(--erp-navy);
+    --hr-navy-mid: var(--erp-navy-mid);
+    --hr-red: var(--erp-red);
+    --hr-red-dark: var(--erp-red-dark);
+    --hr-border: var(--erp-border);
+    --hr-bg: var(--erp-bg);
+    --hr-glass: var(--erp-glass);
+    font-size: 0.8125rem;
+    color: var(--erp-navy-mid);
+    max-width: 100%;
+}
+
+.col-main.erp-layout,
+.col-main.p-4:has(.erp-page),
+.col-main.p-4:has(.hr-page),
+.col-main.p-4:has(.att-page),
+.col-main.p-4:has(.hr-cc),
+.col-main.p-4:has(.leave-erp),
+.col-main.p-4:has(.payroll-dashboard),
+.col-main.p-4:has(.hr-reports),
+.col-main.p-4:has(.payroll-settings-page) {
+    padding-top: 0.85rem !important;
+    padding-bottom: 1rem !important;
+    background: linear-gradient(180deg, #f1f5f9 0%, #f8fafc 120px, #fff 100%);
+}
+
+/* —— Page headers —— */
+.erp-page__top,
+:is(.erp-page, .hr-page, .leave-erp, .payroll-dashboard, .hr-reports) .hr-page__top,
+.att-page__top,
+.hr-cc__hero,
+.leave-erp__header,
+.payroll-dashboard__head,
+.hr-reports__head,
+.employee-page-head,
+.payroll-settings-page > .d-flex:first-child,
+.erp-page > .d-flex.justify-content-between.align-items-center.mb-4,
+.erp-page > .d-flex.justify-content-between.align-items-center.mb-3 {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.65rem;
+    margin-bottom: 0.55rem;
+    padding-bottom: 0.55rem;
+    border-bottom: 1px solid var(--erp-border);
+}
+
+.erp-page__title,
+:is(.erp-page__title, .hr-page__title, .att-page__title, .leave-erp__title, .hr-reports__title),
+.hr-cc__hero h1,
+.erp-page > h3,
+.erp-page > h4,
+.erp-page > h4.mb-3,
+.payroll-dashboard__head h4,
+.employee-page-head h4,
+.payroll-settings-page > .d-flex:first-child h4,
+.erp-page > .d-flex h4 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--erp-navy);
+}
+
+.erp-page__title span,
+.att-page__title span,
+.hr-cc__hero p,
+.payroll-dashboard__head .text-muted,
+.hr-reports__sub,
+.employee-breadcrumb,
+.payroll-settings-page > .d-flex:first-child small,
+.erp-page > .d-flex .text-muted {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: #64748b;
+    margin-top: 0.1rem;
+}
+
+.hr-cc__hero-date {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #64748b;
+    padding: 0.35rem 0.65rem;
+    background: var(--erp-glass);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.att-page__top-actions .form-label,
+.erp-page__top-actions .form-label,
+:is(.erp-page, .hr-page, .payroll-dashboard) .form-label.small {
+    font-size: 0.65rem;
+    margin-bottom: 0.1rem;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* —— KPI strips —— */
+:is(.att-kpis, .leave-kpis, .hr-cc__kpis, .hr-reports__summary),
+.erp-page > .row.g-3,
+.erp-page > .row.g-3.mb-3,
+.erp-page > .row.g-3.mb-4,
+.hr-page > .row.g-3.mb-3,
+.payroll-stat-row {
+    display: grid;
+    gap: 0.45rem;
+    margin-bottom: 0.55rem;
+}
+
+.att-kpis { grid-template-columns: repeat(5, 1fr); }
+.leave-kpis { grid-template-columns: repeat(3, 1fr); }
+.hr-cc__kpis { grid-template-columns: repeat(6, 1fr); }
+.hr-reports__summary { grid-template-columns: repeat(4, 1fr); }
+.erp-page > .row.g-3,
+.erp-page > .row.g-3.mb-3,
+.erp-page > .row.g-3.mb-4,
+.hr-page > .row.g-3.mb-3 { grid-template-columns: repeat(4, 1fr); }
+.payroll-stat-row { grid-template-columns: repeat(6, 1fr); }
+
+.payroll-stat-row.row,
+.erp-page > .row.g-3,
+.erp-page > .row.g-3.mb-3,
+.erp-page > .row.g-3.mb-4,
+.hr-page > .row.g-3.mb-3 {
+    display: grid !important;
+    flex-wrap: unset;
+    --bs-gutter-x: 0;
+    --bs-gutter-y: 0;
+}
+.payroll-stat-row > [class*="col-"],
+.erp-page > .row.g-3 > [class*="col-"],
+.erp-page > .row.g-3.mb-3 > [class*="col-"],
+.erp-page > .row.g-3.mb-4 > [class*="col-"],
+.hr-page > .row.g-3.mb-3 > [class*="col-"] {
+    width: 100%;
+    max-width: 100%;
+    padding: 0;
+    flex: none;
+}
+
+@media (max-width: 1200px) {
+    .hr-cc__kpis, .payroll-stat-row { grid-template-columns: repeat(3, 1fr); }
+    .att-kpis, .erp-page > .row.g-3, .erp-page > .row.g-3.mb-3, .erp-page > .row.g-3.mb-4,
+    .hr-page > .row.g-3.mb-3 { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 700px) {
+    .hr-cc__kpis, .payroll-stat-row, .att-kpis, .leave-kpis, .hr-reports__summary,
+    .erp-page > .row.g-3, .erp-page > .row.g-3.mb-3, .erp-page > .row.g-3.mb-4,
+    .hr-page > .row.g-3.mb-3 { grid-template-columns: repeat(2, 1fr); }
+}
+
+:is(.att-kpi, .leave-kpi, .hr-sum-card),
+.employee-stat-card,
+.payroll-stat-card,
+.erp-page .kpi-card,
+.erp-page > .row.g-3 .card,
+.erp-page > .row.g-3.mb-3 .card,
+.erp-page > .row.g-3.mb-4 .card {
+    background: linear-gradient(145deg, #fff 0%, #f8fafc 100%);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+    border-left: 3px solid #94a3b8;
+    padding: 0.5rem 0.6rem !important;
+    min-height: 0 !important;
+}
+
+.erp-page .kpi-card .card-body,
+.erp-page > .row.g-3 .card .card-body,
+.erp-page > .row.g-3.mb-4 .card .card-body,
+.employee-stat-card .card-body {
+    padding: 0.5rem 0.6rem !important;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.erp-page .kpi-card .kpi-icon,
+.erp-page .kpi-card .card-body > .kpi-icon { display: none; }
+
+.payroll-stat-card {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 0.45rem;
+    color: inherit !important;
+    background: linear-gradient(145deg, #fff 0%, #f8fafc 100%) !important;
+    border-color: rgba(15, 23, 42, 0.08) !important;
+}
+.payroll-stat-card--blue { border-left-color: #3b82f6; }
+.payroll-stat-card--green { border-left-color: #22c55e; }
+.payroll-stat-card--red { border-left-color: #ef4444; }
+.payroll-stat-card--purple { border-left-color: #8b5cf6; }
+.payroll-stat-card--amber { border-left-color: #f59e0b; }
+.payroll-stat-card--teal { border-left-color: #14b8a6; }
+
+:is(.att-kpi, .leave-kpi, .hr-sum-card) span,
+.employee-stat-card small,
+.payroll-stat-card__label,
+.erp-page .kpi-card small,
+.erp-page .card .card-body > small.text-muted,
+.erp-page > .row .card .card-body > small {
+    display: block;
+    font-size: 0.62rem !important;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b !important;
+    opacity: 1 !important;
+}
+
+:is(.att-kpi, .leave-kpi, .hr-sum-card) strong,
+.employee-stat-card h5,
+.payroll-stat-card__value,
+.erp-page .kpi-card h4,
+.erp-page .card .card-body > h3,
+.erp-page .card .card-body > h4,
+.erp-page > .row .card .card-body > h3,
+.erp-page > .row .card .card-body > h4 {
+    font-size: 1.15rem !important;
+    font-weight: 800 !important;
+    line-height: 1.15;
+    color: var(--erp-navy) !important;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.1rem;
+}
+
+.employee-stat-card p,
+.erp-page .card .card-body > p.small {
+    font-size: 0.65rem;
+    color: #94a3b8;
+    margin: 0;
+}
+.employee-stat-card .stat-icon { display: none; }
+
+.hr-cc__kpi {
+    text-decoration: none;
+    color: inherit;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+.hr-cc__kpi:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+/* —— Filter / toolbar bars —— */
+:is(.att-filters, .leave-filters, .hr-reports__filters),
+.payroll-filter-card .card-body form,
+.employee-toolbar-form,
+.erp-page > form.row.g-2.mb-3,
+.erp-page > form.row.g-2.mb-2,
+.erp-page > form.row.g-3.mb-3:has(.form-control) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.4rem;
+    padding: 0.45rem 0.55rem;
+    background: var(--erp-bg);
+    border: 1px solid var(--erp-border);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+}
+
+.leave-filters { margin-bottom: 0.45rem; }
+
+:is(.att-filters, .leave-filters, .hr-reports__filters) .form-label,
+.hr-reports__field label,
+.att-filters .form-label {
+    font-size: 0.65rem;
+    margin-bottom: 0.08rem;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+:is(.att-filters, .leave-filters, .hr-reports__filters) .form-control,
+:is(.att-filters, .leave-filters, .hr-reports__filters) .form-select,
+.hr-reports__field .form-control,
+.hr-reports__field .form-select,
+.erp-page > form.row.g-2 .form-control,
+.erp-page > form.row.g-2 .form-select {
+    min-height: 30px;
+    font-size: 0.78rem;
+}
+
+.hr-reports__actions { margin-left: auto; }
+
+/* —— Panels & cards —— */
+:is(.att-panel, .employee-directory-card, .payroll-filter-card, .payroll-table-card),
+.leave-main .table-responsive,
+.hr-reports .hr-report-block .table-responsive,
+.erp-page .table-responsive,
+.erp-page > .card {
+    background: #fff;
+    border: 1px solid var(--erp-border);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.erp-page .card:not(.kpi-card) {
+    margin-bottom: 0.55rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+}
+
+.employee-directory-card__head,
+.payroll-filter-card .card-header,
+.payroll-table-card .card-header,
+.att-panel__head,
+.erp-page .card > .card-header,
+.erp-page .card-header.section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.55rem;
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    border-bottom: 1px solid var(--erp-border);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #475569;
+}
+
+.employee-directory-card__title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #475569;
+    margin: 0;
+}
+.employee-directory-card__meta {
+    font-size: 0.68rem;
+    color: #94a3b8;
+    text-transform: none;
+    font-weight: 500;
+    letter-spacing: 0;
+}
+
+/* —— Data tables (navy header) —— */
+.erp-page .table thead th,
+:is(.att-table, .leave-table, .employee-list-table, .payroll-emp-table, .hr-rpt-table) thead th,
+.hr-reports .table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--erp-navy-mid) !important;
+    color: #f8fafc !important;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.4rem 0.45rem;
+    white-space: nowrap;
+    border: none;
+}
+
+.erp-page .table tbody td,
+:is(.att-table, .leave-table, .employee-list-table, .payroll-emp-table, .hr-rpt-table) tbody td,
+.hr-reports .table tbody td {
+    padding: 0.35rem 0.45rem;
+    vertical-align: middle;
+    border-color: #f1f5f9;
+    font-size: 0.78rem;
+}
+
+.erp-page .table tbody tr:hover,
+:is(.att-table, .leave-table, .employee-list-table, .payroll-emp-table, .hr-rpt-table) tbody tr:hover,
+.hr-reports .table tbody tr:hover {
+    background: #fef8f8;
+}
+
+.employee-directory-scroll,
+.att-table-scroll {
+    overflow: auto;
+    max-height: min(62vh, 520px);
+}
+
+/* —— Segmented tabs —— */
+.att-seg,
+.erp-seg {
+    display: inline-flex;
+    padding: 3px;
+    background: var(--erp-bg);
+    border: 1px solid var(--erp-border);
+    border-radius: 10px;
+    margin-bottom: 0.55rem;
+    gap: 2px;
+}
+.att-seg__btn,
+.erp-seg__btn {
+    padding: 0.35rem 1rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #64748b;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: background 0.15s, color 0.15s;
+}
+.att-seg__btn:hover,
+.erp-seg__btn:hover { color: var(--erp-navy); background: #fff; }
+.att-seg__btn.is-active,
+.erp-seg__btn.is-active {
+    background: linear-gradient(180deg, #fff 0%, #fef2f2 100%);
+    color: var(--erp-red-dark);
+    box-shadow: 0 1px 3px rgba(220, 38, 38, 0.12);
+}
+
+/* —— Buttons —— */
+:is(.erp-page, .hr-page, .leave-erp, .payroll-dashboard, .hr-reports) .btn-sm,
+.att-actions .btn {
+    font-size: 0.72rem;
+    padding: 0.28rem 0.55rem;
+    font-weight: 600;
+}
+
+/* —— Leave —— */
+.leave-notice {
+    font-size: 0.75rem;
+    padding: 0.4rem 0.65rem;
+    margin-bottom: 0.5rem;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+    color: #92400e;
+}
+.leave-manual-panel {
+    background: var(--erp-bg);
+    border: 1px solid var(--erp-border);
+    border-radius: 8px;
+    padding: 0.55rem;
+    margin-bottom: 0.5rem;
+}
+.leave-main {
+    background: #fff;
+    border: 1px solid var(--erp-border);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+.leave-main .leave-filters {
+    margin-bottom: 0;
+    border: none;
+    border-radius: 0;
+    border-bottom: 1px solid var(--erp-border);
+    background: var(--erp-bg);
+}
+
+.hr-report-block {
+    background: #fff;
+    border: 1px solid var(--erp-border);
+    border-radius: 8px;
+    margin-bottom: 0.55rem;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+.hr-report-block__title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #475569;
+    margin: 0;
+    padding: 0.4rem 0.55rem;
+    border-bottom: 1px solid var(--erp-border);
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.payroll-settings-page .card,
+#employeeCreateForm .card,
+.payroll-erp-card {
+    border: 1px solid var(--erp-border);
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+}
+.payroll-erp-card__title,
+.payroll-settings-page .card-header {
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #475569;
+}
+
+.search-input-wrap { position: relative; }
+.search-input-wrap i {
+    position: absolute;
+    left: 0.55rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    font-size: 0.85rem;
+    pointer-events: none;
+}
+.search-input-wrap .form-control {
+    padding-left: 2rem;
+    min-height: 32px;
+    font-size: 0.8rem;
+}
+
+.erp-page__flash,
+.hr-page__flash {
+    font-size: 0.8rem;
+}
+
+/* Suppress heavy shadows on dashboard KPI cards inside ERP shell */
+.erp-page .card.shadow-sm {
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05) !important;
+}

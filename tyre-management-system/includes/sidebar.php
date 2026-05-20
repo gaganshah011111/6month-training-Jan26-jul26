@@ -34,7 +34,7 @@ $iconMap = [
     <?php
     $menu = match ($role) {
         'Super Admin' => [
-            'System' => ['super/dashboard' => 'Super Dashboard', 'users/index' => 'User Management', 'hr/payroll-settings' => 'Payroll Settings', 'settings/profile' => 'System Settings', 'reports/hr' => 'Global Reports'],
+            'System' => ['super/dashboard' => 'Super Dashboard', 'users/index' => 'User Management', 'leave/list' => 'Leave', 'hr/payroll-settings' => 'Payroll Settings', 'settings/profile' => 'System Settings', 'reports/hr' => 'Global Reports'],
         ],
         'HR Manager' => [
             'HR Management' => ['hr/dashboard' => 'Dashboard', 'employees/list' => 'Employees', 'attendance/list' => 'Attendance', 'leave/list' => 'Leave', 'payroll/list' => 'Payroll', 'hr/payroll-settings' => 'Payroll Settings', 'reports/hr' => 'HR Reports'],

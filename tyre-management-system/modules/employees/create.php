@@ -205,7 +205,7 @@ $autoEmployeeCode = $nextEmployeeCode($pdo);
 $payrollSettingsClient = payroll_settings_for_client(payroll_settings_fetch($pdo));
 $payrollSettingsApiUrl = route_url('api/payroll-settings');
 ?>
-<div class="module-shell">
+<div class="hr-page module-shell">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
             <h4 class="mb-0">Add Employee</h4>

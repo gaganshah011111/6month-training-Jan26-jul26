@@ -136,7 +136,7 @@ if ($testToolsEnabled) {
 $payrollNotice = payroll_test_take_notice();
 $highlightEmployeeId = (int)($payrollNotice['employee_id'] ?? 0);
 ?>
-<div class="module-shell payroll-dashboard">
+<div class="hr-page module-shell payroll-dashboard">
     <div class="payroll-dashboard__head d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
         <div>
             <h4 class="mb-1">Payroll Management</h4>

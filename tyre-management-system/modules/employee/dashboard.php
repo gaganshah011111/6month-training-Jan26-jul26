@@ -85,20 +85,21 @@ try {
 }
 ?>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<header class="erp-page__top">
     <div>
-        <h4 class="mb-1">Employee Dashboard</h4>
-        <p class="text-muted mb-0">Welcome <?= e($_SESSION['user']['name'] ?? 'Employee') ?>, here is your account overview.</p>
+        <h1 class="erp-page__title">Employee Dashboard<span>Welcome <?= e($_SESSION['user']['name'] ?? 'Employee') ?> — your account overview</span></h1>
     </div>
-    <a class="btn btn-outline-secondary btn-sm" href="logout.php">Logout</a>
-</div>
+    <div class="erp-page__top-actions">
+        <a class="btn btn-outline-secondary btn-sm" href="logout.php">Logout</a>
+    </div>
+</header>
 
 <?php if ($error): ?>
     <div class="alert alert-warning"><?= e($error) ?></div>
 <?php else: ?>
     <div class="row g-3 mb-4">
         <div class="col-md-3">
-            <div class="card h-100 shadow-sm">
+            <div class="card kpi-card h-100">
                 <div class="card-body">
                     <small class="text-muted">My Attendance (<?= e(date('M Y')) ?>)</small>
                     <h3 class="mt-2 mb-1"><?= e((string)$attendanceDaysRecorded) ?></h3>
@@ -107,7 +108,7 @@ try {
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card h-100 shadow-sm">
+            <div class="card kpi-card h-100">
                 <div class="card-body">
                     <small class="text-muted">Leave Balance (Paid/Half Paid)</small>
                     <h3 class="mt-2 mb-1"><?= e((string)$leaveBalance) ?> days</h3>
@@ -116,7 +117,7 @@ try {
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card h-100 shadow-sm">
+            <div class="card kpi-card h-100">
                 <div class="card-body">
                     <small class="text-muted">Latest Salary</small>
                     <h3 class="mt-2 mb-1"><?= e($latestSalary ? 'INR ' . number_format((float)$latestSalary['net_salary'], 2) : 'N/A') ?></h3>
@@ -125,7 +126,7 @@ try {
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card h-100 shadow-sm">
+            <div class="card kpi-card h-100">
                 <div class="card-body">
                     <small class="text-muted">Notifications</small>
                     <h3 class="mt-2 mb-1"><?= e((string)count($notifications)) ?></h3>

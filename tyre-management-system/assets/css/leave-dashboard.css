@@ -1,49 +1,209 @@
-/* Leave ERP — compact industrial UI */
+/* Leave module — clean minimal ERP */
 .leave-erp {
     --lv-red: #b91c1c;
-    --lv-red-dk: #991b1b;
-    --lv-red-bg: #fef2f2;
     --lv-ink: #111827;
     --lv-muted: #6b7280;
     --lv-border: #e5e7eb;
-    --lv-radius: 8px;
+    --lv-radius: 6px;
     font-family: Inter, system-ui, sans-serif;
     color: var(--lv-ink);
 }
 
-.leave-erp__header {
+.is-hidden { display: none !important; }
+
+/* —— HR Leave page —— */
+.leave-erp--hr .leave-erp__header {
     display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
 }
 
-.leave-erp__title {
-    font-size: 1.35rem;
+.leave-erp--hr .leave-erp__title {
+    font-size: 1.125rem;
     font-weight: 700;
     margin: 0;
-    color: var(--lv-ink);
 }
 
-.leave-erp__subtitle {
-    margin: 0.2rem 0 0;
-    font-size: 0.8125rem;
+.leave-erp__wf-link {
+    font-size: 0.75rem;
     color: var(--lv-muted);
-    max-width: 42rem;
+    text-decoration: none;
 }
 
-.leave-erp__toolbar {
+.leave-erp__wf-link:hover { color: var(--lv-red); }
+
+.leave-notice {
+    font-size: 0.75rem;
+    padding: 0.4rem 0.65rem;
+    margin-bottom: 0.5rem;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: var(--lv-radius);
+    color: #92400e;
+}
+
+.leave-kpis {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.45rem;
+    margin-bottom: 0.55rem;
+}
+
+.leave-kpi {
+    background: #fff;
+    border: 1px solid var(--lv-border);
+    border-radius: var(--lv-radius);
+    padding: 0.35rem 0.55rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.leave-kpi span {
+    display: block;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--lv-muted);
+    font-weight: 600;
+}
+
+.leave-kpi strong {
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.leave-toolbar {
+    margin-bottom: 0.45rem;
+}
+
+.leave-manual-panel {
+    background: #fafafa;
+    border: 1px solid var(--lv-border);
+    border-radius: var(--lv-radius);
+    padding: 0.5rem 0.65rem;
+    margin-bottom: 0.55rem;
+}
+
+.leave-main {
+    background: #fff;
+    border: 1px solid var(--lv-border);
+    border-radius: var(--lv-radius);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.leave-filters {
     display: flex;
-    align-items: flex-end;
-    gap: 0.5rem;
     flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.6rem;
+    border-bottom: 1px solid #f3f4f6;
+    background: #fafafa;
 }
 
+.leave-filters .form-select,
+.leave-filters .form-control {
+    width: auto;
+    min-width: 7rem;
+    max-width: 11rem;
+    font-size: 0.8rem;
+}
+
+.leave-table {
+    font-size: 0.8rem;
+    margin: 0;
+}
+
+.leave-table thead th {
+    background: #f9fafb;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--lv-muted);
+    font-weight: 600;
+    padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid var(--lv-border);
+    white-space: nowrap;
+}
+
+.leave-table tbody td {
+    padding: 0.38rem 0.6rem;
+    vertical-align: middle;
+    border-color: #f3f4f6;
+}
+
+.leave-table__emp {
+    font-weight: 600;
+}
+
+.leave-actions {
+    display: inline-flex;
+    gap: 0.2rem;
+    justify-content: flex-end;
+}
+
+.leave-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.55rem;
+    height: 1.55rem;
+    padding: 0;
+    border: 1px solid var(--lv-border);
+    border-radius: 4px;
+    background: #fff;
+    color: #6b7280;
+    cursor: pointer;
+}
+
+.leave-action-btn:hover { background: #f9fafb; color: var(--lv-ink); }
+.leave-action-btn--ok:hover { color: #15803d; border-color: #86efac; }
+.leave-action-btn--no:hover { color: #b91c1c; border-color: #fecaca; }
+
+/* Badges */
+.lv-cat, .lv-status {
+    display: inline-flex;
+    padding: 0.08rem 0.38rem;
+    border-radius: 3px;
+    font-size: 0.62rem;
+    font-weight: 600;
+}
+
+.lv-cat--paid { background: #ecfdf5; color: #047857; }
+.lv-cat--half { background: #fff7ed; color: #c2410c; }
+.lv-cat--unpaid { background: #fef2f2; color: #b91c1c; }
+
+.lv-status--pending { background: #fef9c3; color: #a16207; }
+.lv-status--approved { background: transparent; color: #15803d; border: 1px solid #86efac; }
+.lv-status--rejected { background: transparent; color: #b91c1c; border: 1px solid #fecaca; }
+
+.leave-view-dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.25rem 0.75rem;
+    font-size: 0.8rem;
+}
+
+.leave-view-dl dt {
+    color: var(--lv-muted);
+    font-weight: 500;
+    margin: 0;
+}
+
+.leave-view-dl dd {
+    margin: 0;
+    font-weight: 500;
+}
+
+.leave-view-modal .modal-title {
+    font-weight: 700;
+}
+
+/* —— Employee & shared forms —— */
 .leave-erp__stats {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(4, 1fr);
     gap: 0.65rem;
     margin-bottom: 1rem;
 }
@@ -59,263 +219,117 @@
 .leave-stat--half { border-left-color: #ea580c; }
 .leave-stat--muted { border-left-color: #94a3b8; }
 .leave-stat--pending { border-left-color: #d97706; }
-.leave-stat--critical { border-left-color: #dc2626; background: var(--lv-red-bg); }
 
 .leave-stat__k {
     display: block;
     font-size: 0.65rem;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
     color: var(--lv-muted);
     font-weight: 600;
 }
 
-.leave-stat strong {
-    font-size: 1.25rem;
-    font-weight: 700;
-    line-height: 1.2;
-}
-
-.leave-stat small {
-    font-size: 0.7rem;
-    color: var(--lv-muted);
-    margin-left: 0.15rem;
-}
+.leave-stat strong { font-size: 1.2rem; font-weight: 700; }
 
 .leave-card {
     background: #fff;
     border: 1px solid var(--lv-border);
     border-radius: var(--lv-radius);
     margin-bottom: 0.85rem;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-}
-
-.leave-card--compact .leave-card__title {
-    padding-bottom: 0.5rem;
 }
 
 .leave-card__title {
     font-size: 0.875rem;
     font-weight: 700;
     margin: 0;
-    padding: 0.65rem 0.85rem;
+    padding: 0.6rem 0.85rem;
     border-bottom: 1px solid var(--lv-border);
-}
-
-.leave-card__head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.65rem 0.85rem;
-    border-bottom: 1px solid var(--lv-border);
-}
-
-.leave-card__head .leave-card__title {
-    padding: 0;
-    border: 0;
 }
 
 .leave-card form,
-.leave-card .table-responsive,
-.leave-card .leave-erp-pagination {
-    padding: 0.75rem 0.85rem;
+.leave-card .table-responsive {
+    padding: 0.65rem 0.85rem;
 }
 
-.leave-card .leave-card__title + form {
-    padding-top: 0.65rem;
-}
-
-.leave-count {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 1.25rem;
-    height: 1.25rem;
-    padding: 0 0.35rem;
-    font-size: 0.7rem;
-    background: #fef3c7;
-    color: #92400e;
-    border-radius: 999px;
-    margin-left: 0.35rem;
-    vertical-align: middle;
-}
-
-/* Apply form */
-.leave-apply-form {
-    padding: 0.65rem 0.85rem 0.75rem;
-}
+.leave-apply-form { padding: 0.5rem 0; }
 
 .leave-apply-row {
     display: flex;
     flex-wrap: wrap;
     align-items: flex-end;
-    gap: 0.5rem 0.65rem;
+    gap: 0.4rem 0.5rem;
 }
 
-.leave-apply-row--actions {
-    align-items: center;
-    margin-top: 0.55rem;
-    padding-top: 0.55rem;
-    border-top: 1px solid #f3f4f6;
-}
-
-.leave-field {
-    flex: 0 0 auto;
-    min-width: 0;
-}
-
-.leave-field--type { width: 8.5rem; }
-.leave-field--emp { width: 11rem; min-width: 9rem; }
-.leave-field--grow { flex: 1 1 12rem; min-width: 10rem; }
+.leave-field--type { width: 7.5rem; }
+.leave-field--emp { min-width: 10rem; flex: 1; max-width: 14rem; }
+.leave-field--grow { flex: 1; min-width: 8rem; }
 
 .leave-field__label {
     display: block;
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     font-weight: 600;
     color: var(--lv-muted);
-    margin-bottom: 0.2rem;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
+    margin-bottom: 0.15rem;
 }
 
-.leave-field.is-hidden,
-.leave-apply-form__to.is-hidden {
-    display: none !important;
+.leave-apply-row--actions {
+    margin-top: 0.45rem;
+    padding-top: 0.45rem;
+    border-top: 1px solid #f3f4f6;
 }
 
 .leave-check {
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
-    font-size: 0.8125rem;
+    gap: 0.3rem;
+    font-size: 0.8rem;
     color: var(--lv-muted);
-    margin: 0;
-    cursor: pointer;
-}
-
-.leave-check input {
     margin: 0;
 }
 
 .leave-days-pill {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 600;
-    color: var(--lv-red-dk);
-    background: var(--lv-red-bg);
-    border: 1px solid #fecaca;
+    color: var(--lv-red);
+    background: #fef2f2;
     border-radius: 999px;
-    padding: 0.2rem 0.6rem;
+    padding: 0.15rem 0.5rem;
 }
 
-.leave-days-pill.is-hidden {
-    display: none !important;
-}
-
-.leave-days-pill--warn {
-    background: #fff7ed;
-    border-color: #fdba74;
-    color: #9a3412;
-}
-
-.leave-btn-submit {
-    margin-left: auto;
-    font-weight: 600;
-    min-width: 7rem;
-}
-
-/* Tables */
-.leave-erp-table {
-    font-size: 0.8125rem;
-}
-
+.leave-erp-table { font-size: 0.8125rem; }
 .leave-erp-table thead th {
     background: #f9fafb;
     font-size: 0.68rem;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
     color: var(--lv-muted);
-    font-weight: 600;
-    padding: 0.45rem 0.5rem;
-    border-bottom: 1px solid var(--lv-border);
-    white-space: nowrap;
-}
-
-.leave-erp-table tbody td {
-    padding: 0.45rem 0.5rem;
-    vertical-align: middle;
-    border-color: #f3f4f6;
-}
-
-.leave-row--emergency {
-    background: #fffbfb;
 }
 
 .leave-tag {
     font-size: 0.7rem;
     font-weight: 600;
-    padding: 0.1rem 0.4rem;
-    border-radius: 4px;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
     background: #f3f4f6;
-    color: #374151;
-}
-
-.leave-badge {
-    display: inline-flex;
-    padding: 0.12rem 0.45rem;
-    border-radius: 4px;
-    font-size: 0.65rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
 }
 
 .leave-badge--approved { background: #dcfce7; color: #166534; }
 .leave-badge--pending { background: #fef3c7; color: #92400e; }
 .leave-badge--rejected { background: #fee2e2; color: #991b1b; }
 
-.leave-staff-badge {
-    display: inline-flex;
-    padding: 0.12rem 0.45rem;
-    border-radius: 4px;
-    font-size: 0.65rem;
-    font-weight: 700;
-}
-
 .leave-staff-badge--safe { background: #ecfdf5; color: #047857; }
 .leave-staff-badge--low { background: #fff7ed; color: #c2410c; }
 .leave-staff-badge--critical { background: #fef2f2; color: #b91c1c; }
 
-.leave-erp-pagination {
-    padding-top: 0.5rem;
-    border-top: 1px solid var(--lv-border);
+.leave-erp__subtitle {
+    margin: 0.15rem 0 0;
+    font-size: 0.78rem;
+    color: var(--lv-muted);
 }
 
-@media (max-width: 992px) {
-    .leave-erp__stats {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
+.leave-erp-pagination { padding: 0.5rem 0.85rem; }
 
-@media (max-width: 576px) {
-    .leave-erp__stats {
-        grid-template-columns: 1fr 1fr;
-    }
-
-    .leave-field--type,
-    .leave-field--emp,
-    .leave-apply-form__from,
-    .leave-apply-form__to {
-        flex: 1 1 100%;
-        width: 100%;
-    }
-
-    .leave-btn-submit {
-        width: 100%;
-        margin-left: 0;
-    }
-
-    .leave-apply-row--actions {
-        flex-direction: column;
-        align-items: stretch;
-    }
+@media (max-width: 768px) {
+    .leave-kpis { grid-template-columns: 1fr 1fr 1fr; }
+    .leave-erp__stats { grid-template-columns: 1fr 1fr; }
+    .leave-filters .form-select,
+    .leave-filters .form-control { flex: 1; max-width: none; }
 }

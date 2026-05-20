@@ -193,6 +193,7 @@ function page_allowed_roles(): array
         'payroll/payslip' => ['HR Manager', 'Super Admin', 'Admin'],
         'api/payroll-calculate' => ['HR Manager', 'Super Admin', 'Admin'],
         'api/payroll-test-preview' => ['HR Manager', 'Super Admin', 'Admin'],
+        'api/hr-notifications' => ['HR Manager', 'Super Admin', 'Admin'],
         'hr/payroll-settings' => ['HR Manager', 'Super Admin', 'Admin'],
         'reports/hr' => ['HR Manager', 'Super Admin', 'Admin'],
 

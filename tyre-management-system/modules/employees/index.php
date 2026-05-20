@@ -246,7 +246,7 @@ $payrollSettingsApiUrlFull = $previewScheme . '://' . ($_SERVER['HTTP_HOST'] ?? 
 $showFrom = $total > 0 ? $offset + 1 : 0;
 $showTo = min($offset + count($rows), $total);
 ?>
-<div class="module-shell">
+<div class="hr-page module-shell">
     <div class="employee-page-head mb-3">
         <div>
             <h4 class="mb-0">Employees</h4>

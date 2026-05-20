@@ -10,14 +10,247 @@ if (!has_role(['Super Admin', 'HR Manager'])) {
 $pdo = Database::connection();
 verify_csrf();
 
+if (isset($_GET['export']) && $_GET['export'] === 'csv') {
+    $exportDate = trim((string)($_GET['att_date'] ?? $_GET['reg_date'] ?? date('Y-m-d')));
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $exportDate)) {
+        $exportDate = date('Y-m-d');
+    }
+    $rows = $pdo->prepare("SELECT e.employee_code, e.full_name, COALESCE(d.department_name, e.department) AS department,
+        a.attendance_date, a.status, a.punch_in_time, a.punch_out_time, a.overtime_hours
+        FROM attendance a
+        INNER JOIN employees e ON e.id = a.employee_id
+        LEFT JOIN departments d ON d.id = e.department_id
+        WHERE a.attendance_date = :d ORDER BY e.full_name");
+    $rows->execute(['d' => $exportDate]);
+    $data = $rows->fetchAll(PDO::FETCH_ASSOC);
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="attendance-' . $exportDate . '.csv"');
+    $out = fopen('php://output', 'w');
+    fputcsv($out, ['Employee ID', 'Name', 'Department', 'Date', 'Status', 'Punch In', 'Punch Out', 'OT Hours']);
+    foreach ($data as $r) {
+        fputcsv($out, [
+            (string)($r['employee_code'] ?? ''),
+            (string)($r['full_name'] ?? ''),
+            (string)($r['department'] ?? ''),
+            (string)($r['attendance_date'] ?? ''),
+            (string)($r['status'] ?? ''),
+            $r['punch_in_time'] ? date('H:i', strtotime((string)$r['punch_in_time'])) : '',
+            $r['punch_out_time'] ? date('H:i', strtotime((string)$r['punch_out_time'])) : '',
+            (string)($r['overtime_hours'] ?? ''),
+        ]);
+    }
+    fclose($out);
+    exit;
+}
+
 $hrStatuses = ['Present', 'Half Day', 'Late', 'Absent'];
+$markStatusOpts = ['Present', 'Half Day', 'Late', 'Absent', 'Holiday', 'Leave'];
 $holidayTypes = ['National Holiday', 'Festival Holiday', 'Company Holiday', 'Emergency Shutdown'];
+
+function att_status_badge(?string $status): string
+{
+    if ($status === null || $status === '') {
+        return '<span class="att-badge att-badge--none">â€”</span>';
+    }
+    static $map = [
+        'Present' => 'present', 'Half Day' => 'half', 'Late' => 'late', 'Absent' => 'absent',
+        'Holiday' => 'holiday', 'Paid Leave' => 'leave', 'Unpaid Leave' => 'leave', 'Leave' => 'leave',
+        'Emergency Duty' => 'duty',
+    ];
+    $slug = $map[$status] ?? 'default';
+    return '<span class="att-badge att-badge--' . $slug . '">' . e($status) . '</span>';
+}
+
+function att_is_leave_locked(array $row): bool
+{
+    $cur = (string)($row['att_status'] ?? '');
+    return in_array($cur, ['Paid Leave', 'Unpaid Leave', 'Half Paid Leave', 'Leave'], true)
+        || (is_string($row['att_remarks'] ?? null) && str_starts_with((string)$row['att_remarks'], 'Leave #'));
+}
+
+/** @return array<int, array<string, mixed>> */
+function att_fetch_active_employees(PDO $pdo, string $attDate, string $dept, string $empType, string $qEmp, string $qName = ''): array
+{
+    $sql = "SELECT e.*,
+        COALESCE(NULLIF(d.department_name, ''), NULLIF(e.department, ''), 'â€”') AS department,
+        a.id AS att_pk, a.punch_in_time, a.punch_out_time, a.total_hours, a.overtime_hours,
+        a.status AS att_status, a.remarks AS att_remarks, a.is_late AS att_is_late
+        FROM employees e
+        LEFT JOIN departments d ON d.id = e.department_id
+        LEFT JOIN attendance a ON a.employee_id = e.id AND a.attendance_date = :ad
+        WHERE e.status = 'active'";
+    $params = ['ad' => $attDate];
+    if ($dept !== '') {
+        $sql .= ' AND COALESCE(d.department_name, e.department) = :dept';
+        $params['dept'] = $dept;
+    }
+    if ($empType !== '' && in_array($empType, ['Worker', 'Staff'], true)) {
+        $sql .= ' AND e.employee_type = :et';
+        $params['et'] = $empType;
+    }
+    if ($qEmp !== '') {
+        if (ctype_digit($qEmp)) {
+            $sql .= ' AND (e.id = :qid OR e.employee_code LIKE :qcode)';
+            $params['qid'] = (int)$qEmp;
+            $params['qcode'] = '%' . $qEmp . '%';
+        } else {
+            $ql = '%' . $qEmp . '%';
+            $sql .= ' AND (e.employee_code LIKE :ql OR e.employee_code LIKE :qcode2)';
+            $params['ql'] = $ql;
+            $params['qcode2'] = $ql;
+        }
+    }
+    if ($qName !== '') {
+        $sql .= ' AND e.full_name LIKE :qn';
+        $params['qn'] = '%' . $qName . '%';
+    }
+    $sql .= ' ORDER BY e.full_name ASC LIMIT 500';
+    $st = $pdo->prepare($sql);
+    $st->execute($params);
+    return $st->fetchAll(PDO::FETCH_ASSOC);
+}
+
+/** @return array{present:int,absent:int,late:int,half:int,holiday:int,leave:int,total_marked:int} */
+function att_day_summary(PDO $pdo, string $attDate): array
+{
+    $st = $pdo->prepare("SELECT status, COUNT(*) AS c FROM attendance WHERE attendance_date = :d GROUP BY status");
+    $st->execute(['d' => $attDate]);
+    $out = ['present' => 0, 'absent' => 0, 'late' => 0, 'half' => 0, 'holiday' => 0, 'leave' => 0, 'total_marked' => 0];
+    while ($row = $st->fetch(PDO::FETCH_ASSOC)) {
+        $c = (int)$row['c'];
+        $out['total_marked'] += $c;
+        $s = (string)$row['status'];
+        if (in_array($s, ['Present', 'Emergency Duty'], true)) {
+            $out['present'] += $c;
+        } elseif ($s === 'Absent') {
+            $out['absent'] += $c;
+        } elseif ($s === 'Late') {
+            $out['late'] += $c;
+        } elseif ($s === 'Half Day') {
+            $out['half'] += $c;
+        } elseif ($s === 'Holiday') {
+            $out['holiday'] += $c;
+        } elseif (str_contains($s, 'Leave') || $s === 'Leave') {
+            $out['leave'] += $c;
+        }
+    }
+    return $out;
+}
+
+/** @return list<array<string,mixed>> */
+function att_recent_for_date(PDO $pdo, string $attDate, int $limit = 8): array
+{
+    $st = $pdo->prepare("SELECT e.employee_code, e.full_name, a.status, a.punch_in_time, a.punch_out_time, a.created_at
+        FROM attendance a
+        INNER JOIN employees e ON e.id = a.employee_id
+        WHERE a.attendance_date = :d
+        ORDER BY a.id DESC
+        LIMIT :lim");
+    $st->bindValue(':d', $attDate);
+    $st->bindValue(':lim', $limit, PDO::PARAM_INT);
+    $st->execute();
+    return $st->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function att_normalize_mark_status(string $status): string
+{
+    if ($status === 'Leave') {
+        return 'Paid Leave';
+    }
+    return $status;
+}
+
+function att_punch_is_empty(string $time): bool
+{
+    $time = trim($time);
+    if ($time === '') {
+        return true;
+    }
+    return in_array($time, ['00:00', '00:00:00', '0:00', '0:00:00'], true);
+}
+
+/** @return array{0: string, 1: string} */
+function att_normalize_punch_pair(string $pi, string $po): array
+{
+    $pi = trim($pi);
+    $po = trim($po);
+    if (att_punch_is_empty($pi)) {
+        $pi = '';
+    }
+    if (att_punch_is_empty($po)) {
+        $po = '';
+    }
+    return [$pi, $po];
+}
+
+function attendance_persist_mark(PDO $pdo, array $emp, string $attendanceDate, string $status, string $pi, string $po): void
+{
+    [$pi, $po] = att_normalize_punch_pair($pi, $po);
+    $shiftEnum = employee_shift_enum($emp);
+    $pit = null;
+    $pot = null;
+    $totalH = null;
+    $otH = 0.0;
+    $isLate = 0;
+    $isEarly = 0;
+
+    if ($status === 'Absent') {
+        $pi = '';
+        $po = '';
+        $pit = null;
+        $pot = null;
+        $totalH = 0.0;
+        $otH = 0.0;
+        $isLate = 0;
+        $isEarly = 0;
+    } elseif ($status === 'Holiday') {
+        if ($pi !== '' || $po !== '') {
+            throw new RuntimeException('Clear punch times for Holiday status.');
+        }
+        $totalH = employee_scheduled_shift_hours($emp);
+    } elseif (in_array($status, ['Paid Leave', 'Unpaid Leave', 'Half Paid Leave'], true)) {
+        $pi = '';
+        $po = '';
+        $pit = null;
+        $pot = null;
+        $totalH = null;
+    } elseif ($pi === '' && $po === '') {
+        throw new RuntimeException('Enter punch in and punch out, or set status to Absent.');
+    } else {
+        if ($pi === '' || $po === '') {
+            throw new RuntimeException('Enter both punch in and punch out.');
+        }
+        [$pit, $pot] = hr_build_punch_datetimes($attendanceDate, $pi, $po);
+        $metrics = hr_compute_attendance_metrics($emp, $attendanceDate, $pit, $pot);
+        $totalH = $metrics['total_hours'];
+        $otH = (float)$metrics['overtime_hours'];
+        $isEarly = (int)$metrics['is_early_exit'];
+        $isLate = $status === 'Late' ? 1 : ((int)($metrics['is_late'] ?? 0));
+    }
+
+    $stmt = $pdo->prepare('INSERT INTO attendance (employee_id, attendance_date, shift, status, remarks, punch_in_time, punch_out_time, total_hours, overtime_hours, is_late, is_early_exit, is_emergency_duty)
+        VALUES (:e,:d,:sh,:st,:rm,:pi,:po,:th,:oh,:il,:ie,0)
+        ON DUPLICATE KEY UPDATE shift=VALUES(shift), status=VALUES(status), punch_in_time=VALUES(punch_in_time), punch_out_time=VALUES(punch_out_time), total_hours=VALUES(total_hours), overtime_hours=VALUES(overtime_hours), is_late=VALUES(is_late), is_early_exit=VALUES(is_early_exit), is_emergency_duty=0, remarks=VALUES(remarks)');
+    $stmt->execute([
+        'e' => (int)$emp['id'],
+        'd' => $attendanceDate,
+        'sh' => $shiftEnum,
+        'st' => $status,
+        'rm' => null,
+        'pi' => $pit,
+        'po' => $pot,
+        'th' => $totalH,
+        'oh' => $otH,
+        'il' => $isLate,
+        'ie' => $isEarly,
+    ]);
+}
 
 /** Short label for register / month grid cells */
 function att_register_status_abbrev(?string $status): string
 {
     if ($status === null || $status === '') {
-        return '—';
+        return 'â€”';
     }
     static $map = [
         'Present' => 'P',
@@ -46,6 +279,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'att_section' => (string)($_POST['ret_att_section'] ?? 'mark'),
         'att_date' => (string)($_POST['ret_att_date'] ?? date('Y-m-d')),
         'q_emp' => (string)($_POST['ret_q_emp'] ?? ''),
+        'q_name' => (string)($_POST['ret_q_name'] ?? ''),
         'dept' => (string)($_POST['ret_dept'] ?? ''),
         'emp_type' => (string)($_POST['ret_emp_type'] ?? ''),
     ];
@@ -63,69 +297,137 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$emp) {
                 throw new RuntimeException('Employee not found.');
             }
-            $etype = (string)($emp['employee_type'] ?? 'Staff');
-            $allowed = $hrStatuses;
-            $allowed[] = 'Holiday';
-            $allowed = array_values(array_unique($allowed));
             $status = trim((string)($_POST['status'] ?? ''));
             if ($status === '') {
                 throw new RuntimeException('Select a status.');
             }
-            if (!in_array($status, $allowed, true)) {
-                throw new RuntimeException('Invalid status for this employee type.');
+            if (!in_array($status, $markStatusOpts, true)) {
+                throw new RuntimeException('Invalid status.');
             }
             $pi = trim((string)($_POST['punch_in'] ?? ''));
             $po = trim((string)($_POST['punch_out'] ?? ''));
-            $shiftEnum = employee_shift_enum($emp);
+            attendance_persist_mark($pdo, $emp, $attendanceDate, att_normalize_mark_status($status), $pi, $po);
+            set_flash('success', 'Attendance saved for ' . (string)($emp['full_name'] ?? '') . '.');
+            att_redirect_preserving($ret);
+        }
 
-            $pit = null;
-            $pot = null;
-            $totalH = null;
-            $otH = 0.0;
-            $isLate = 0;
-            $isEarly = 0;
-
-            if ($status === 'Holiday') {
-                if ($pi !== '' || $po !== '') {
-                    throw new RuntimeException('Clear punch times for Holiday status.');
+        if ($action === 'mark_all_present') {
+            $attendanceDate = trim((string)($_POST['attendance_date'] ?? ''));
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $attendanceDate)) {
+                throw new RuntimeException('Invalid date.');
+            }
+            $fDept = trim((string)($_POST['ret_dept'] ?? ''));
+            $fType = trim((string)($_POST['ret_emp_type'] ?? ''));
+            $fQ = trim((string)($_POST['ret_q_emp'] ?? ''));
+            $fN = trim((string)($_POST['ret_q_name'] ?? ''));
+            $list = att_fetch_active_employees($pdo, $attendanceDate, $fDept, $fType, $fQ, $fN);
+            $done = 0;
+            $skip = 0;
+            foreach ($list as $em) {
+                if (att_is_leave_locked($em)) {
+                    $skip++;
+                    continue;
                 }
-                $totalH = employee_scheduled_shift_hours($emp);
-            } elseif ($pi === '' && $po === '') {
-                if ($status !== 'Absent') {
-                    throw new RuntimeException('Enter punch in/out, or set status to Absent.');
-                }
-            } else {
-                if ($pi === '' || $po === '') {
-                    throw new RuntimeException('Enter both punch in and punch out.');
-                }
-                [$pit, $pot] = hr_build_punch_datetimes($attendanceDate, $pi, $po);
-                $metrics = hr_compute_attendance_metrics($emp, $attendanceDate, $pit, $pot);
-                $totalH = $metrics['total_hours'];
-                $otH = (float)$metrics['overtime_hours'];
-                $isEarly = (int)$metrics['is_early_exit'];
-                $isLate = $status === 'Late' ? 1 : 0;
-                if ($status === 'Absent') {
-                    throw new RuntimeException('Remove punch times when marking Absent.');
+                [$sc, $ec] = employee_shift_clock_bounds($em);
+                $pi = substr($sc, 0, 5);
+                $po = substr($ec, 0, 5);
+                try {
+                    attendance_persist_mark($pdo, $em, $attendanceDate, 'Present', $pi, $po);
+                    $done++;
+                } catch (Throwable) {
+                    $skip++;
                 }
             }
+            set_flash('success', 'Marked present: ' . $done . ($skip ? ' Â· Skipped: ' . $skip : '') . '.');
+            att_redirect_preserving($ret);
+        }
 
-            $stmt = $pdo->prepare('INSERT INTO attendance (employee_id, attendance_date, shift, status, remarks, punch_in_time, punch_out_time, total_hours, overtime_hours, is_late, is_early_exit, is_emergency_duty)
-                VALUES (:e,:d,:sh,:st,:rm,:pi,:po,:th,:oh,:il,:ie,0)
-                ON DUPLICATE KEY UPDATE shift=VALUES(shift), status=VALUES(status), punch_in_time=VALUES(punch_in_time), punch_out_time=VALUES(punch_out_time), total_hours=VALUES(total_hours), overtime_hours=VALUES(overtime_hours), is_late=VALUES(is_late), is_early_exit=VALUES(is_early_exit), is_emergency_duty=0');
-            $stmt->execute([
-                'e' => $employeeId,
-                'd' => $attendanceDate,
-                'sh' => $shiftEnum,
-                'st' => $status,
-                'rm' => null,
-                'pi' => $pit,
-                'po' => $pot,
-                'th' => $totalH,
-                'oh' => $otH,
-                'il' => $isLate,
-                'ie' => $isEarly,
-            ]);
-            set_flash('success', 'Attendance saved for ' . (string)($emp['full_name'] ?? '') . '.');
+        if ($action === 'bulk_mark') {
+            $attendanceDate = trim((string)($_POST['attendance_date'] ?? ''));
+            $bulkStatus = trim((string)($_POST['bulk_status'] ?? ''));
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $attendanceDate)) {
+                throw new RuntimeException('Invalid date.');
+            }
+            if ($bulkStatus === '') {
+                throw new RuntimeException('Select a status for bulk mark.');
+            }
+            $fDept = trim((string)($_POST['ret_dept'] ?? ''));
+            $fType = trim((string)($_POST['ret_emp_type'] ?? ''));
+            $fQ = trim((string)($_POST['ret_q_emp'] ?? ''));
+            $fN = trim((string)($_POST['ret_q_name'] ?? ''));
+            $list = att_fetch_active_employees($pdo, $attendanceDate, $fDept, $fType, $fQ, $fN);
+            $done = 0;
+            $skip = 0;
+            $bulkNorm = att_normalize_mark_status($bulkStatus);
+            foreach ($list as $em) {
+                if (att_is_leave_locked($em)) {
+                    $skip++;
+                    continue;
+                }
+                $pi = '';
+                $po = '';
+                if (in_array($bulkStatus, ['Present', 'Late', 'Half Day'], true)) {
+                    [$sc, $ec] = employee_shift_clock_bounds($em);
+                    $pi = substr($sc, 0, 5);
+                    $po = substr($ec, 0, 5);
+                }
+                try {
+                    attendance_persist_mark($pdo, $em, $attendanceDate, $bulkNorm, $pi, $po);
+                    $done++;
+                } catch (Throwable) {
+                    $skip++;
+                }
+            }
+            set_flash('success', 'Bulk mark (' . $bulkStatus . '): ' . $done . ($skip ? ' Â· Skipped: ' . $skip : '') . '.');
+            att_redirect_preserving($ret);
+        }
+
+        if ($action === 'save_batch') {
+            $attendanceDate = trim((string)($_POST['attendance_date'] ?? ''));
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $attendanceDate)) {
+                throw new RuntimeException('Invalid date.');
+            }
+            $rows = $_POST['rows'] ?? [];
+            if (!is_array($rows)) {
+                $rows = [];
+            }
+            $saved = 0;
+            $skipped = 0;
+            foreach ($rows as $eid => $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                $status = trim((string)($row['status'] ?? ''));
+                if ($status === '') {
+                    continue;
+                }
+                if (!in_array($status, $markStatusOpts, true)) {
+                    $skipped++;
+                    continue;
+                }
+                $empStmt = $pdo->prepare('SELECT e.*, COALESCE(d.department_name, e.department) AS department
+                    FROM employees e LEFT JOIN departments d ON d.id = e.department_id
+                    WHERE e.id = :id AND e.status = :st LIMIT 1');
+                $empStmt->execute(['id' => (int)$eid, 'st' => 'active']);
+                $emp = $empStmt->fetch();
+                if (!$emp) {
+                    $skipped++;
+                    continue;
+                }
+                if (($row['leave_locked'] ?? '') === '1') {
+                    $skipped++;
+                    continue;
+                }
+                $pi = trim((string)($row['punch_in'] ?? ''));
+                $po = trim((string)($row['punch_out'] ?? ''));
+                try {
+                    attendance_persist_mark($pdo, $emp, $attendanceDate, att_normalize_mark_status($status), $pi, $po);
+                    $saved++;
+                } catch (Throwable) {
+                    $skipped++;
+                }
+            }
+            set_flash('success', 'Saved attendance: ' . $saved . ($skipped ? ' Â· Skipped: ' . $skipped : '') . '.');
             att_redirect_preserving($ret);
         }
 
@@ -222,13 +524,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $att_section = (isset($_GET['att_section']) && $_GET['att_section'] === 'register') ? 'register' : 'mark';
 
 $q_emp = trim((string)($_GET['q_emp'] ?? ''));
+$q_name = trim((string)($_GET['q_name'] ?? ''));
 $dept = trim((string)($_GET['dept'] ?? ''));
 $emp_type = trim((string)($_GET['emp_type'] ?? ''));
 $att_date = trim((string)($_GET['att_date'] ?? date('Y-m-d')));
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $att_date)) {
     $att_date = date('Y-m-d');
 }
-$searched = isset($_GET['search']) && $_GET['search'] === '1';
+// Mark tab: load employee list by default (auto-refresh when filters/date change).
+$searched = $att_section === 'mark'
+    ? (!isset($_GET['search']) || $_GET['search'] === '1')
+    : (isset($_GET['search']) && $_GET['search'] === '1');
 
 $reg_mode = (isset($_GET['reg_mode']) && $_GET['reg_mode'] === 'monthly') ? 'monthly' : 'daily';
 $reg_date = trim((string)($_GET['reg_date'] ?? date('Y-m-d')));
@@ -242,45 +548,17 @@ if (!preg_match('/^\d{4}-\d{2}$/', $reg_month)) {
 $reg_dept = trim((string)($_GET['reg_dept'] ?? ''));
 $reg_q_emp = trim((string)($_GET['reg_q_emp'] ?? ''));
 $reg_emp_type = trim((string)($_GET['reg_emp_type'] ?? ''));
-$register_searched = isset($_GET['reg_search']) && $_GET['reg_search'] === '1';
+$register_searched = $att_section === 'register'
+    ? (!isset($_GET['reg_search']) || $_GET['reg_search'] === '1')
+    : false;
 
 $departments = hr_department_filter_options($pdo);
 
 $tableRows = [];
+$daySummary = att_day_summary($pdo, $att_date);
+$recentAtt = att_recent_for_date($pdo, $att_date, 8);
 if ($att_section === 'mark' && $searched) {
-    $sql = "SELECT e.*, a.id AS att_pk, a.punch_in_time, a.punch_out_time, a.total_hours, a.overtime_hours,
-        a.status AS att_status
-        FROM employees e
-        LEFT JOIN departments d ON d.id = e.department_id
-        LEFT JOIN attendance a ON a.employee_id = e.id AND a.attendance_date = :ad
-        WHERE e.status = 'active' AND a.id IS NULL";
-    $params = ['ad' => $att_date];
-    if ($dept !== '') {
-        $sql .= ' AND COALESCE(d.department_name, e.department) = :dept';
-        $params['dept'] = $dept;
-    }
-    if ($emp_type !== '' && in_array($emp_type, ['Worker', 'Staff'], true)) {
-        $sql .= ' AND e.employee_type = :et';
-        $params['et'] = $emp_type;
-    }
-    if ($q_emp !== '') {
-        if (ctype_digit($q_emp)) {
-            $sql .= ' AND (e.id = :qid OR e.employee_code LIKE :qcode)';
-            $params['qid'] = (int)$q_emp;
-            $params['qcode'] = '%' . $q_emp . '%';
-        } else {
-            $ql = '%' . $q_emp . '%';
-            $sql .= ' AND (e.employee_code LIKE :ql OR e.full_name LIKE :qf OR e.department LIKE :qd OR d.department_name LIKE :qdn)';
-            $params['qdn'] = $ql;
-            $params['ql'] = $ql;
-            $params['qf'] = $ql;
-            $params['qd'] = $ql;
-        }
-    }
-    $sql .= ' ORDER BY e.full_name ASC LIMIT 500';
-    $st = $pdo->prepare($sql);
-    $st->execute($params);
-    $tableRows = $st->fetchAll();
+    $tableRows = att_fetch_active_employees($pdo, $att_date, $dept, $emp_type, $q_emp, $q_name);
 }
 
 $registerDailyRows = [];
@@ -288,6 +566,9 @@ $registerMonthEmployees = [];
 $registerMonthDays = [];
 /** @var array<int, array<string, string>> $registerMonthMap */
 $registerMonthMap = [];
+$reg_page = 1;
+$reg_pages = 1;
+$reg_total = 0;
 
 if ($att_section === 'register' && $register_searched) {
     $appendEmpFilters = static function (string &$sql, array &$params, string $deptKey, string $etypeKey, string $qKey, string $dept, string $empType, string $qEmp): void {
@@ -315,15 +596,38 @@ if ($att_section === 'register' && $register_searched) {
         }
     };
 
+    $reg_page = max(1, (int)($_GET['reg_page'] ?? 1));
+    $reg_per_page = 25;
+
+    $reg_total = 0;
+    $reg_pages = 1;
+
     if ($reg_mode === 'daily') {
-        $sql = 'SELECT e.*, a.punch_in_time, a.punch_out_time, a.total_hours, a.overtime_hours, a.status AS att_status
+        $countSql = 'SELECT COUNT(*) FROM employees e
+            LEFT JOIN departments d ON d.id = e.department_id
+            INNER JOIN attendance a ON a.employee_id = e.id AND a.attendance_date = :rd
+            WHERE e.status = \'active\'';
+        $countParams = ['rd' => $reg_date];
+        $appendEmpFilters($countSql, $countParams, 'rdept', 'ret', 'rq', $reg_dept, $reg_emp_type, $reg_q_emp);
+        $countSt = $pdo->prepare($countSql);
+        $countSt->execute($countParams);
+        $reg_total = (int)$countSt->fetchColumn();
+        $reg_pages = max(1, (int)ceil($reg_total / $reg_per_page));
+        if ($reg_page > $reg_pages) {
+            $reg_page = $reg_pages;
+        }
+        $offset = ($reg_page - 1) * $reg_per_page;
+
+        $sql = 'SELECT e.*, COALESCE(d.department_name, e.department) AS department,
+            a.attendance_date, a.punch_in_time, a.punch_out_time, a.total_hours, a.overtime_hours,
+            a.status AS att_status, a.is_late AS att_is_late
             FROM employees e
             LEFT JOIN departments d ON d.id = e.department_id
             INNER JOIN attendance a ON a.employee_id = e.id AND a.attendance_date = :rd
             WHERE e.status = \'active\'';
         $params = ['rd' => $reg_date];
         $appendEmpFilters($sql, $params, 'rdept', 'ret', 'rq', $reg_dept, $reg_emp_type, $reg_q_emp);
-        $sql .= ' ORDER BY e.full_name ASC LIMIT 500';
+        $sql .= ' ORDER BY e.full_name ASC LIMIT ' . (int)$reg_per_page . ' OFFSET ' . (int)$offset;
         $st = $pdo->prepare($sql);
         $st->execute($params);
         $registerDailyRows = $st->fetchAll();
@@ -369,6 +673,7 @@ $markTabQuery = [
     'search' => $searched ? '1' : '0',
     'att_date' => $att_date,
     'q_emp' => $q_emp,
+    'q_name' => $q_name,
     'dept' => $dept,
     'emp_type' => $emp_type,
 ];
@@ -382,6 +687,7 @@ $registerTabQuery = [
     'reg_dept' => $reg_dept,
     'reg_q_emp' => $reg_q_emp,
     'reg_emp_type' => $reg_emp_type,
+    'reg_page' => $reg_page ?? 1,
 ];
 
 $empPayload = [];
@@ -405,445 +711,6 @@ if ($att_section === 'mark') {
     }
     $empJs = json_encode($empPayload, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 }
-?>
-<div class="att-mgmt">
-    <header class="att-mgmt__header mb-2">
-        <h4 class="att-mgmt__title mb-1">Attendance Management</h4>
-        <p class="text-muted small mb-0">Mark new attendance or review saved records by day or month.</p>
-    </header>
-
-    <ul class="nav nav-tabs att-mgmt__tabs mb-3">
-        <li class="nav-item">
-            <a class="nav-link <?= $att_section === 'mark' ? 'active' : '' ?>" href="index.php?<?= e(http_build_query($markTabQuery)) ?>">Mark attendance</a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link <?= $att_section === 'register' ? 'active' : '' ?>" href="index.php?<?= e(http_build_query($registerTabQuery)) ?>">Attendance register</a>
-        </li>
-    </ul>
-
-    <?php if ($att_section === 'mark'): ?>
-    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
-        <p class="text-muted small mb-0 att-mgmt__mark-hint">Only employees <strong>without</strong> a saved row for the date appear here. Use <strong>Attendance register</strong> to view or verify marked attendance.</p>
-        <div class="att-mgmt__sheet-date">
-            <label class="form-label small text-muted mb-0">Attendance date</label>
-            <input type="date" class="form-control form-control-sm" name="att_date" form="att-mgmt-search-form" value="<?= e($att_date) ?>" required>
-        </div>
-    </div>
-
-    <form id="att-mgmt-search-form" method="get" class="att-mgmt__filters row g-2 align-items-end mb-3">
-        <input type="hidden" name="page" value="attendance/list">
-        <input type="hidden" name="att_section" value="mark">
-        <input type="hidden" name="search" value="1">
-        <div class="col-6 col-md-3">
-            <label class="form-label small text-muted mb-0">Employee ID / Code</label>
-            <input type="text" class="form-control form-control-sm" name="q_emp" value="<?= e($q_emp) ?>" placeholder="ID or code">
-        </div>
-        <div class="col-6 col-md-3">
-            <label class="form-label small text-muted mb-0">Department</label>
-            <select class="form-select form-select-sm" name="dept">
-                <option value="">All</option>
-                <?php foreach ($departments as $d): ?>
-                    <option value="<?= e((string)$d) ?>" <?= $dept === (string)$d ? 'selected' : '' ?>><?= e((string)$d) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <div class="col-6 col-md-2">
-            <label class="form-label small text-muted mb-0">Type</label>
-            <select class="form-select form-select-sm" name="emp_type">
-                <option value="">All</option>
-                <option value="Worker" <?= $emp_type === 'Worker' ? 'selected' : '' ?>>Worker</option>
-                <option value="Staff" <?= $emp_type === 'Staff' ? 'selected' : '' ?>>Staff</option>
-            </select>
-        </div>
-        <div class="col-6 col-md-2">
-            <button type="submit" class="btn btn-ralson-primary btn-sm w-100">Search</button>
-        </div>
-        <div class="col-6 col-md-2">
-            <button type="button" class="btn btn-ralson-outline btn-sm w-100" data-bs-toggle="modal" data-bs-target="#holidayModal">
-                <i class="bi bi-calendar-event me-1"></i>Holiday
-            </button>
-        </div>
-    </form>
-
-    <?php if (!$searched): ?>
-        <p class="text-muted small">Choose <strong>Attendance date</strong>, set filters, then click <strong>Search</strong>.</p>
-    <?php elseif (!$tableRows): ?>
-        <p class="text-muted small">No employees left to mark for this date (everyone matching your filters already has attendance saved), or no employees match your filters.</p>
-    <?php else: ?>
-        <div class="table-responsive att-mgmt__table-wrap">
-            <table class="table table-sm table-bordered att-mgmt__table mb-0">
-                <thead>
-                <tr>
-                    <th>Employee ID</th>
-                    <th>Name</th>
-                    <th>Department</th>
-                    <th>Type</th>
-                    <th>Shift</th>
-                    <th>Punch In</th>
-                    <th>Punch Out</th>
-                    <th class="text-end">Total Hrs</th>
-                    <th class="text-end">OT Hrs</th>
-                    <th>Status</th>
-                    <th class="text-center">Action</th>
-                </tr>
-                </thead>
-                <tbody>
-                <?php foreach ($tableRows as $idx => $r):
-                    $etype = (string)($r['employee_type'] ?? 'Staff');
-                    $statusOpts = $hrStatuses;
-                    $shLabel = employee_shift_enum($r);
-                    [$sc, $ec] = employee_shift_clock_bounds($r);
-                    $shDisp = $shLabel . ' ' . substr($sc, 0, 5) . '–' . substr($ec, 0, 5);
-                    $piVal = !empty($r['punch_in_time']) ? date('H:i', strtotime((string)$r['punch_in_time'])) : '';
-                    $poVal = !empty($r['punch_out_time']) ? date('H:i', strtotime((string)$r['punch_out_time'])) : '';
-                    $curStatus = (string)($r['att_status'] ?? '');
-                    if ($curStatus === '' || $curStatus === null) {
-                        $curStatus = '';
-                    }
-                    if (in_array($curStatus, ['Leave', 'Paid Leave', 'Unpaid Leave'], true)) {
-                        $curStatus = 'Absent';
-                    }
-                    if ($curStatus === 'Holiday' && !in_array('Holiday', $statusOpts, true)) {
-                        $statusOpts = array_values(array_unique(array_merge(['Holiday'], $statusOpts)));
-                    }
-                    if ($curStatus !== '' && !in_array($curStatus, $statusOpts, true)) {
-                        $curStatus = 'Absent';
-                    }
-                    $fid = 'att-form-' . (int)$r['id'];
-                    ?>
-                    <tr class="att-row" data-row-index="<?= (int)$idx ?>">
-                        <td>
-                            <form method="post" id="<?= e($fid) ?>" class="d-none" aria-hidden="true">
-                                <?= csrf_input() ?>
-                                <input type="hidden" name="action" value="mark_attendance">
-                                <input type="hidden" name="employee_id" value="<?= (int)$r['id'] ?>">
-                                <input type="hidden" name="attendance_date" value="<?= e($att_date) ?>">
-                                <input type="hidden" name="ret_att_section" value="mark">
-                                <input type="hidden" name="ret_att_date" value="<?= e($att_date) ?>">
-                                <input type="hidden" name="ret_q_emp" value="<?= e($q_emp) ?>">
-                                <input type="hidden" name="ret_dept" value="<?= e($dept) ?>">
-                                <input type="hidden" name="ret_emp_type" value="<?= e($emp_type) ?>">
-                            </form>
-                            <?= e((string)($r['employee_code'] ?? '')) ?>
-                        </td>
-                        <td><?= e((string)$r['full_name']) ?></td>
-                        <td><?= e((string)($r['department'] ?? '')) ?></td>
-                        <td><?= e($etype) ?></td>
-                        <td class="small"><?= e($shDisp) ?></td>
-                        <td><input type="time" class="form-control form-control-sm att-in" name="punch_in" form="<?= e($fid) ?>" value="<?= e($piVal) ?>" step="60" autocomplete="off"></td>
-                        <td><input type="time" class="form-control form-control-sm att-out" name="punch_out" form="<?= e($fid) ?>" value="<?= e($poVal) ?>" step="60" autocomplete="off"></td>
-                        <td class="text-end"><span class="att-calc-total text-nowrap">—</span></td>
-                        <td class="text-end"><span class="att-calc-ot text-nowrap">—</span></td>
-                        <td>
-                            <select class="form-select form-select-sm att-status" name="status" form="<?= e($fid) ?>" required>
-                                <option value="" <?= $curStatus === '' ? 'selected' : '' ?>>— Select —</option>
-                                <?php foreach ($statusOpts as $st): ?>
-                                    <option value="<?= e($st) ?>" <?= $curStatus === $st ? 'selected' : '' ?>><?= e($st) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </td>
-                        <td class="text-center"><button type="submit" class="btn btn-ralson-primary btn-sm" form="<?= e($fid) ?>">Mark</button></td>
-                    </tr>
-                <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    <?php endif; ?>
-
-    <?php else: /* register */ ?>
-    <form id="att-register-search-form" method="get" class="att-mgmt__filters row g-2 align-items-end mb-3">
-        <input type="hidden" name="page" value="attendance/list">
-        <input type="hidden" name="att_section" value="register">
-        <input type="hidden" name="reg_search" value="1">
-        <div class="col-12 col-md-3">
-            <label class="form-label small text-muted mb-0">View</label>
-            <select class="form-select form-select-sm" name="reg_mode" id="reg_mode_select">
-                <option value="daily" <?= $reg_mode === 'daily' ? 'selected' : '' ?>>Daily (one date)</option>
-                <option value="monthly" <?= $reg_mode === 'monthly' ? 'selected' : '' ?>>Monthly (whole month)</option>
-            </select>
-        </div>
-        <div class="col-6 col-md-2 reg-field-daily">
-            <label class="form-label small text-muted mb-0">Date</label>
-            <input type="date" class="form-control form-control-sm" name="reg_date" value="<?= e($reg_date) ?>">
-        </div>
-        <div class="col-6 col-md-2 reg-field-monthly" hidden>
-            <label class="form-label small text-muted mb-0">Month</label>
-            <input type="month" class="form-control form-control-sm" name="reg_month" value="<?= e($reg_month) ?>">
-        </div>
-        <div class="col-6 col-md-2">
-            <label class="form-label small text-muted mb-0">Department</label>
-            <select class="form-select form-select-sm" name="reg_dept">
-                <option value="">All</option>
-                <?php foreach ($departments as $d): ?>
-                    <option value="<?= e((string)$d) ?>" <?= $reg_dept === (string)$d ? 'selected' : '' ?>><?= e((string)$d) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <div class="col-6 col-md-2">
-            <label class="form-label small text-muted mb-0">Employee ID / Code</label>
-            <input type="text" class="form-control form-control-sm" name="reg_q_emp" value="<?= e($reg_q_emp) ?>" placeholder="Optional">
-        </div>
-        <div class="col-6 col-md-2">
-            <label class="form-label small text-muted mb-0">Type</label>
-            <select class="form-select form-select-sm" name="reg_emp_type">
-                <option value="">All</option>
-                <option value="Worker" <?= $reg_emp_type === 'Worker' ? 'selected' : '' ?>>Worker</option>
-                <option value="Staff" <?= $reg_emp_type === 'Staff' ? 'selected' : '' ?>>Staff</option>
-            </select>
-        </div>
-        <div class="col-12 col-md-auto">
-            <label class="form-label small text-muted mb-0 d-block">&nbsp;</label>
-            <button type="submit" class="btn btn-ralson-primary btn-sm">Search</button>
-        </div>
-    </form>
-
-    <?php if (!$register_searched): ?>
-        <p class="text-muted small">Choose <strong>Daily</strong> or <strong>Monthly</strong>, set filters, then click <strong>Search</strong>.</p>
-    <?php elseif ($reg_mode === 'daily'): ?>
-        <?php if (!$registerDailyRows): ?>
-            <p class="text-muted small">No attendance records found for this date and filters.</p>
-        <?php else: ?>
-            <div class="table-responsive att-mgmt__table-wrap">
-                <table class="table table-sm table-bordered att-mgmt__table att-mgmt__register-daily mb-0">
-                    <thead>
-                    <tr>
-                        <th>Employee ID</th>
-                        <th>Name</th>
-                        <th>Department</th>
-                        <th>Type</th>
-                        <th>Shift</th>
-                        <th>Punch In</th>
-                        <th>Punch Out</th>
-                        <th class="text-end">Total Hrs</th>
-                        <th class="text-end">OT Hrs</th>
-                        <th>Status</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <?php foreach ($registerDailyRows as $r):
-                        $shLabel = employee_shift_enum($r);
-                        [$sc, $ec] = employee_shift_clock_bounds($r);
-                        $shDisp = $shLabel . ' ' . substr($sc, 0, 5) . '–' . substr($ec, 0, 5);
-                        $piVal = !empty($r['punch_in_time']) ? date('H:i', strtotime((string)$r['punch_in_time'])) : '—';
-                        $poVal = !empty($r['punch_out_time']) ? date('H:i', strtotime((string)$r['punch_out_time'])) : '—';
-                        $th = $r['total_hours'];
-                        $thDisp = $th !== null && $th !== '' ? e((string)$th) : '—';
-                        $ot = $r['overtime_hours'];
-                        $otDisp = $ot !== null && $ot !== '' ? e((string)$ot) : '—';
-                        ?>
-                        <tr>
-                            <td><?= e((string)($r['employee_code'] ?? '')) ?></td>
-                            <td><?= e((string)$r['full_name']) ?></td>
-                            <td><?= e((string)($r['department'] ?? '')) ?></td>
-                            <td><?= e((string)($r['employee_type'] ?? '')) ?></td>
-                            <td class="small"><?= e($shDisp) ?></td>
-                            <td><?= e($piVal) ?></td>
-                            <td><?= e($poVal) ?></td>
-                            <td class="text-end"><?= $thDisp ?></td>
-                            <td class="text-end"><?= $otDisp ?></td>
-                            <td><?= e((string)($r['att_status'] ?? '')) ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-        <?php endif; ?>
-    <?php else: /* monthly */ ?>
-        <?php if (!$registerMonthEmployees): ?>
-            <p class="text-muted small">No employees match your filters.</p>
-        <?php else: ?>
-            <p class="text-muted small mb-2 att-register-legend">
-                <strong>Legend:</strong>
-                P Present · HD Half day · L Late · A Absent · H Holiday · PL Paid leave · UL Unpaid · LV Leave · — No record
-            </p>
-            <div class="table-responsive att-mgmt__table-wrap att-register-month-wrap">
-                <table class="table table-sm table-bordered att-mgmt__table att-register-month mb-0">
-                    <thead>
-                    <tr>
-                        <th class="att-reg-sticky">Emp ID</th>
-                        <th class="att-reg-sticky-name">Name</th>
-                        <th class="att-reg-sticky-dept">Dept</th>
-                        <?php foreach ($registerMonthDays as $dom): ?>
-                            <th class="text-center att-reg-day"><?= (int)$dom ?></th>
-                        <?php endforeach; ?>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <?php foreach ($registerMonthEmployees as $me):
-                        $eid = (int)$me['id'];
-                        ?>
-                        <tr>
-                            <td class="att-reg-sticky small"><?= e((string)($me['employee_code'] ?? '')) ?></td>
-                            <td class="att-reg-sticky-name small"><?= e((string)($me['full_name'] ?? '')) ?></td>
-                            <td class="att-reg-sticky-dept small"><?= e((string)($me['department'] ?? '')) ?></td>
-                            <?php foreach ($registerMonthDays as $dom):
-                                $ds = $reg_month . '-' . str_pad((string)$dom, 2, '0', STR_PAD_LEFT);
-                                $st = ($registerMonthMap[$eid] ?? [])[$ds] ?? null;
-                                $abbr = att_register_status_abbrev($st);
-                                $title = $st !== null && $st !== '' ? $st : 'No record';
-                                ?>
-                                <td class="text-center small att-reg-cell" title="<?= e($title) ?>"><?= e($abbr) ?></td>
-                            <?php endforeach; ?>
-                        </tr>
-                    <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-        <?php endif; ?>
-    <?php endif; ?>
-    <?php endif; ?>
-</div>
-
-<div class="modal fade" id="holidayModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <form method="post" class="modal-content">
-            <?= csrf_input() ?>
-            <input type="hidden" name="action" value="save_holiday">
-            <input type="hidden" name="ret_att_section" value="mark">
-            <input type="hidden" name="ret_att_date" value="<?= e($att_date) ?>">
-            <input type="hidden" name="ret_q_emp" value="<?= e($q_emp) ?>">
-            <input type="hidden" name="ret_dept" value="<?= e($dept) ?>">
-            <input type="hidden" name="ret_emp_type" value="<?= e($emp_type) ?>">
-            <div class="modal-header">
-                <h5 class="modal-title">Add holiday</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body row g-2">
-                <div class="col-12">
-                    <label class="form-label small">Holiday date</label>
-                    <input type="date" class="form-control form-control-sm" name="holiday_date" required value="<?= e($att_date) ?>">
-                </div>
-                <div class="col-12">
-                    <label class="form-label small">Holiday name</label>
-                    <input type="text" class="form-control form-control-sm" name="holiday_name" required placeholder="e.g. Diwali">
-                </div>
-                <div class="col-12">
-                    <label class="form-label small">Holiday type</label>
-                    <select class="form-select form-select-sm" name="holiday_type" required>
-                        <?php foreach ($holidayTypes as $ht): ?>
-                            <option value="<?= e($ht) ?>"><?= e($ht) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="col-12">
-                    <label class="form-label small">Department <span class="text-muted">(optional)</span></label>
-                    <select class="form-select form-select-sm" name="holiday_department">
-                        <option value="">All employees</option>
-                        <?php foreach ($departments as $d): ?>
-                            <option value="<?= e((string)$d) ?>"><?= e((string)$d) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="col-12">
-                    <label class="form-label small">Remarks</label>
-                    <input type="text" class="form-control form-control-sm" name="holiday_remarks" placeholder="Optional">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                <button type="submit" class="btn btn-ralson-primary btn-sm">Save holiday</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script>
-(function () {
-    var regMode = document.getElementById('reg_mode_select');
-    var dailyFields = document.querySelectorAll('.reg-field-daily');
-    var monthlyFields = document.querySelectorAll('.reg-field-monthly');
-    function syncRegMode() {
-        if (!regMode || !dailyFields.length || !monthlyFields.length) return;
-        var m = regMode.value === 'monthly';
-        dailyFields.forEach(function (el) { el.hidden = m; });
-        monthlyFields.forEach(function (el) { el.hidden = !m; });
-    }
-    if (regMode) {
-        syncRegMode();
-        regMode.addEventListener('change', syncRegMode);
-    }
-})();
-</script>
-<?php if ($att_section === 'mark' && $searched && $tableRows): ?>
-<script>
-(function () {
-    var EMP = <?= $empJs ?: '[]' ?>;
-    var ATT_DATE = <?= json_encode($att_date, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
-
-    function pad(n) { return n < 10 ? '0' + n : '' + n; }
-    function shiftWindowTs(dateYmd, emp) {
-        var sc = emp.shift_clock_start ? emp.shift_clock_start + ':00' : '09:00:00';
-        var ec = emp.shift_clock_end ? emp.shift_clock_end + ':00' : '18:00:00';
-        var startTs = new Date(dateYmd + 'T' + sc).getTime();
-        var endSame = new Date(dateYmd + 'T' + ec).getTime();
-        var endTs = endSame;
-        if (endSame <= startTs) {
-            var d = new Date(dateYmd + 'T12:00:00');
-            d.setDate(d.getDate() + 1);
-            var nd = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
-            endTs = new Date(nd + 'T' + ec).getTime();
-        }
-        var schedH = Math.max(0.5, Math.round(((endTs - startTs) / 3600000) * 100) / 100);
-        return [startTs, endTs, schedH];
-    }
-    function recalcRow(tr) {
-        var idx = parseInt(tr.getAttribute('data-row-index'), 10);
-        var emp = EMP[idx];
-        if (!emp) return;
-        var vin = tr.querySelector('.att-in');
-        var vout = tr.querySelector('.att-out');
-        var stSel = tr.querySelector('.att-status');
-        var elT = tr.querySelector('.att-calc-total');
-        var elO = tr.querySelector('.att-calc-ot');
-        if (!vin || !vout || !elT) return;
-        if (!vin.value || !vout.value) {
-            elT.textContent = '—';
-            elO.textContent = '—';
-            return;
-        }
-        var inTs = new Date(ATT_DATE + 'T' + vin.value + ':00').getTime();
-        var outSame = new Date(ATT_DATE + 'T' + vout.value + ':00').getTime();
-        var outTs = outSame;
-        if (outSame <= inTs) {
-            var d2 = new Date(ATT_DATE + 'T12:00:00');
-            d2.setDate(d2.getDate() + 1);
-            var nd2 = d2.getFullYear() + '-' + pad(d2.getMonth() + 1) + '-' + pad(d2.getDate());
-            outTs = new Date(nd2 + 'T' + vout.value + ':00').getTime();
-        }
-        if (!(outTs > inTs)) {
-            elT.textContent = '—';
-            return;
-        }
-        var worked = Math.round(((outTs - inTs) / 3600000) * 100) / 100;
-        var st = shiftWindowTs(ATT_DATE, emp)[0];
-        var et = shiftWindowTs(ATT_DATE, emp)[1];
-        var schedH = shiftWindowTs(ATT_DATE, emp)[2];
-        var late = inTs > st;
-        var ot = Math.max(0, Math.round(((outTs - et) / 3600000) * 100) / 100);
-        var minHalf = Math.min(4, Math.max(2, Math.round(schedH * 0.5 * 100) / 100));
-        elT.textContent = String(worked);
-        elO.textContent = String(ot);
-        if (stSel && !stSel.dataset.manual) {
-            var sv = stSel.value;
-            if (sv === 'Holiday' || sv === 'Absent') {
-                return;
-            }
-            if (worked < minHalf) stSel.value = 'Half Day';
-            else if (late) stSel.value = 'Late';
-            else stSel.value = 'Present';
-        }
-    }
-    document.querySelectorAll('.att-row').forEach(function (tr) {
-        tr.querySelectorAll('.att-in, .att-out').forEach(function (inp) {
-            inp.addEventListener('input', function () { recalcRow(tr); });
-            inp.addEventListener('change', function () { recalcRow(tr); });
-        });
-        var st = tr.querySelector('.att-status');
-        if (st) {
-            st.addEventListener('change', function () { st.dataset.manual = '1'; });
-        }
-        recalcRow(tr);
-    });
-})();
-</script>
-<?php endif; ?>
+$exportMarkUrl = 'index.php?page=attendance/list&export=csv&att_date=' . rawurlencode($att_date);
+$exportRegUrl = 'index.php?page=attendance/list&export=csv&att_date=' . rawurlencode($reg_mode === 'daily' ? $reg_date : $reg_month . '-01');
+require __DIR__ . '/_view.php';

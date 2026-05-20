@@ -1,2 +1,2 @@
-schema_version=007_employee_department_links
-updated_at=2026-05-17T19:39:07+05:30
+schema_version=008_hr_notifications_and_leave_audit
+updated_at=2026-05-20T19:38:45+05:30

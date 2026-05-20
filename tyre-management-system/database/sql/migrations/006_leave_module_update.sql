@@ -30,5 +30,5 @@ CREATE TABLE IF NOT EXISTS leave_notifications (
     INDEX idx_ln_audience (audience, is_read)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-INSERT IGNORE INTO settings (setting_key, setting_value) VALUES ('leave_auto_approve_enabled', '1');
+INSERT IGNORE INTO settings (setting_key, setting_value) VALUES ('leave_auto_approve_enabled', '0');
 INSERT IGNORE INTO settings (setting_key, setting_value) VALUES ('leave_min_present_pct', '50');

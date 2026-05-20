@@ -1,0 +1,39 @@
+---
+description: Unified ERP page UI — same shell as HR Command Center for all modules and roles
+globs:
+  - modules/**/*.php
+  - assets/css/erp-module.css
+  - includes/erp_ui.php
+  - index.php
+alwaysApply: false
+---
+
+# ERP UI standard (all sections)
+
+Every authenticated module page is wrapped automatically in `index.php`:
+
+```html
+<main class="col-main erp-layout">
+  <div class="erp-page module-shell">…module output…</div>
+</main>
+```
+
+`assets/css/erp-module.css` loads for **all logged-in users** via `erp_ui_enqueue()` in `includes/header.php`.
+
+## Rules for new or changed modules
+
+1. **Do not** add per-page layout CSS files unless the screen has unique widgets (register attendance grid, HR command center grid). Register extras in `erp_ui_extra_stylesheets()` in `includes/erp_ui.php`.
+2. **Do not** remove the auto wrapper in `index.php`.
+3. Use shared patterns:
+   - Page header: `erp_ui_page_head(['title' => '…', 'subtitle' => '…', 'actions_html' => '…'])` or `<header class="erp-page__top">` + `<h1 class="erp-page__title">Title<span>Subtitle</span></h1>`
+   - KPI row: `<div class="row g-3">` with `<div class="card kpi-card">` columns
+   - Filters: `<form class="row g-2 mb-3">` (styled as toolbar automatically)
+   - Tables: Bootstrap `.table` inside `.table-responsive` (navy header from ERP CSS)
+   - Panels: `.card` with `.card-header` for sections
+4. Put layout/styling changes in **`assets/css/erp-module.css` only** — not scattered in `style.css` or new module CSS files.
+5. Legacy class `.hr-page` is an alias of `.erp-page`; prefer `.erp-page` in new code.
+6. Flash messages: use session flash; `index.php` renders them with `.erp-page__flash`.
+
+## Optional page-specific CSS
+
+Only add a new CSS file when the page has non-standard UI (charts, calendar grid, payslip print). Add the route → file mapping in `erp_ui_extra_stylesheets()`.

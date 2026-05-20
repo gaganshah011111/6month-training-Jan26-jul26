@@ -608,12 +608,28 @@ class Database
             $after = self::hasColumn($pdo, 'leaves', 'approved_by') ? 'approved_by' : 'status';
             $pdo->exec("ALTER TABLE leaves ADD COLUMN approved_at DATETIME NULL AFTER {$after}");
         }
+        if (!self::hasColumn($pdo, 'leaves', 'entry_source')) {
+            $pdo->exec("ALTER TABLE leaves ADD COLUMN entry_source VARCHAR(20) NOT NULL DEFAULT 'employee' AFTER auto_approved");
+        }
+        if (!self::hasColumn($pdo, 'leaves', 'recorded_by')) {
+            $pdo->exec('ALTER TABLE leaves ADD COLUMN recorded_by INT NULL AFTER entry_source');
+        }
         try {
             $pdo->exec("ALTER TABLE leaves MODIFY status ENUM('Applied','Pending','Approved','Rejected') NOT NULL DEFAULT 'Pending'");
         } catch (Throwable) {
             // enum may already include Pending
         }
         $pdo->exec("UPDATE leaves SET status = 'Pending' WHERE status = 'Applied'");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS hr_notification_reads (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            notification_key VARCHAR(120) NOT NULL,
+            read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            dismissed_at TIMESTAMP NULL,
+            UNIQUE KEY uq_hr_notif_user_key (user_id, notification_key),
+            INDEX idx_hr_notif_user (user_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
         $pdo->exec("CREATE TABLE IF NOT EXISTS leave_notifications (
             id INT AUTO_INCREMENT PRIMARY KEY,

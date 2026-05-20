@@ -1,3 +1,26 @@
+﻿-- =============================================================================
+-- Tyre ERP â€” Fresh database restore (schema + default logins, no test data)
+-- Generated: 2026-05-20
+-- Database: tyre_erp
+--
+-- Use when XAMPP MySQL is empty or corrupted and you want a clean ERP database.
+-- For your full data (employees, attendance, payroll runs), use:
+--   database/sql/full_latest_backup.sql
+--
+-- Import (command line):
+--   c:\xampp\mysql\bin\mysql.exe -u root < database\sql\restore_fresh.sql
+--
+-- phpMyAdmin: Import this file, then open the app once (seeds departments).
+-- Default password for all demo users: password
+-- =============================================================================
+
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- 000: database
+CREATE DATABASE IF NOT EXISTS `tyre_erp` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+USE `tyre_erp`;
+
 -- 001: Core ERP tables (users, HR, manufacturing, settings)
 USE `tyre_erp`;
 
@@ -133,19 +156,6 @@ CREATE TABLE IF NOT EXISTS leaves (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_leave_dates (from_date, to_date),
     CONSTRAINT fk_leaves_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-CREATE TABLE IF NOT EXISTS leave_notifications (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    employee_id INT NULL,
-    leave_id INT NULL,
-    notice_type VARCHAR(40) NOT NULL,
-    message VARCHAR(500) NOT NULL,
-    audience ENUM('employee','hr') NOT NULL DEFAULT 'employee',
-    is_read TINYINT(1) NOT NULL DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_ln_employee (employee_id),
-    INDEX idx_ln_audience (audience, is_read)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS salaries (
@@ -308,3 +318,166 @@ CREATE TABLE IF NOT EXISTS settings (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT IGNORE INTO settings (setting_key, setting_value) VALUES ('company_name', 'Ralson India Private Limited - Tyre ERP');
+
+-- 002: Department hierarchy (categories, departments, designations)
+USE `tyre_erp`;
+
+CREATE TABLE IF NOT EXISTS department_categories (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    category_name VARCHAR(120) NOT NULL,
+    category_code VARCHAR(40) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_dept_cat_code (category_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS departments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    category_id INT NOT NULL,
+    department_name VARCHAR(160) NOT NULL,
+    department_short_name VARCHAR(80) NULL,
+    department_code VARCHAR(40) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'active',
+    min_staff_required INT NULL DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_dept_code (department_code),
+    UNIQUE KEY uk_dept_cat_name (category_id, department_name),
+    INDEX idx_dept_category (category_id),
+    CONSTRAINT fk_dept_category FOREIGN KEY (category_id) REFERENCES department_categories(id)
+        ON UPDATE CASCADE ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS designations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    department_id INT NOT NULL,
+    designation_name VARCHAR(120) NOT NULL,
+    designation_code VARCHAR(50) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_desig_dept_code (department_id, designation_code),
+    INDEX idx_desig_department (department_id),
+    CONSTRAINT fk_desig_department FOREIGN KEY (department_id) REFERENCES departments(id)
+        ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 005: Payroll settings and legacy payroll summary table
+USE `tyre_erp`;
+
+CREATE TABLE IF NOT EXISTS payroll_settings (
+    id INT NOT NULL PRIMARY KEY DEFAULT 1,
+    basic_pct_of_gross DECIMAL(6,2) NOT NULL DEFAULT 50.00,
+    da_pct_of_basic DECIMAL(6,2) NOT NULL DEFAULT 0.00,
+    da_enabled TINYINT(1) NOT NULL DEFAULT 0,
+    hra_pct_non_metro DECIMAL(6,2) NOT NULL DEFAULT 40.00,
+    hra_pct_metro DECIMAL(6,2) NOT NULL DEFAULT 50.00,
+    medical_enabled TINYINT(1) NOT NULL DEFAULT 1,
+    medical_mode VARCHAR(12) NOT NULL DEFAULT 'fixed',
+    medical_fixed DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    medical_pct_of_basic DECIMAL(6,2) NOT NULL DEFAULT 0.00,
+    travel_enabled TINYINT(1) NOT NULL DEFAULT 0,
+    travel_mode VARCHAR(12) NOT NULL DEFAULT 'fixed',
+    travel_fixed DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    travel_pct_of_basic DECIMAL(6,2) NOT NULL DEFAULT 0.00,
+    gratuity_pct_of_basic DECIMAL(7,3) NOT NULL DEFAULT 4.810,
+    pf_employee_pct DECIMAL(6,2) NOT NULL DEFAULT 12.00,
+    pf_employer_pct DECIMAL(6,2) NOT NULL DEFAULT 12.00,
+    esi_employee_pct DECIMAL(6,2) NOT NULL DEFAULT 0.75,
+    esi_employer_pct DECIMAL(6,2) NOT NULL DEFAULT 3.25,
+    esi_gross_limit DECIMAL(12,2) NOT NULL DEFAULT 21000.00,
+    working_days_default DECIMAL(6,2) NOT NULL DEFAULT 26.00,
+    shift_hours_default DECIMAL(6,2) NOT NULL DEFAULT 8.00,
+    ot_multiplier DECIMAL(6,2) NOT NULL DEFAULT 1.00,
+    late_deduction_pct_of_daily DECIMAL(6,2) NOT NULL DEFAULT 10.00,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT IGNORE INTO payroll_settings (id) VALUES (1);
+
+CREATE TABLE IF NOT EXISTS payroll (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    employee_id INT NOT NULL,
+    month INT NOT NULL,
+    year INT NOT NULL,
+    present_days DECIMAL(5,2) NOT NULL DEFAULT 0,
+    paid_leave_days DECIMAL(5,2) NOT NULL DEFAULT 0,
+    unpaid_leave_days DECIMAL(5,2) NOT NULL DEFAULT 0,
+    overtime_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    basic_salary DECIMAL(12,2) NOT NULL DEFAULT 0,
+    deduction DECIMAL(12,2) NOT NULL DEFAULT 0,
+    net_salary DECIMAL(12,2) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_payroll_employee_month_year (employee_id, month, year),
+    CONSTRAINT fk_payroll_employee FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Leave notifications (also created by migration 006 on legacy DBs)
+CREATE TABLE IF NOT EXISTS leave_notifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    employee_id INT NULL,
+    leave_id INT NULL,
+    notice_type VARCHAR(40) NOT NULL,
+    message VARCHAR(500) NOT NULL,
+    audience ENUM('employee','hr') NOT NULL DEFAULT 'employee',
+    is_read TINYINT(1) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_ln_employee (employee_id),
+    INDEX idx_ln_audience (audience, is_read)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 008: HR notifications (leave audit columns are in 001)
+CREATE TABLE IF NOT EXISTS hr_notification_reads (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    notification_key VARCHAR(120) NOT NULL,
+    read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    dismissed_at TIMESTAMP NULL,
+    UNIQUE KEY uq_hr_notif_user_key (user_id, notification_key),
+    INDEX idx_hr_notif_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT IGNORE INTO settings (setting_key, setting_value) VALUES ('leave_auto_approve_enabled', '0');
+INSERT IGNORE INTO settings (setting_key, setting_value) VALUES ('leave_min_present_pct', '50');
+
+-- 007: Employee department / designation links
+ALTER TABLE employees ADD COLUMN department_id INT NULL;
+ALTER TABLE employees ADD COLUMN designation_id INT NULL;
+CREATE INDEX idx_employees_department_id ON employees (department_id);
+CREATE INDEX idx_employees_designation_id ON employees (designation_id);
+
+CREATE TABLE IF NOT EXISTS schema_migrations (
+    migration VARCHAR(191) NOT NULL PRIMARY KEY,
+    batch INT NOT NULL DEFAULT 1,
+    applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT IGNORE INTO schema_migrations (migration, batch) VALUES
+('000_create_database.sql', 1),
+('001_core_erp_tables.sql', 1),
+('002_department_hierarchy.sql', 1),
+('003_attendance_update.sql', 1),
+('004_salary_structure_update.sql', 1),
+('005_create_payroll_tables.sql', 1),
+('006_leave_module_update.sql', 1),
+('007_employee_department_links.sql', 1),
+('008_hr_notifications_and_leave_audit.sql', 1);
+
+-- Default ERP login users (password for all: password)
+USE `tyre_erp`;
+
+INSERT INTO users(full_name, email, username, password_hash, role, status, must_change_password) VALUES
+    ('Super Admin', 'superadmin@ralson.local', 'superadmin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Super Admin', 'active', 0),
+    ('HR Manager', 'hr@ralson.local', 'hrmanager', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'HR Manager', 'active', 0),
+    ('Production Manager', 'production@ralson.local', 'prodmanager', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Production Manager', 'active', 0),
+    ('Inventory Manager', 'inventory@ralson.local', 'invmanager', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Inventory Manager', 'active', 0),
+    ('Dispatch Manager', 'dispatch@ralson.local', 'dispatchmgr', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Dispatch Manager', 'active', 0),
+    ('Quality Manager', 'quality@ralson.local', 'qualitymgr', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Quality Manager', 'active', 0),
+    ('Employee User', 'employee@ralson.local', 'employeeuser', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Employee', 'active', 0)
+ON DUPLICATE KEY UPDATE
+    full_name = VALUES(full_name),
+    username = VALUES(username),
+    password_hash = VALUES(password_hash),
+    role = VALUES(role),
+    status = 'active';
+
+SET FOREIGN_KEY_CHECKS = 1;
+

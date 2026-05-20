@@ -8,6 +8,8 @@ $loginUser = trim((string)($user['username'] ?? ''));
 $userRole = (string)($user['role'] ?? '');
 $roleLabel = $userRole !== '' ? $userRole : 'Visitor';
 $initial = strtoupper(substr($userName, 0, 1));
+$showNotify = has_role(['Super Admin', 'HR Manager', 'Admin']);
+$notifyApi = $showNotify ? route_url('api/hr-notifications') : '';
 ?>
 <nav class="navbar navbar-expand-lg app-navbar">
     <div class="container-fluid">
@@ -16,10 +18,30 @@ $initial = strtoupper(substr($userName, 0, 1));
             <span>Ralson ERP</span>
         </a>
         <div class="ms-auto d-flex align-items-center gap-2">
-            <button type="button" class="btn btn-sm app-notify-btn" aria-label="Notifications">
-                <i class="bi bi-bell"></i>
-                <span class="app-notify-dot"></span>
-            </button>
+            <?php if ($showNotify): ?>
+            <div class="app-notify-backdrop" id="appNotifyBackdrop" aria-hidden="true"></div>
+            <div class="app-notify-wrap" id="appNotifyDropdown" data-api="<?= e($notifyApi) ?>">
+                <button type="button" class="btn btn-sm app-notify-btn" aria-label="Notifications" aria-expanded="false">
+                    <i class="bi bi-bell"></i>
+                    <span class="app-notify-count" hidden></span>
+                    <span class="app-notify-dot" hidden></span>
+                </button>
+                <div class="app-notify-panel" role="menu">
+                    <div class="app-notify-panel__head">
+                        <p class="app-notify-panel__title mb-0">
+                            Notifications
+                            <span class="app-notify-panel__badge" hidden>0</span>
+                        </p>
+                        <div class="app-notify-panel__actions">
+                            <button type="button" data-notify-action="read_all">Mark all read</button>
+                            <span class="sep">|</span>
+                            <button type="button" data-notify-action="clear_all">Clear all</button>
+                        </div>
+                    </div>
+                    <ul class="app-notify-list"></ul>
+                </div>
+            </div>
+            <?php endif; ?>
             <span class="role-badge d-none d-md-inline"><?= e($roleLabel) ?></span>
             <span class="user-chip">
                 <span class="user-avatar"><?= e($initial) ?></span>
@@ -35,4 +57,3 @@ $initial = strtoupper(substr($userName, 0, 1));
         </div>
     </div>
 </nav>
-

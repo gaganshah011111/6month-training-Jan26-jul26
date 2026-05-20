@@ -7,6 +7,7 @@ This folder is the **source of truth** for database structure. After XAMPP reins
 ```
 database/sql/
 ├── full_latest_backup.sql    ← Full dump (schema + data). Import this for fastest restore.
+├── restore_fresh.sql         ← Schema + default users only (clean XAMPP install)
 ├── schema_version.txt        ← Latest applied migration name + timestamp
 ├── migrations/               ← Ordered schema changes (run in filename order)
 │   ├── 000_create_database.sql
@@ -16,7 +17,8 @@ database/sql/
 │   ├── 004_salary_structure_update.sql
 │   ├── 005_create_payroll_tables.sql
 │   ├── 006_leave_module_update.sql
-│   └── 007_employee_department_links.sql
+│   ├── 007_employee_department_links.sql
+│   └── 008_hr_notifications_and_leave_audit.sql
 └── seed/                     ← Optional demo/test data (not required for production)
     ├── demo_users.sql
     ├── demo_employees.sql
@@ -29,17 +31,30 @@ database/sql/
 
 1. Copy the project folder to `htdocs`.
 2. Start **Apache** and **MySQL** in XAMPP.
-3. Import the full backup:
+3. Import **one** of these files:
 
-   **phpMyAdmin:** Import → choose `database/sql/full_latest_backup.sql`
+   | File | When to use |
+   |------|-------------|
+   | `full_latest_backup.sql` | Restore everything (employees, attendance, payroll, departments) |
+   | `restore_fresh.sql` | New empty database + default logins only |
 
-   **Command line:**
+   **phpMyAdmin:** Import → choose the file above
+
+   **Command line (full restore):**
 
    ```bash
    c:\xampp\mysql\bin\mysql.exe -u root < database\sql\full_latest_backup.sql
    ```
 
+   **Command line (fresh install):**
+
+   ```bash
+   c:\xampp\mysql\bin\mysql.exe -u root < database\sql\restore_fresh.sql
+   ```
+
 4. Open the ERP in the browser (default DB: `tyre_erp`, user `root`, no password).
+
+   After `restore_fresh.sql`, load the app once so PHP seeds department/designation master data.
 
 Default logins are in `seed/demo_users.sql` (password: **password**).
 
@@ -57,6 +72,7 @@ Migrations run automatically when the app connects (`config/db.php` → `Databas
 | 005 | `payroll_settings`, `payroll` |
 | 006 | Smart leave module + notifications |
 | 007 | Employee `department_id` / `designation_id` |
+| 008 | `hr_notification_reads`, leave `entry_source` / `recorded_by`, HR notification settings |
 
 Applied migrations are recorded in table **`schema_migrations`**.
 

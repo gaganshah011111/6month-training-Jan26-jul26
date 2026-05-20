@@ -8,10 +8,10 @@ $lowRaw = (int)$pdo->query('SELECT COUNT(*) FROM raw_materials WHERE stock_qty <
 $todayProd = (int)$pdo->query('SELECT COALESCE(SUM(output_quantity),0) FROM production WHERE production_date = CURDATE()')->fetchColumn();
 $activeMachines = (int)$pdo->query("SELECT COUNT(*) FROM machines WHERE status='Active'")->fetchColumn();
 ?>
-<h3>Production Dashboard</h3>
+<header class="erp-page__top"><div><h1 class="erp-page__title">Production Dashboard<span>Planning & shop floor</span></h1></div></header>
 <div class="row g-3">
-    <div class="col-md-3"><div class="card"><div class="card-body"><small>Raw Materials</small><h4><?= e((string)$rawCount) ?></h4></div></div></div>
-    <div class="col-md-3"><div class="card"><div class="card-body"><small>Low Raw Stock</small><h4><?= e((string)$lowRaw) ?></h4></div></div></div>
-    <div class="col-md-3"><div class="card"><div class="card-body"><small>Today Production</small><h4><?= e((string)$todayProd) ?></h4></div></div></div>
-    <div class="col-md-3"><div class="card"><div class="card-body"><small>Active Machines</small><h4><?= e((string)$activeMachines) ?></h4></div></div></div>
+    <div class="col-md-3"><div class="card kpi-card"><div class="card-body"><small>Raw Materials</small><h4><?= e((string)$rawCount) ?></h4></div></div></div>
+    <div class="col-md-3"><div class="card kpi-card"><div class="card-body"><small>Low Raw Stock</small><h4><?= e((string)$lowRaw) ?></h4></div></div></div>
+    <div class="col-md-3"><div class="card kpi-card"><div class="card-body"><small>Today Production</small><h4><?= e((string)$todayProd) ?></h4></div></div></div>
+    <div class="col-md-3"><div class="card kpi-card"><div class="card-body"><small>Active Machines</small><h4><?= e((string)$activeMachines) ?></h4></div></div></div>
 </div>

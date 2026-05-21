@@ -41,7 +41,20 @@ try {
 }
 ?>
 
-<h4 class="mb-3">Salary & Payslips</h4>
+<div class="emp-portal emp-shell">
+<header class="emp-portal__hero emp-portal__hero--compact">
+    <div>
+        <h1 class="emp-portal__title">Salary &amp; Payslips</h1>
+        <p class="emp-portal__subtitle">Monthly payroll, deductions, OT earnings, and printable Indian payslip format.</p>
+    </div>
+    <div class="emp-portal__hero-actions">
+        <a class="btn btn-outline-secondary btn-sm" href="<?= e(route_url('employee/dashboard')) ?>">Dashboard</a>
+        <?php if (!empty($selectedSlip)): ?>
+            <button type="button" class="btn btn-danger btn-sm" onclick="window.print()"><i class="bi bi-printer me-1"></i>Print / PDF</button>
+        <?php endif; ?>
+        <a class="btn btn-outline-secondary btn-sm" href="<?= e(route_url('employee/export')) ?>&type=salary">Export CSV</a>
+    </div>
+</header>
 
 <?php if ($error): ?><div class="alert alert-danger"><?= e($error) ?></div><?php endif; ?>
 
@@ -167,3 +180,4 @@ try {
         </div>
     <?php endif; ?>
 <?php endif; ?>
+</div>

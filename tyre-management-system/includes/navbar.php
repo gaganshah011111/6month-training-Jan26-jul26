@@ -8,8 +8,10 @@ $loginUser = trim((string)($user['username'] ?? ''));
 $userRole = (string)($user['role'] ?? '');
 $roleLabel = $userRole !== '' ? $userRole : 'Visitor';
 $initial = strtoupper(substr($userName, 0, 1));
-$showNotify = has_role(['Super Admin', 'HR Manager', 'Admin']);
-$notifyApi = $showNotify ? route_url('api/hr-notifications') : '';
+$showNotifyHr = has_role(['Super Admin', 'HR Manager', 'Admin']);
+$showNotifyEmp = has_role(['Employee']);
+$showNotify = $showNotifyHr || $showNotifyEmp;
+$notifyApi = $showNotifyHr ? route_url('api/hr-notifications') : ($showNotifyEmp ? route_url('api/employee-notifications') : '');
 ?>
 <nav class="navbar navbar-expand-lg app-navbar">
     <div class="container-fluid">

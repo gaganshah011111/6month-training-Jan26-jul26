@@ -7,6 +7,12 @@
 
     var EMP = parseJson('attEmpData', []);
     var ATT_DATE = parseJson('attMarkDate', '');
+    var ATT_POLICY = parseJson('attPolicyData', {
+        full_day_min_hours: 8,
+        half_day_min_hours: 4,
+        grace_late_minutes: 15,
+        min_valid_punch_hours: 0.5
+    });
 
     function pad(n) { return n < 10 ? '0' + n : '' + n; }
 
@@ -32,7 +38,9 @@
             'Late': 'att-st-late',
             'Absent': 'att-st-absent',
             'Holiday': 'att-st-holiday',
-            'Leave': 'att-st-leave'
+            'Leave': 'att-st-leave',
+            'Pending Verification': 'att-st-pending',
+            'In Progress': 'att-st-progress'
         };
         return map[val] || 'att-st-default';
     }
@@ -121,20 +129,23 @@
             return;
         }
         var sw = shiftWindowTs(ATT_DATE, emp);
+        var stTs = sw[0];
         var et = sw[1];
+        var graceMs = (parseInt(ATT_POLICY.grace_late_minutes, 10) || 0) * 60000;
         var ot = Math.max(0, Math.round(((outTs - et) / 3600000) * 100) / 100);
         elO.textContent = String(ot);
         if (stSel && !stSel.dataset.manual) {
             var sv = stSel.value;
             if (sv === 'Holiday' || sv === 'Absent' || sv === 'Leave') return;
-            var st = sw[0];
-            var late = inTs > st;
+            var late = inTs > (stTs + graceMs);
             var worked = Math.round(((outTs - inTs) / 3600000) * 100) / 100;
-            var schedH = Math.max(4, (et - sw[0]) / 3600000);
-            var minHalf = Math.min(4, Math.max(2, schedH * 0.5));
-            if (worked < minHalf) stSel.value = 'Half Day';
-            else if (late) stSel.value = 'Late';
-            else stSel.value = 'Present';
+            var schedH = Math.max(0.5, (et - stTs) / 3600000);
+            var fullDay = Math.max(parseFloat(ATT_POLICY.full_day_min_hours) || 8, schedH, parseFloat(emp.scheduled_hours) || 8);
+            var halfMin = parseFloat(ATT_POLICY.half_day_min_hours) || 4;
+            var minValid = parseFloat(ATT_POLICY.min_valid_punch_hours) || 0.5;
+            if (worked < minValid || worked < halfMin) stSel.value = 'Pending Verification';
+            else if (worked >= fullDay) stSel.value = late ? 'Late' : 'Present';
+            else stSel.value = 'Half Day';
             applyStatusStyle(stSel);
         }
     }

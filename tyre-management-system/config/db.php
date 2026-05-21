@@ -527,6 +527,41 @@ class Database
         $pdo->exec("UPDATE attendance SET status = 'Paid Leave' WHERE status = 'Leave'");
         $pdo->exec("UPDATE attendance SET is_emergency_duty = 1 WHERE status = 'Emergency Duty'");
 
+        if (!self::hasColumn($pdo, 'attendance', 'needs_verification')) {
+            $pdo->exec('ALTER TABLE attendance ADD COLUMN needs_verification TINYINT(1) NOT NULL DEFAULT 0 AFTER is_emergency_duty');
+        }
+        if (!self::hasColumn($pdo, 'attendance', 'verified_by')) {
+            $pdo->exec('ALTER TABLE attendance ADD COLUMN verified_by INT NULL AFTER needs_verification');
+        }
+        if (!self::hasColumn($pdo, 'attendance', 'verified_at')) {
+            $pdo->exec('ALTER TABLE attendance ADD COLUMN verified_at DATETIME NULL AFTER verified_by');
+        }
+        if (!self::hasColumn($pdo, 'attendance', 'linked_leave_id')) {
+            $pdo->exec('ALTER TABLE attendance ADD COLUMN linked_leave_id INT NULL AFTER remarks');
+            try {
+                $pdo->exec('ALTER TABLE attendance ADD INDEX idx_attendance_linked_leave (linked_leave_id)');
+            } catch (Throwable) {
+            }
+        }
+
+        if (!self::hasColumn($pdo, 'employees', 'emergency_contact')) {
+            $pdo->exec('ALTER TABLE employees ADD COLUMN emergency_contact VARCHAR(120) NULL AFTER contact_no');
+        }
+
+        $attPolicyCols = [
+            'full_day_min_hours' => 'DECIMAL(6,2) NOT NULL DEFAULT 8.00',
+            'half_day_min_hours' => 'DECIMAL(6,2) NOT NULL DEFAULT 4.00',
+            'grace_late_minutes' => 'INT NOT NULL DEFAULT 15',
+            'min_valid_punch_hours' => 'DECIMAL(6,2) NOT NULL DEFAULT 0.50',
+            'auto_absent_after_hours' => 'DECIMAL(6,2) NOT NULL DEFAULT 0.00',
+            'ot_threshold_hours' => 'DECIMAL(6,2) NOT NULL DEFAULT 0.00',
+        ];
+        foreach ($attPolicyCols as $col => $def) {
+            if (!self::hasColumn($pdo, 'payroll_settings', $col)) {
+                $pdo->exec("ALTER TABLE payroll_settings ADD COLUMN {$col} {$def}");
+            }
+        }
+
         $pdo->exec("CREATE TABLE IF NOT EXISTS company_holidays (
             holiday_date DATE NOT NULL PRIMARY KEY,
             label VARCHAR(120) NOT NULL,

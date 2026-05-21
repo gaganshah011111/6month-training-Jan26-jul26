@@ -219,7 +219,9 @@ function page_allowed_roles(): array
         'employee/attendance' => ['Employee'],
         'employee/leave' => ['Employee'],
         'employee/salary' => ['Employee'],
+        'employee/export' => ['Employee'],
         'employee/change-password' => ['Employee', 'Super Admin', 'Admin', 'HR Manager', 'Production Manager', 'Inventory Manager', 'Dispatch Manager', 'Quality Manager'],
+        'api/employee-notifications' => ['Employee'],
     ];
 }
 

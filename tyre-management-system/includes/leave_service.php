@@ -397,6 +397,11 @@ function leave_apply(PDO $pdo, int $employeeId, string $from, string $to, string
 
         $pdo->commit();
 
+        if (file_exists(__DIR__ . '/attendance_leave_bridge.php')) {
+            require_once __DIR__ . '/attendance_leave_bridge.php';
+            attendance_leave_reconcile($pdo, $employeeId, substr($from, 0, 7));
+        }
+
         if ($status === 'Approved') {
             $msg = 'Leave approved. Classified as ' . $alloc['primary_category'] . ' (staffing OK).';
         } elseif ($staffing['risk'] !== 'Safe') {
@@ -458,10 +463,13 @@ function leave_attendance_status_for_category(string $category): string
 
 function leave_sync_attendance(PDO $pdo, int $leaveId): void
 {
-    $st = $pdo->prepare('SELECT * FROM leaves WHERE id = :id LIMIT 1');
+    $st = $pdo->prepare('SELECT l.*, e.shift_timing, e.shift_start, e.shift_end FROM leaves l
+        INNER JOIN employees e ON e.id = l.employee_id WHERE l.id = :id LIMIT 1');
     $st->execute(['id' => $leaveId]);
     $leave = $st->fetch(PDO::FETCH_ASSOC);
     if (!$leave || (string)($leave['status'] ?? '') !== 'Approved') {
+        leave_remove_attendance($pdo, $leaveId);
+
         return;
     }
 
@@ -482,26 +490,54 @@ function leave_sync_attendance(PDO $pdo, int $leaveId): void
     }
 
     $remark = 'Leave #' . $leaveId . ' — ' . (string)($leave['system_note'] ?? $leave['leave_category']);
-    $upsert = $pdo->prepare("INSERT INTO attendance (employee_id, attendance_date, shift, status, remarks, punch_in_time, punch_out_time, total_hours, overtime_hours, is_late, is_early_exit, is_emergency_duty)
-        VALUES (:eid, :d, 'General', :st, :rm, NULL, NULL, NULL, 0, 0, 0, 0)
-        ON DUPLICATE KEY UPDATE status = VALUES(status), remarks = VALUES(remarks), punch_in_time = NULL, punch_out_time = NULL, total_hours = NULL, overtime_hours = 0, is_late = 0, is_early_exit = 0");
+    $shiftEnum = employee_shift_enum($leave);
+    $employeeId = (int)$leave['employee_id'];
+
+    $upsertSql = "INSERT INTO attendance (employee_id, attendance_date, shift, status, remarks, linked_leave_id, punch_in_time, punch_out_time, total_hours, overtime_hours, is_late, is_early_exit, is_emergency_duty, needs_verification)
+        VALUES (:eid, :d, :sh, :st, :rm, :lid, NULL, NULL, NULL, 0, 0, 0, 0, 0)
+        ON DUPLICATE KEY UPDATE
+            shift = IF(punch_in_time IS NULL AND punch_out_time IS NULL, VALUES(shift), shift),
+            status = IF(punch_in_time IS NULL AND punch_out_time IS NULL, VALUES(status), status),
+            remarks = IF(punch_in_time IS NULL AND punch_out_time IS NULL, VALUES(remarks), remarks),
+            linked_leave_id = IF(punch_in_time IS NULL AND punch_out_time IS NULL, VALUES(linked_leave_id), linked_leave_id),
+            is_late = IF(punch_in_time IS NULL AND punch_out_time IS NULL, 0, is_late),
+            is_early_exit = IF(punch_in_time IS NULL AND punch_out_time IS NULL, 0, is_early_exit)";
+
+    try {
+        $upsert = $pdo->prepare($upsertSql);
+    } catch (Throwable $e) {
+        $upsertSql = str_replace(', linked_leave_id', '', $upsertSql);
+        $upsertSql = str_replace(', :lid', '', $upsertSql);
+        $upsertSql = str_replace('linked_leave_id = IF(punch_in_time IS NULL AND punch_out_time IS NULL, VALUES(linked_leave_id), linked_leave_id),', '');
+        $upsert = $pdo->prepare($upsertSql);
+    }
 
     foreach ($dayMap as $ymd => $cat) {
         if (in_array($cat, ['Holiday', 'Weekly Off'], true)) {
             continue;
         }
-        $upsert->execute([
-            'eid' => (int)$leave['employee_id'],
+        $params = [
+            'eid' => $employeeId,
             'd' => $ymd,
+            'sh' => $shiftEnum,
             'st' => leave_attendance_status_for_category((string)$cat),
             'rm' => $remark,
-        ]);
+        ];
+        if (str_contains($upsertSql, ':lid')) {
+            $params['lid'] = $leaveId;
+        }
+        $upsert->execute($params);
     }
 }
 
 function leave_remove_attendance(PDO $pdo, int $leaveId): void
 {
-    $pdo->prepare("DELETE FROM attendance WHERE remarks LIKE :rm")->execute(['rm' => 'Leave #' . $leaveId . '%']);
+    try {
+        $pdo->prepare('DELETE FROM attendance WHERE linked_leave_id = :id')->execute(['id' => $leaveId]);
+    } catch (Throwable) {
+    }
+    $pdo->prepare("DELETE FROM attendance WHERE remarks LIKE :rm AND (punch_in_time IS NULL OR punch_in_time = '') AND (punch_out_time IS NULL OR punch_out_time = '')")
+        ->execute(['rm' => 'Leave #' . $leaveId . '%']);
 }
 
 /** @return array{ok:bool,message:string} */
@@ -532,6 +568,10 @@ function leave_approve(PDO $pdo, int $leaveId, int $approverUserId): array
             ->execute(['uid' => $approverUserId, 'id' => $leaveId]);
         leave_sync_attendance($pdo, $leaveId);
         $pdo->commit();
+        if (file_exists(__DIR__ . '/attendance_leave_bridge.php')) {
+            require_once __DIR__ . '/attendance_leave_bridge.php';
+            attendance_leave_cleanup_orphans($pdo, (int)$leave['employee_id'], null);
+        }
 
         leave_push_notice($pdo, (int)$leave['employee_id'], 'approved', 'Your leave request was approved.', $leaveId);
 
@@ -559,6 +599,10 @@ function leave_reject(PDO $pdo, int $leaveId, int $approverUserId, string $reaso
             return ['ok' => false, 'message' => 'Leave request not found.'];
         }
         leave_remove_attendance($pdo, $leaveId);
+        if (file_exists(__DIR__ . '/attendance_leave_bridge.php')) {
+            require_once __DIR__ . '/attendance_leave_bridge.php';
+            attendance_leave_cleanup_orphans($pdo, (int)$leave['employee_id'], null);
+        }
         $pdo->prepare("UPDATE leaves SET status = 'Rejected', approved_by = :uid, approved_at = NOW(), rejection_reason = :rr WHERE id = :id")
             ->execute(['uid' => $approverUserId, 'rr' => trim($reason), 'id' => $leaveId]);
         $pdo->commit();

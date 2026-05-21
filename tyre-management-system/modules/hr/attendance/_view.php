@@ -40,10 +40,13 @@ $attJsVer = is_file($attJsPath) ? (int)filemtime($attJsPath) : time();
 
     <div class="att-seg" role="tablist">
         <a class="att-seg__btn <?= $att_section === 'mark' ? 'is-active' : '' ?>" href="index.php?<?= e(http_build_query($markTabQuery)) ?>">Mark Attendance</a>
+        <a class="att-seg__btn <?= $att_section === 'verify' ? 'is-active' : '' ?>" href="index.php?<?= e(http_build_query($verifyTabQuery)) ?>">Verification Queue<?php if (($verificationPendingCount ?? 0) > 0): ?> <span class="badge bg-warning text-dark"><?= (int)$verificationPendingCount ?></span><?php endif; ?></a>
         <a class="att-seg__btn <?= $att_section === 'register' ? 'is-active' : '' ?>" href="index.php?<?= e(http_build_query($registerTabQuery)) ?>">Attendance Register</a>
     </div>
 
-    <?php if ($att_section === 'mark'): ?>
+    <?php if ($att_section === 'verify'): ?>
+    <?php include __DIR__ . '/_verification.php'; ?>
+    <?php elseif ($att_section === 'mark'): ?>
 
     <div class="att-kpis">
         <div class="att-kpi att-kpi--present"><span>Present</span><strong><?= (int)$daySummary['present'] ?></strong></div>
@@ -218,7 +221,7 @@ $attJsVer = is_file($attJsPath) ? (int)filemtime($attJsPath) : time();
         </aside>
     </div>
 
-    <?php else: /* register */ ?>
+    <?php else: ?>
 
     <div class="att-bar">
         <form id="att-register-search-form" method="get" class="att-filters att-reg-layout">
@@ -375,4 +378,5 @@ $attJsVer = is_file($attJsPath) ? (int)filemtime($attJsPath) : time();
 
 <script type="application/json" id="attEmpData"><?= $empJs ?: '[]' ?></script>
 <script type="application/json" id="attMarkDate"><?= json_encode($att_date, JSON_THROW_ON_ERROR) ?></script>
+<script type="application/json" id="attPolicyData"><?= json_encode($attPolicy ?? attendance_policy_defaults(), JSON_THROW_ON_ERROR) ?></script>
 <script src="assets/js/attendance-module.js?v=<?= e((string)$attJsVer) ?>"></script>

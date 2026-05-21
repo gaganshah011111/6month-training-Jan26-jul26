@@ -11,7 +11,7 @@ $footerRole = (string)($user['role'] ?? '');
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 <script src="assets/js/app.js?v=<?= e($jsVersion) ?>"></script>
 <?php
-if (in_array($footerRole, ['Super Admin', 'HR Manager', 'Admin'], true)) {
+if (in_array($footerRole, ['Super Admin', 'HR Manager', 'Admin', 'Employee'], true)) {
     $notifyJs = __DIR__ . '/../assets/js/app-notifications.js';
     $notifyVer = is_file($notifyJs) ? (string)filemtime($notifyJs) : (string)time();
     echo '<script src="assets/js/app-notifications.js?v=' . e($notifyVer) . '"></script>' . "\n";
@@ -21,6 +21,11 @@ if ($footerPage === 'reports/hr') {
     $hrRptJs = __DIR__ . '/../assets/js/hr-reports.js';
     $hrRptVer = is_file($hrRptJs) ? (string)filemtime($hrRptJs) : (string)time();
     echo '<script src="assets/js/hr-reports.js?v=' . e($hrRptVer) . '"></script>' . "\n";
+}
+if ($footerPage === 'employee/attendance') {
+    $empCalJs = __DIR__ . '/../assets/js/employee-attendance-calendar.js';
+    $empCalVer = is_file($empCalJs) ? (string)filemtime($empCalJs) : (string)time();
+    echo '<script src="assets/js/employee-attendance-calendar.js?v=' . e($empCalVer) . '"></script>' . "\n";
 }
 ?>
 </body>

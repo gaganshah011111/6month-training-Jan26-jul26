@@ -169,6 +169,31 @@ $ps = payroll_settings_fetch($pdo);
                         <label class="form-label">Late deduction % of daily wage / late day</label>
                         <input class="form-control" type="number" step="0.01" name="late_deduction_pct_of_daily" value="<?= e((string)$ps['late_deduction_pct_of_daily']) ?>">
                     </div>
+                    <div class="col-12"><hr class="my-1"><small class="text-muted">Attendance rule engine (staff punch &amp; payroll)</small></div>
+                    <div class="col-md-4">
+                        <label class="form-label">Full day minimum (hours)</label>
+                        <input class="form-control" type="number" step="0.25" name="full_day_min_hours" value="<?= e((string)($ps['full_day_min_hours'] ?? 8)) ?>">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Half day minimum (hours)</label>
+                        <input class="form-control" type="number" step="0.25" name="half_day_min_hours" value="<?= e((string)($ps['half_day_min_hours'] ?? 4)) ?>">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Grace late (minutes)</label>
+                        <input class="form-control" type="number" step="1" name="grace_late_minutes" value="<?= e((string)($ps['grace_late_minutes'] ?? 15)) ?>">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Min valid punch (hours)</label>
+                        <input class="form-control" type="number" step="0.05" name="min_valid_punch_hours" value="<?= e((string)($ps['min_valid_punch_hours'] ?? 0.5)) ?>" title="Below this → Pending Verification, not Half Day">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">OT threshold (hours after shift)</label>
+                        <input class="form-control" type="number" step="0.25" name="ot_threshold_hours" value="<?= e((string)($ps['ot_threshold_hours'] ?? 0)) ?>">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Auto absent after (hours, 0=off)</label>
+                        <input class="form-control" type="number" step="0.5" name="auto_absent_after_hours" value="<?= e((string)($ps['auto_absent_after_hours'] ?? 0)) ?>">
+                    </div>
                 </div>
             </div>
         </div>

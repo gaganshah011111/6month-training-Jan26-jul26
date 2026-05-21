@@ -135,6 +135,7 @@ if ($testToolsEnabled) {
 }
 $payrollNotice = payroll_test_take_notice();
 $highlightEmployeeId = (int)($payrollNotice['employee_id'] ?? 0);
+$pendingVerificationCount = payroll_count_pending_verification($pdo, $payrollMonth);
 ?>
 <div class="hr-page module-shell payroll-dashboard">
     <div class="payroll-dashboard__head d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
@@ -154,6 +155,13 @@ $highlightEmployeeId = (int)($payrollNotice['employee_id'] ?? 0);
             <a class="btn btn-outline-secondary btn-sm" href="<?= e(route_url('hr/payroll-settings')) ?>"><i class="bi bi-sliders me-1"></i>Settings</a>
         </div>
     </div>
+
+    <?php if ($pendingVerificationCount > 0): ?>
+    <div class="alert alert-warning d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <span><i class="bi bi-exclamation-triangle me-2"></i><strong><?= e((string)$pendingVerificationCount) ?></strong> attendance <?= $pendingVerificationCount === 1 ? 'entry requires' : 'entries require' ?> verification before payroll. Unresolved records are excluded from salary calculation.</span>
+        <a class="btn btn-sm btn-warning" href="<?= e(route_url('attendance/list')) ?>&att_section=verify&verify_month=<?= e(urlencode($payrollMonth)) ?>">Review queue</a>
+    </div>
+    <?php endif; ?>
 
     <div class="row g-3 mb-4 payroll-stat-row">
         <div class="col-6 col-lg-4 col-xl-2">

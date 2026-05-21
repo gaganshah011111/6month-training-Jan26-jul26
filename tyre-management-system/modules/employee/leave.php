@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../includes/employee.php';
 require_once __DIR__ . '/../../includes/functions.php';
 require_once __DIR__ . '/../../includes/leave_service.php';
+require_once __DIR__ . '/../../includes/attendance_leave_bridge.php';
 
 $pdo = Database::connection();
 $error = '';
@@ -25,6 +26,7 @@ try {
     $employeeId = (int)$employee['id'];
     $year = (int)date('Y');
     $balance = leave_get_balance($pdo, $employeeId, $year);
+    attendance_leave_reconcile($pdo, $employeeId, date('Y-m'));
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         verify_csrf();
@@ -38,6 +40,7 @@ try {
         $result = leave_apply($pdo, $employeeId, $fromDate, $toDate, $reason, $isEmergency);
         if ($result['ok']) {
             $success = $result['message'];
+            attendance_leave_reconcile($pdo, $employeeId, date('Y-m'));
             $balance = leave_get_balance($pdo, $employeeId, $year);
         } else {
             $error = $result['message'];
@@ -132,8 +135,8 @@ try {
                         <th>Days</th>
                         <th>Type</th>
                         <th>Status</th>
+                        <th>HR note</th>
                         <th>Approved by</th>
-                        <th>Payroll</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -154,8 +157,16 @@ try {
                                 <td><?= e(number_format((float)($row['total_days'] ?? 0), 0)) ?></td>
                                 <td><span class="leave-tag"><?= e((string)($row['leave_category'] ?? '—')) ?></span></td>
                                 <td><span class="<?= e($badge['class']) ?>"><?= e($badge['label']) ?></span></td>
+                                <td class="small"><?php
+                                    $hrNote = trim((string)($row['rejection_reason'] ?? ''));
+                                    if ($hrNote === '' && in_array((string)($row['status'] ?? ''), ['Rejected'], true)) {
+                                        $hrNote = 'Rejected by HR';
+                                    } elseif ($hrNote === '') {
+                                        $hrNote = '—';
+                                    }
+                                    echo e($hrNote);
+                                ?></td>
                                 <td class="text-muted"><?= e($approver) ?></td>
-                                <td class="small text-muted"><?= e(leave_payroll_impact($row)) ?></td>
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>

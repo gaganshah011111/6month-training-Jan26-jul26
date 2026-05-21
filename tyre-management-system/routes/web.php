@@ -21,6 +21,8 @@ return [
     'payroll/list' => 'modules/hr/payroll/index.php',
     'payroll/payslip' => 'modules/hr/payroll/payslip.php',
     'api/hr-notifications' => 'modules/api/hr_notifications.php',
+    'api/employee-notifications' => 'modules/api/employee_notifications.php',
+    'employee/export' => 'modules/employee/export.php',
     'api/payroll-calculate' => 'modules/api/payroll_calculate.php',
     'api/payroll-test-preview' => 'modules/api/payroll_test_preview.php',
     'hr/payroll-settings' => 'modules/hr/payroll_settings/index.php',

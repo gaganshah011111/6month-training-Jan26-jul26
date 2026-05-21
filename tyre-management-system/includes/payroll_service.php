@@ -3,19 +3,33 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/payroll_logic.php';
 require_once __DIR__ . '/functions.php';
+require_once __DIR__ . '/attendance_policy.php';
 
 /** @return array{present_days:float,half_days:float,late_days:float,absent_days:float,overtime_hours:float} */
 function payroll_fetch_attendance_summary(PDO $pdo, int $employeeId, string $month): array
 {
+    $pendingSt = ATTENDANCE_STATUS_PENDING_VERIFICATION;
+    $inProgressSt = ATTENDANCE_STATUS_IN_PROGRESS;
     $st = $pdo->prepare("SELECT
-            SUM(CASE WHEN status IN ('Present','Late','Emergency Duty') THEN 1 WHEN status='Half Day' THEN 0.5 WHEN status IN ('Paid Leave','Holiday') THEN 1 ELSE 0 END) AS present_days,
-            SUM(CASE WHEN status='Half Day' THEN 1 ELSE 0 END) AS half_days,
-            SUM(CASE WHEN status='Late' OR is_late = 1 THEN 1 ELSE 0 END) AS late_days,
+            SUM(CASE WHEN status IN ('Present','Late','Emergency Duty') AND needs_verification = 0 THEN 1 WHEN status='Half Day' AND needs_verification = 0 THEN 0.5 WHEN status IN ('Paid Leave','Holiday') THEN 1 ELSE 0 END) AS present_days,
+            SUM(CASE WHEN status='Half Day' AND needs_verification = 0 THEN 1 ELSE 0 END) AS half_days,
+            SUM(CASE WHEN (status='Late' OR is_late = 1) AND needs_verification = 0 THEN 1 ELSE 0 END) AS late_days,
             SUM(CASE WHEN status='Absent' THEN 1 ELSE 0 END) AS absent_days,
-            COALESCE(SUM(overtime_hours),0) AS overtime_hours
+            COALESCE(SUM(CASE WHEN needs_verification = 0 THEN overtime_hours ELSE 0 END),0) AS overtime_hours,
+            SUM(CASE WHEN status = :pending OR (needs_verification = 1) THEN 1 ELSE 0 END) AS pending_verification
         FROM attendance
-        WHERE employee_id=:eid AND DATE_FORMAT(attendance_date, '%Y-%m')=:month");
-    $st->execute(['eid' => $employeeId, 'month' => $month]);
+        WHERE employee_id = :eid AND DATE_FORMAT(attendance_date, '%Y-%m') = :month
+        AND status NOT IN (:inprog)
+        AND NOT (
+            punch_in_time IS NOT NULL AND punch_in_time != ''
+            AND (punch_out_time IS NULL OR punch_out_time = '')
+        )");
+    $st->execute([
+        'eid' => $employeeId,
+        'month' => $month,
+        'pending' => $pendingSt,
+        'inprog' => $inProgressSt,
+    ]);
 
     $row = $st->fetch(PDO::FETCH_ASSOC) ?: [];
 
@@ -25,7 +39,14 @@ function payroll_fetch_attendance_summary(PDO $pdo, int $employeeId, string $mon
         'late_days' => (float)($row['late_days'] ?? 0),
         'absent_days' => (float)($row['absent_days'] ?? 0),
         'overtime_hours' => (float)($row['overtime_hours'] ?? 0),
+        'pending_verification' => (int)($row['pending_verification'] ?? 0),
     ];
+}
+
+/** Pending verification rows for payroll month (all employees or one). */
+function payroll_count_pending_verification(PDO $pdo, string $month, ?int $employeeId = null): int
+{
+    return attendance_count_pending_verification($pdo, $month, $employeeId);
 }
 
 /** @return array{paid_leave_days:float,half_paid_leave_days:float,unpaid_leave_days:float} */

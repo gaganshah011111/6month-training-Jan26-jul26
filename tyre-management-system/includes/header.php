@@ -25,7 +25,7 @@ $cssVersion = is_file($cssPath) ? (string)filemtime($cssPath) : (string)time();
     if ($hdrUser) {
         erp_ui_enqueue();
     }
-    if (in_array($hdrRole, ['Super Admin', 'HR Manager', 'Admin'], true)) {
+    if (in_array($hdrRole, ['Super Admin', 'HR Manager', 'Admin', 'Employee'], true)) {
         $notifyCss = __DIR__ . '/../assets/css/app-notifications.css';
         if (is_file($notifyCss)) {
             echo '<link href="assets/css/app-notifications.css?v=' . e((string)filemtime($notifyCss)) . '" rel="stylesheet">' . "\n";

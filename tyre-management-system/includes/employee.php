@@ -16,6 +16,7 @@ function ensure_employee_columns(PDO $pdo): void
     $requiredColumns = [
         'user_id' => "ALTER TABLE employees ADD COLUMN user_id INT NULL UNIQUE AFTER id",
         'address' => "ALTER TABLE employees ADD COLUMN address VARCHAR(255) NULL AFTER contact_no",
+        'emergency_contact' => "ALTER TABLE employees ADD COLUMN emergency_contact VARCHAR(120) NULL AFTER contact_no",
         'profile_image' => "ALTER TABLE employees ADD COLUMN profile_image VARCHAR(255) NULL AFTER address",
     ];
 

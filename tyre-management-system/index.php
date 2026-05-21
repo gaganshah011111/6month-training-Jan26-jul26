@@ -90,9 +90,19 @@ if ($page === 'reports/hr' && isset($_GET['export'])) {
     exit;
 }
 
+if ($page === 'employee/export') {
+    require __DIR__ . '/' . $path;
+    exit;
+}
+
 if ($page === 'attendance/list' && isset($_GET['export'])) {
     require __DIR__ . '/modules/hr/attendance/index.php';
     exit;
+}
+
+if (str_starts_with((string)$page, 'employee/')) {
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
 }
 
 require __DIR__ . '/includes/header.php';

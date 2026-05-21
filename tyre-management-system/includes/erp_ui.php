@@ -24,7 +24,11 @@ function erp_ui_extra_stylesheets(): array
         'hr/dashboard' => ['hr-dashboard.css'],
         'leave/list' => ['leave-dashboard.css'],
         'reports/hr' => ['hr-reports.css'],
-        'employee/leave' => ['leave-dashboard.css'],
+        'employee/leave' => ['leave-dashboard.css', 'employee-module.css'],
+        'employee/dashboard' => ['employee-module.css'],
+        'employee/profile' => ['employee-module.css'],
+        'employee/attendance' => ['employee-module.css'],
+        'employee/salary' => ['employee-module.css'],
     ];
 
     return $map[$page] ?? [];

@@ -32,6 +32,12 @@ function payroll_settings_defaults(): array
         'shift_hours_default' => 8.0,
         'ot_multiplier' => 1.0,
         'late_deduction_pct_of_daily' => 10.0,
+        'full_day_min_hours' => 8.0,
+        'half_day_min_hours' => 4.0,
+        'grace_late_minutes' => 15,
+        'min_valid_punch_hours' => 0.5,
+        'auto_absent_after_hours' => 0.0,
+        'ot_threshold_hours' => 0.0,
     ];
 }
 
@@ -137,11 +143,21 @@ function payroll_settings_save(PDO $pdo, array $input): void
         'shift_hours_default' => max(0.5, (float)($input['shift_hours_default'] ?? $d['shift_hours_default'])),
         'ot_multiplier' => max(0.5, (float)($input['ot_multiplier'] ?? $d['ot_multiplier'])),
         'late_deduction_pct_of_daily' => max(0.0, (float)($input['late_deduction_pct_of_daily'] ?? $d['late_deduction_pct_of_daily'])),
+        'full_day_min_hours' => max(0.5, (float)($input['full_day_min_hours'] ?? $d['full_day_min_hours'])),
+        'half_day_min_hours' => max(0.25, (float)($input['half_day_min_hours'] ?? $d['half_day_min_hours'])),
+        'grace_late_minutes' => max(0, (int)($input['grace_late_minutes'] ?? $d['grace_late_minutes'])),
+        'min_valid_punch_hours' => max(0.01, (float)($input['min_valid_punch_hours'] ?? $d['min_valid_punch_hours'])),
+        'auto_absent_after_hours' => max(0.0, (float)($input['auto_absent_after_hours'] ?? $d['auto_absent_after_hours'])),
+        'ot_threshold_hours' => max(0.0, (float)($input['ot_threshold_hours'] ?? $d['ot_threshold_hours'])),
     ];
 
-    $sql = 'INSERT INTO payroll_settings (id, basic_pct_of_gross, da_pct_of_basic, da_enabled, hra_pct_non_metro, hra_pct_metro, medical_enabled, medical_mode, medical_fixed, medical_pct_of_basic, travel_enabled, travel_mode, travel_fixed, travel_pct_of_basic, gratuity_pct_of_basic, pf_employee_pct, pf_employer_pct, esi_employee_pct, esi_employer_pct, esi_gross_limit, working_days_default, shift_hours_default, ot_multiplier, late_deduction_pct_of_daily)
-        VALUES (1, :bpg, :dapb, :dae, :hranm, :hram, :me, :mm, :mf, :mpb, :te, :tm, :tf, :tpb, :gpb, :pfee, :pfer, :esiee, :esier, :esilim, :wd, :sh, :otm, :late)
-        ON DUPLICATE KEY UPDATE basic_pct_of_gross=VALUES(basic_pct_of_gross), da_pct_of_basic=VALUES(da_pct_of_basic), da_enabled=VALUES(da_enabled), hra_pct_non_metro=VALUES(hra_pct_non_metro), hra_pct_metro=VALUES(hra_pct_metro), medical_enabled=VALUES(medical_enabled), medical_mode=VALUES(medical_mode), medical_fixed=VALUES(medical_fixed), medical_pct_of_basic=VALUES(medical_pct_of_basic), travel_enabled=VALUES(travel_enabled), travel_mode=VALUES(travel_mode), travel_fixed=VALUES(travel_fixed), travel_pct_of_basic=VALUES(travel_pct_of_basic), gratuity_pct_of_basic=VALUES(gratuity_pct_of_basic), pf_employee_pct=VALUES(pf_employee_pct), pf_employer_pct=VALUES(pf_employer_pct), esi_employee_pct=VALUES(esi_employee_pct), esi_employer_pct=VALUES(esi_employer_pct), esi_gross_limit=VALUES(esi_gross_limit), working_days_default=VALUES(working_days_default), shift_hours_default=VALUES(shift_hours_default), ot_multiplier=VALUES(ot_multiplier), late_deduction_pct_of_daily=VALUES(late_deduction_pct_of_daily)';
+    $policyCols = 'full_day_min_hours, half_day_min_hours, grace_late_minutes, min_valid_punch_hours, auto_absent_after_hours, ot_threshold_hours';
+    $policyPlaceholders = ':fdh, :hdh, :glm, :mvp, :aah, :oth';
+    $policyUpdates = 'full_day_min_hours=VALUES(full_day_min_hours), half_day_min_hours=VALUES(half_day_min_hours), grace_late_minutes=VALUES(grace_late_minutes), min_valid_punch_hours=VALUES(min_valid_punch_hours), auto_absent_after_hours=VALUES(auto_absent_after_hours), ot_threshold_hours=VALUES(ot_threshold_hours)';
+
+    $sql = 'INSERT INTO payroll_settings (id, basic_pct_of_gross, da_pct_of_basic, da_enabled, hra_pct_non_metro, hra_pct_metro, medical_enabled, medical_mode, medical_fixed, medical_pct_of_basic, travel_enabled, travel_mode, travel_fixed, travel_pct_of_basic, gratuity_pct_of_basic, pf_employee_pct, pf_employer_pct, esi_employee_pct, esi_employer_pct, esi_gross_limit, working_days_default, shift_hours_default, ot_multiplier, late_deduction_pct_of_daily, ' . $policyCols . ')
+        VALUES (1, :bpg, :dapb, :dae, :hranm, :hram, :me, :mm, :mf, :mpb, :te, :tm, :tf, :tpb, :gpb, :pfee, :pfer, :esiee, :esier, :esilim, :wd, :sh, :otm, :late, ' . $policyPlaceholders . ')
+        ON DUPLICATE KEY UPDATE basic_pct_of_gross=VALUES(basic_pct_of_gross), da_pct_of_basic=VALUES(da_pct_of_basic), da_enabled=VALUES(da_enabled), hra_pct_non_metro=VALUES(hra_pct_non_metro), hra_pct_metro=VALUES(hra_pct_metro), medical_enabled=VALUES(medical_enabled), medical_mode=VALUES(medical_mode), medical_fixed=VALUES(medical_fixed), medical_pct_of_basic=VALUES(medical_pct_of_basic), travel_enabled=VALUES(travel_enabled), travel_mode=VALUES(travel_mode), travel_fixed=VALUES(travel_fixed), travel_pct_of_basic=VALUES(travel_pct_of_basic), gratuity_pct_of_basic=VALUES(gratuity_pct_of_basic), pf_employee_pct=VALUES(pf_employee_pct), pf_employer_pct=VALUES(pf_employer_pct), esi_employee_pct=VALUES(esi_employee_pct), esi_employer_pct=VALUES(esi_employer_pct), esi_gross_limit=VALUES(esi_gross_limit), working_days_default=VALUES(working_days_default), shift_hours_default=VALUES(shift_hours_default), ot_multiplier=VALUES(ot_multiplier), late_deduction_pct_of_daily=VALUES(late_deduction_pct_of_daily), ' . $policyUpdates;
     $st = $pdo->prepare($sql);
     $st->execute([
         'bpg' => $row['basic_pct_of_gross'],
@@ -167,6 +183,12 @@ function payroll_settings_save(PDO $pdo, array $input): void
         'sh' => $row['shift_hours_default'],
         'otm' => $row['ot_multiplier'],
         'late' => $row['late_deduction_pct_of_daily'],
+        'fdh' => $row['full_day_min_hours'],
+        'hdh' => $row['half_day_min_hours'],
+        'glm' => $row['grace_late_minutes'],
+        'mvp' => $row['min_valid_punch_hours'],
+        'aah' => $row['auto_absent_after_hours'],
+        'oth' => $row['ot_threshold_hours'],
     ]);
 
     payroll_settings_normalize_modes($pdo);

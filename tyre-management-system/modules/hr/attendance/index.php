@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/../../../config/db.php';
 require_once __DIR__ . '/../../../includes/attendance_workflow.php';
+require_once __DIR__ . '/../../../includes/attendance_policy.php';
 require_once __DIR__ . '/../../../includes/department_hierarchy.php';
 if (!has_role(['Super Admin', 'HR Manager'])) {
     echo 'Access denied';
@@ -44,7 +45,7 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
 }
 
 $hrStatuses = ['Present', 'Half Day', 'Late', 'Absent'];
-$markStatusOpts = ['Present', 'Half Day', 'Late', 'Absent', 'Holiday', 'Leave'];
+$markStatusOpts = ['Present', 'Half Day', 'Late', 'Absent', 'Holiday', 'Leave', ATTENDANCE_STATUS_PENDING_VERIFICATION];
 $holidayTypes = ['National Holiday', 'Festival Holiday', 'Company Holiday', 'Emergency Shutdown'];
 
 function att_status_badge(?string $status): string
@@ -228,9 +229,10 @@ function attendance_persist_mark(PDO $pdo, array $emp, string $attendanceDate, s
         $isLate = $status === 'Late' ? 1 : ((int)($metrics['is_late'] ?? 0));
     }
 
-    $stmt = $pdo->prepare('INSERT INTO attendance (employee_id, attendance_date, shift, status, remarks, punch_in_time, punch_out_time, total_hours, overtime_hours, is_late, is_early_exit, is_emergency_duty)
-        VALUES (:e,:d,:sh,:st,:rm,:pi,:po,:th,:oh,:il,:ie,0)
-        ON DUPLICATE KEY UPDATE shift=VALUES(shift), status=VALUES(status), punch_in_time=VALUES(punch_in_time), punch_out_time=VALUES(punch_out_time), total_hours=VALUES(total_hours), overtime_hours=VALUES(overtime_hours), is_late=VALUES(is_late), is_early_exit=VALUES(is_early_exit), is_emergency_duty=0, remarks=VALUES(remarks)');
+    $needsVer = ($status === ATTENDANCE_STATUS_PENDING_VERIFICATION) ? 1 : 0;
+    $stmt = $pdo->prepare('INSERT INTO attendance (employee_id, attendance_date, shift, status, remarks, punch_in_time, punch_out_time, total_hours, overtime_hours, is_late, is_early_exit, is_emergency_duty, needs_verification)
+        VALUES (:e,:d,:sh,:st,:rm,:pi,:po,:th,:oh,:il,:ie,0,:nv)
+        ON DUPLICATE KEY UPDATE shift=VALUES(shift), status=VALUES(status), punch_in_time=VALUES(punch_in_time), punch_out_time=VALUES(punch_out_time), total_hours=VALUES(total_hours), overtime_hours=VALUES(overtime_hours), is_late=VALUES(is_late), is_early_exit=VALUES(is_early_exit), is_emergency_duty=0, needs_verification=VALUES(needs_verification), remarks=VALUES(remarks)');
     $stmt->execute([
         'e' => (int)$emp['id'],
         'd' => $attendanceDate,
@@ -243,6 +245,7 @@ function attendance_persist_mark(PDO $pdo, array $emp, string $attendanceDate, s
         'oh' => $otH,
         'il' => $isLate,
         'ie' => $isEarly,
+        'nv' => $needsVer,
     ]);
 }
 
@@ -431,6 +434,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             att_redirect_preserving($ret);
         }
 
+        if ($action === 'verify_attendance') {
+            $attId = post_int('attendance_id');
+            $newStatus = trim((string)($_POST['verify_status'] ?? ''));
+            $notes = trim((string)($_POST['verify_notes'] ?? ''));
+            $hrUid = (int)(($_SESSION['user']['id'] ?? $_SESSION['user_id'] ?? 0));
+            attendance_hr_resolve_verification($pdo, $attId, $newStatus, $hrUid, $notes);
+            set_flash('success', 'Attendance verified and updated.');
+            $ret['att_section'] = 'verify';
+            att_redirect_preserving($ret);
+        }
+
         if ($action === 'save_holiday') {
             $hDate = trim((string)($_POST['holiday_date'] ?? ''));
             if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $hDate)) {
@@ -521,7 +535,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$att_section = (isset($_GET['att_section']) && $_GET['att_section'] === 'register') ? 'register' : 'mark';
+$attSectionRaw = (string)($_GET['att_section'] ?? $_POST['ret_att_section'] ?? 'mark');
+$att_section = in_array($attSectionRaw, ['register', 'verify'], true) ? $attSectionRaw : 'mark';
 
 $q_emp = trim((string)($_GET['q_emp'] ?? ''));
 $q_name = trim((string)($_GET['q_name'] ?? ''));
@@ -667,6 +682,11 @@ if ($att_section === 'register' && $register_searched) {
     }
 }
 
+$verifyMonth = preg_match('/^\d{4}-\d{2}$/', (string)($_GET['verify_month'] ?? '')) ? (string)$_GET['verify_month'] : date('Y-m');
+$verificationPendingCount = attendance_count_pending_verification($pdo, $verifyMonth);
+$verificationQueue = $att_section === 'verify' ? attendance_fetch_verification_queue($pdo, $verifyMonth, 100) : [];
+$attPolicy = attendance_policy_fetch($pdo);
+
 $markTabQuery = [
     'page' => 'attendance/list',
     'att_section' => 'mark',
@@ -676,6 +696,11 @@ $markTabQuery = [
     'q_name' => $q_name,
     'dept' => $dept,
     'emp_type' => $emp_type,
+];
+$verifyTabQuery = [
+    'page' => 'attendance/list',
+    'att_section' => 'verify',
+    'verify_month' => $verifyMonth,
 ];
 $registerTabQuery = [
     'page' => 'attendance/list',

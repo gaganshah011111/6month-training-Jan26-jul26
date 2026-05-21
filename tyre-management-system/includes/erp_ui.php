@@ -29,6 +29,18 @@ function erp_ui_extra_stylesheets(): array
         'employee/profile' => ['employee-module.css'],
         'employee/attendance' => ['employee-module.css'],
         'employee/salary' => ['employee-module.css'],
+        'production/dashboard' => ['production-module.css'],
+        'production/entry' => ['production-module.css'],
+        'production/list' => ['production-module.css'],
+        'production/orders' => ['production-module.css'],
+        'production/order' => ['production-module.css'],
+        'production/mixing' => ['production-module.css'],
+        'production/building' => ['production-module.css'],
+        'production/curing' => ['production-module.css'],
+        'production/qc' => ['production-module.css'],
+        'quality/list' => ['production-module.css'],
+        'machines/list' => ['production-module.css'],
+        'reports/production' => ['production-module.css'],
     ];
 
     return $map[$page] ?? [];

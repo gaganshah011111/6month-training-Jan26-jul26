@@ -71,7 +71,12 @@ $postRedirectPaths = [
     'modules/employees/credential_reveal.php',
     'modules/employee/attendance.php',
     'modules/employee/dashboard.php',
-    'modules/production/index.php',
+    'modules/production/orders.php',
+    'modules/production/order.php',
+    'modules/production/mixing.php',
+    'modules/production/building.php',
+    'modules/production/curing.php',
+    'modules/production/qc.php',
     'modules/machines/index.php',
     'modules/dispatch/index.php',
     'modules/suppliers/index.php',
@@ -87,6 +92,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($path, $postRedirectPaths,
 
 if ($page === 'reports/hr' && isset($_GET['export'])) {
     require __DIR__ . '/modules/reports/hr.php';
+    exit;
+}
+
+if ($page === 'reports/production' && isset($_GET['export'])) {
+    require __DIR__ . '/modules/reports/production.php';
     exit;
 }
 

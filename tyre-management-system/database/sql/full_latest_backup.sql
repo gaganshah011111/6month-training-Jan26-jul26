@@ -1,5 +1,5 @@
 -- Tyre ERP full_latest_backup.sql
--- Generated: 2026-05-20T19:38:45+05:30
+-- Generated: 2026-05-21T18:13:33+05:30
 -- Database: tyre_erp
 -- Import: mysql -u root < full_latest_backup.sql
 
@@ -17,6 +17,7 @@ CREATE TABLE `attendance` (
   `shift` enum('Morning','Evening','Night') NOT NULL,
   `status` varchar(40) NOT NULL DEFAULT 'Present',
   `remarks` varchar(255) DEFAULT NULL,
+  `linked_leave_id` int(11) DEFAULT NULL,
   `punch_in_time` datetime DEFAULT NULL,
   `punch_out_time` datetime DEFAULT NULL,
   `total_hours` decimal(8,2) DEFAULT NULL,
@@ -24,70 +25,93 @@ CREATE TABLE `attendance` (
   `is_late` tinyint(1) NOT NULL DEFAULT 0,
   `is_early_exit` tinyint(1) NOT NULL DEFAULT 0,
   `is_emergency_duty` tinyint(1) NOT NULL DEFAULT 0,
+  `needs_verification` tinyint(1) NOT NULL DEFAULT 0,
+  `verified_by` int(11) DEFAULT NULL,
+  `verified_at` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_attendance` (`employee_id`,`attendance_date`),
   KEY `idx_att_date` (`attendance_date`),
+  KEY `idx_attendance_linked_leave` (`linked_leave_id`),
   CONSTRAINT `fk_att_employee` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=438 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=490 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (51, 1, '2026-05-01', 'Morning', 'Absent', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, NULL, '0.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (52, 1, '2026-05-02', 'Morning', 'Half Day', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-02 09:00:00', '2026-05-02 13:00:00', '4.50', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (53, 1, '2026-05-04', 'Morning', 'Half Day', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-04 09:00:00', '2026-05-04 13:00:00', '4.50', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (54, 1, '2026-05-05', 'Morning', 'Late', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-05 09:25:00', '2026-05-05 18:00:00', '9.00', '0.00', 1, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (55, 1, '2026-05-06', 'Morning', 'Late', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-06 09:25:00', '2026-05-06 18:00:00', '9.00', '0.00', 1, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (56, 1, '2026-05-07', 'Morning', 'Late', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-07 09:25:00', '2026-05-07 18:00:00', '9.00', '0.00', 1, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (57, 1, '2026-05-08', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-08 09:00:00', '2026-05-08 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (58, 1, '2026-05-09', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-09 09:00:00', '2026-05-09 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (59, 1, '2026-05-11', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-11 09:00:00', '2026-05-11 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (60, 1, '2026-05-12', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-12 09:00:00', '2026-05-12 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (61, 1, '2026-05-13', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-13 09:00:00', '2026-05-13 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (62, 1, '2026-05-14', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-14 09:00:00', '2026-05-14 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (63, 1, '2026-05-15', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-15 09:00:00', '2026-05-15 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (64, 1, '2026-05-16', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-16 09:00:00', '2026-05-16 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (65, 1, '2026-05-18', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-18 09:00:00', '2026-05-18 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (66, 1, '2026-05-19', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-19 09:00:00', '2026-05-19 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (67, 1, '2026-05-20', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-20 09:00:00', '2026-05-20 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (68, 1, '2026-05-21', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-21 09:00:00', '2026-05-21 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (69, 1, '2026-05-22', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-22 09:00:00', '2026-05-22 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (70, 1, '2026-05-23', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-23 09:00:00', '2026-05-23 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (71, 1, '2026-05-25', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-25 09:00:00', '2026-05-25 18:00:00', '11.00', '2.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (72, 1, '2026-05-26', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-26 09:00:00', '2026-05-26 18:00:00', '11.00', '2.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (73, 1, '2026-05-27', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-27 09:00:00', '2026-05-27 18:00:00', '11.00', '2.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (74, 1, '2026-05-28', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-28 09:00:00', '2026-05-28 18:00:00', '11.00', '2.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (75, 1, '2026-05-29', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-29 09:00:00', '2026-05-29 18:00:00', '11.00', '2.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (76, 2, '2026-05-01', 'Morning', 'Absent', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, NULL, '0.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (77, 2, '2026-05-02', 'Morning', 'Half Day', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-02 09:00:00', '2026-05-02 13:00:00', '4.50', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (78, 2, '2026-05-04', 'Morning', 'Half Day', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-04 09:00:00', '2026-05-04 13:00:00', '4.50', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (79, 2, '2026-05-05', 'Morning', 'Late', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-05 09:25:00', '2026-05-05 18:00:00', '9.00', '0.00', 1, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (80, 2, '2026-05-06', 'Morning', 'Late', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-06 09:25:00', '2026-05-06 18:00:00', '9.00', '0.00', 1, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (81, 2, '2026-05-07', 'Morning', 'Late', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-07 09:25:00', '2026-05-07 18:00:00', '9.00', '0.00', 1, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (82, 2, '2026-05-08', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-08 09:00:00', '2026-05-08 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (83, 2, '2026-05-09', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-09 09:00:00', '2026-05-09 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (84, 2, '2026-05-11', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-11 09:00:00', '2026-05-11 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (85, 2, '2026-05-12', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-12 09:00:00', '2026-05-12 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (86, 2, '2026-05-13', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-13 09:00:00', '2026-05-13 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (87, 2, '2026-05-14', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-14 09:00:00', '2026-05-14 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (88, 2, '2026-05-15', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-15 09:00:00', '2026-05-15 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (89, 2, '2026-05-16', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-16 09:00:00', '2026-05-16 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (90, 2, '2026-05-18', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-18 09:00:00', '2026-05-18 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (91, 2, '2026-05-19', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-19 09:00:00', '2026-05-19 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (92, 2, '2026-05-20', 'Morning', 'Absent', NULL, NULL, NULL, '0.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (93, 2, '2026-05-21', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-21 09:00:00', '2026-05-21 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (94, 2, '2026-05-22', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-22 09:00:00', '2026-05-22 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (95, 2, '2026-05-23', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-23 09:00:00', '2026-05-23 18:00:00', '9.00', '0.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (96, 2, '2026-05-25', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-25 09:00:00', '2026-05-25 18:00:00', '11.00', '2.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (97, 2, '2026-05-26', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-26 09:00:00', '2026-05-26 18:00:00', '11.00', '2.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (98, 2, '2026-05-27', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-27 09:00:00', '2026-05-27 18:00:00', '11.00', '2.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (99, 2, '2026-05-28', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-28 09:00:00', '2026-05-28 18:00:00', '11.00', '2.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (100, 2, '2026-05-29', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', '2026-05-29 09:00:00', '2026-05-29 18:00:00', '11.00', '2.00', 0, 0, 0, '2026-05-15 19:17:24');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (426, 5, '2026-05-17', 'Morning', 'Present', NULL, '2026-05-17 08:00:00', '2026-05-17 18:00:00', '10.00', '0.00', 0, 0, 0, '2026-05-17 18:49:03');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (427, 5, '2026-05-18', '', 'Paid Leave', 'Leave #2 — Paid', NULL, NULL, NULL, '0.00', 0, 0, 0, '2026-05-17 19:48:49');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (428, 5, '2026-05-19', '', 'Paid Leave', 'Leave #3 — Paid', NULL, NULL, NULL, '0.00', 0, 0, 0, '2026-05-17 19:49:26');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (429, 5, '2026-05-21', '', 'Unpaid Leave', 'Leave #5 — Half Paid | HR converted to unpaid', NULL, NULL, NULL, '0.00', 0, 0, 0, '2026-05-17 20:04:42');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (430, 5, '2026-05-20', '', 'Unpaid Leave', 'Leave #4 — Half Paid | HR converted to unpaid', NULL, NULL, NULL, '0.00', 0, 0, 0, '2026-05-17 20:04:48');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (431, 5, '2026-05-29', '', 'Unpaid Leave', 'Leave #7 — Unpaid — converted to unpaid (no balance)', NULL, NULL, NULL, '0.00', 0, 0, 0, '2026-05-20 17:42:57');
-INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `created_at`) VALUES (432, 5, '2026-05-30', '', 'Unpaid Leave', 'Leave #7 — Unpaid — converted to unpaid (no balance)', NULL, NULL, NULL, '0.00', 0, 0, 0, '2026-05-20 17:42:57');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (51, 1, '2026-05-01', 'Morning', 'Absent', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, NULL, NULL, '0.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (52, 1, '2026-05-02', 'Morning', 'Half Day', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-02 09:00:00', '2026-05-02 13:00:00', '4.50', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (53, 1, '2026-05-04', 'Morning', 'Half Day', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-04 09:00:00', '2026-05-04 13:00:00', '4.50', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (54, 1, '2026-05-05', 'Morning', 'Late', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-05 09:25:00', '2026-05-05 18:00:00', '9.00', '0.00', 1, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (55, 1, '2026-05-06', 'Morning', 'Late', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-06 09:25:00', '2026-05-06 18:00:00', '9.00', '0.00', 1, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (56, 1, '2026-05-07', 'Morning', 'Late', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-07 09:25:00', '2026-05-07 18:00:00', '9.00', '0.00', 1, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (57, 1, '2026-05-08', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-08 09:00:00', '2026-05-08 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (58, 1, '2026-05-09', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-09 09:00:00', '2026-05-09 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (59, 1, '2026-05-11', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-11 09:00:00', '2026-05-11 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (60, 1, '2026-05-12', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-12 09:00:00', '2026-05-12 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (61, 1, '2026-05-13', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-13 09:00:00', '2026-05-13 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (62, 1, '2026-05-14', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-14 09:00:00', '2026-05-14 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (63, 1, '2026-05-15', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-15 09:00:00', '2026-05-15 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (64, 1, '2026-05-16', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-16 09:00:00', '2026-05-16 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (65, 1, '2026-05-18', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-18 09:00:00', '2026-05-18 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (66, 1, '2026-05-19', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-19 09:00:00', '2026-05-19 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (67, 1, '2026-05-20', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-20 09:00:00', '2026-05-20 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (68, 1, '2026-05-21', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-21 09:00:00', '2026-05-21 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (69, 1, '2026-05-22', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-22 09:00:00', '2026-05-22 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (70, 1, '2026-05-23', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-23 09:00:00', '2026-05-23 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (71, 1, '2026-05-25', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-25 09:00:00', '2026-05-25 18:00:00', '11.00', '2.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (72, 1, '2026-05-26', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-26 09:00:00', '2026-05-26 18:00:00', '11.00', '2.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (73, 1, '2026-05-27', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-27 09:00:00', '2026-05-27 18:00:00', '11.00', '2.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (74, 1, '2026-05-28', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-28 09:00:00', '2026-05-28 18:00:00', '11.00', '2.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (75, 1, '2026-05-29', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-29 09:00:00', '2026-05-29 18:00:00', '11.00', '2.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (76, 2, '2026-05-01', 'Morning', 'Absent', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, NULL, NULL, '0.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (77, 2, '2026-05-02', 'Morning', 'Half Day', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-02 09:00:00', '2026-05-02 13:00:00', '4.50', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (78, 2, '2026-05-04', 'Morning', 'Half Day', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-04 09:00:00', '2026-05-04 13:00:00', '4.50', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (79, 2, '2026-05-05', 'Morning', 'Late', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-05 09:25:00', '2026-05-05 18:00:00', '9.00', '0.00', 1, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (80, 2, '2026-05-06', 'Morning', 'Late', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-06 09:25:00', '2026-05-06 18:00:00', '9.00', '0.00', 1, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (81, 2, '2026-05-07', 'Morning', 'Late', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-07 09:25:00', '2026-05-07 18:00:00', '9.00', '0.00', 1, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (82, 2, '2026-05-08', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-08 09:00:00', '2026-05-08 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (83, 2, '2026-05-09', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-09 09:00:00', '2026-05-09 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (84, 2, '2026-05-11', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-11 09:00:00', '2026-05-11 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (85, 2, '2026-05-12', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-12 09:00:00', '2026-05-12 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (86, 2, '2026-05-13', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-13 09:00:00', '2026-05-13 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (87, 2, '2026-05-14', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-14 09:00:00', '2026-05-14 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (88, 2, '2026-05-15', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-15 09:00:00', '2026-05-15 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (89, 2, '2026-05-16', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-16 09:00:00', '2026-05-16 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (90, 2, '2026-05-18', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-18 09:00:00', '2026-05-18 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (91, 2, '2026-05-19', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-19 09:00:00', '2026-05-19 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (92, 2, '2026-05-20', 'Morning', 'Absent', NULL, NULL, NULL, NULL, '0.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (93, 2, '2026-05-21', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-21 09:00:00', '2026-05-21 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (94, 2, '2026-05-22', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-22 09:00:00', '2026-05-22 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (95, 2, '2026-05-23', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-23 09:00:00', '2026-05-23 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (96, 2, '2026-05-25', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-25 09:00:00', '2026-05-25 18:00:00', '11.00', '2.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (97, 2, '2026-05-26', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-26 09:00:00', '2026-05-26 18:00:00', '11.00', '2.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (98, 2, '2026-05-27', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-27 09:00:00', '2026-05-27 18:00:00', '11.00', '2.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (99, 2, '2026-05-28', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-28 09:00:00', '2026-05-28 18:00:00', '11.00', '2.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (100, 2, '2026-05-29', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-29 09:00:00', '2026-05-29 18:00:00', '11.00', '2.00', 0, 0, 0, 0, NULL, NULL, '2026-05-15 19:17:24');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (426, 5, '2026-05-17', 'Morning', 'Present', NULL, NULL, '2026-05-17 08:00:00', '2026-05-17 18:00:00', '10.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-17 18:49:03');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (465, 5, '2026-05-01', 'Morning', 'Absent', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, NULL, NULL, '0.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-21 16:59:00');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (466, 5, '2026-05-02', 'Morning', 'Half Day', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-02 09:00:00', '2026-05-02 13:00:00', '4.50', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-21 16:59:00');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (467, 5, '2026-05-04', 'Morning', 'Half Day', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-04 09:00:00', '2026-05-04 13:00:00', '4.50', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-21 16:59:00');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (468, 5, '2026-05-05', 'Morning', 'Late', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-05 09:25:00', '2026-05-05 18:00:00', '9.00', '0.00', 1, 0, 0, 0, NULL, NULL, '2026-05-21 16:59:00');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (469, 5, '2026-05-06', 'Morning', 'Late', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-06 09:25:00', '2026-05-06 18:00:00', '9.00', '0.00', 1, 0, 0, 0, NULL, NULL, '2026-05-21 16:59:00');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (470, 5, '2026-05-07', 'Morning', 'Late', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-07 09:25:00', '2026-05-07 18:00:00', '9.00', '0.00', 1, 0, 0, 0, NULL, NULL, '2026-05-21 16:59:00');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (471, 5, '2026-05-08', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-08 09:00:00', '2026-05-08 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-21 16:59:00');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (472, 5, '2026-05-09', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-09 09:00:00', '2026-05-09 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-21 16:59:00');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (473, 5, '2026-05-11', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-11 09:00:00', '2026-05-11 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-21 16:59:00');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (474, 5, '2026-05-12', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-12 09:00:00', '2026-05-12 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-21 16:59:00');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (475, 5, '2026-05-13', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-13 09:00:00', '2026-05-13 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-21 16:59:00');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (476, 5, '2026-05-14', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-14 09:00:00', '2026-05-14 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-21 16:59:00');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (477, 5, '2026-05-15', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-15 09:00:00', '2026-05-15 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-21 16:59:00');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (478, 5, '2026-05-16', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-16 09:00:00', '2026-05-16 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-21 16:59:00');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (479, 5, '2026-05-18', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-18 09:00:00', '2026-05-18 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-21 16:59:00');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (480, 5, '2026-05-19', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-19 09:00:00', '2026-05-19 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-21 16:59:01');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (481, 5, '2026-05-20', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-20 09:00:00', '2026-05-20 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-21 16:59:01');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (482, 5, '2026-05-21', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-21 09:00:00', '2026-05-21 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-21 16:59:01');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (483, 5, '2026-05-22', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-22 09:00:00', '2026-05-22 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-21 16:59:01');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (484, 5, '2026-05-23', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-23 09:00:00', '2026-05-23 18:00:00', '9.00', '0.00', 0, 0, 0, 0, NULL, NULL, '2026-05-21 16:59:01');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (485, 5, '2026-05-25', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-25 09:00:00', '2026-05-25 18:00:00', '11.00', '2.00', 0, 0, 0, 0, NULL, NULL, '2026-05-21 16:59:01');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (486, 5, '2026-05-26', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-26 09:00:00', '2026-05-26 18:00:00', '11.00', '2.00', 0, 0, 0, 0, NULL, NULL, '2026-05-21 16:59:01');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (487, 5, '2026-05-27', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-27 09:00:00', '2026-05-27 18:00:00', '11.00', '2.00', 0, 0, 0, 0, NULL, NULL, '2026-05-21 16:59:01');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (488, 5, '2026-05-28', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-28 09:00:00', '2026-05-28 18:00:00', '11.00', '2.00', 0, 0, 0, 0, NULL, NULL, '2026-05-21 16:59:01');
+INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (489, 5, '2026-05-29', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-29 09:00:00', '2026-05-29 18:00:00', '11.00', '2.00', 0, 0, 0, 0, NULL, NULL, '2026-05-21 16:59:01');
 
 DROP TABLE IF EXISTS `company_holidays`;
 CREATE TABLE `company_holidays` (
@@ -121,7 +145,7 @@ CREATE TABLE `department_categories` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_dept_cat_code` (`category_code`)
-) ENGINE=InnoDB AUTO_INCREMENT=4633 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5905 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `department_categories` (`id`, `category_name`, `category_code`, `status`, `created_at`) VALUES (1, 'Core Production', 'CORE_PROD', 'active', '2026-05-14 18:28:16');
 INSERT INTO `department_categories` (`id`, `category_name`, `category_code`, `status`, `created_at`) VALUES (2, 'Quality & Safety', 'QUAL_SAFETY', 'active', '2026-05-14 18:28:16');
@@ -145,7 +169,7 @@ CREATE TABLE `departments` (
   UNIQUE KEY `uk_dept_cat_name` (`category_id`,`department_name`),
   KEY `idx_dept_category` (`category_id`),
   CONSTRAINT `fk_dept_category` FOREIGN KEY (`category_id`) REFERENCES `department_categories` (`id`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=15441 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=19681 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `departments` (`id`, `category_id`, `department_name`, `department_short_name`, `department_code`, `status`, `min_staff_required`, `created_at`) VALUES (1, 1, 'Production Planning & Control (PPC)', 'PPC', 'DEPT_PPC', 'active', NULL, '2026-05-14 18:28:16');
 INSERT INTO `departments` (`id`, `category_id`, `department_name`, `department_short_name`, `department_code`, `status`, `min_staff_required`, `created_at`) VALUES (2, 1, 'Raw Materials & Inventory Management', 'Raw Materials', 'DEPT_RAW_MAT', 'active', NULL, '2026-05-14 18:28:16');
@@ -180,7 +204,7 @@ CREATE TABLE `designations` (
   UNIQUE KEY `uk_desig_dept_code` (`department_id`,`designation_code`),
   KEY `idx_desig_department` (`department_id`),
   CONSTRAINT `fk_desig_department` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=49409 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=62977 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `designations` (`id`, `department_id`, `designation_name`, `designation_code`, `status`, `created_at`) VALUES (1, 1, 'PPC Executive', 'DES_PPC_EXEC', 'active', '2026-05-14 18:28:16');
 INSERT INTO `designations` (`id`, `department_id`, `designation_name`, `designation_code`, `status`, `created_at`) VALUES (2, 1, 'PPC Manager', 'DES_PPC_MGR', 'active', '2026-05-14 18:28:16');
@@ -287,6 +311,7 @@ CREATE TABLE `employees` (
   `shift_start` time DEFAULT NULL,
   `shift_end` time DEFAULT NULL,
   `contact_no` varchar(20) DEFAULT NULL,
+  `emergency_contact` varchar(120) DEFAULT NULL,
   `address` varchar(255) DEFAULT NULL,
   `profile_image` varchar(255) DEFAULT NULL,
   `joining_date` date NOT NULL,
@@ -322,9 +347,9 @@ CREATE TABLE `employees` (
   KEY `idx_employees_designation_id` (`designation_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-INSERT INTO `employees` (`id`, `user_id`, `employee_code`, `full_name`, `father_name`, `dob`, `aadhaar_number`, `employee_type`, `email`, `password_hash`, `department`, `designation`, `department_id`, `designation_id`, `role`, `salary_type`, `shift_timing`, `shift_start`, `shift_end`, `contact_no`, `address`, `profile_image`, `joining_date`, `basic_salary`, `paid_leave_limit`, `half_paid_leave_limit`, `hra_percentage`, `hra_amount`, `pf_applicable`, `pf_percentage`, `esi_applicable`, `esi_percentage`, `esi_salary_limit`, `metro`, `payroll_auto_indian`, `medical_allowance`, `dearness_allowance`, `travel_allowance`, `special_allowance`, `other_allowances`, `gross_salary`, `gratuity_monthly`, `overtime_rate`, `daily_wage`, `hourly_rate`, `status`, `created_at`) VALUES (1, 7, 'EMP001', 'Ravi Kumar', NULL, NULL, NULL, 'Staff', NULL, NULL, 'Tire Building / Product Assembly', '', 5, NULL, 'Employee', 'Monthly', NULL, NULL, NULL, '9876500001', NULL, NULL, '2024-01-15', '28000.00', '12.00', '6.00', '40.00', '0.00', 1, '12.00', 1, '0.75', '21000.00', 0, 0, '0.00', '0.00', '0.00', '0.00', '0.00', '28000.00', '0.00', '0.00', '0.00', '0.00', 'active', '2026-05-14 17:43:38');
-INSERT INTO `employees` (`id`, `user_id`, `employee_code`, `full_name`, `father_name`, `dob`, `aadhaar_number`, `employee_type`, `email`, `password_hash`, `department`, `designation`, `department_id`, `designation_id`, `role`, `salary_type`, `shift_timing`, `shift_start`, `shift_end`, `contact_no`, `address`, `profile_image`, `joining_date`, `basic_salary`, `paid_leave_limit`, `half_paid_leave_limit`, `hra_percentage`, `hra_amount`, `pf_applicable`, `pf_percentage`, `esi_applicable`, `esi_percentage`, `esi_salary_limit`, `metro`, `payroll_auto_indian`, `medical_allowance`, `dearness_allowance`, `travel_allowance`, `special_allowance`, `other_allowances`, `gross_salary`, `gratuity_monthly`, `overtime_rate`, `daily_wage`, `hourly_rate`, `status`, `created_at`) VALUES (2, NULL, 'EMP002', 'Neha Sharma', NULL, NULL, NULL, 'Staff', NULL, NULL, 'Quality Assurance & Testing (QA/QC)', '', 7, NULL, 'Employee', 'Monthly', NULL, NULL, NULL, '9876500002', NULL, NULL, '2024-02-12', '30000.00', '12.00', '6.00', '40.00', '0.00', 1, '12.00', 1, '0.75', '21000.00', 0, 0, '0.00', '0.00', '0.00', '0.00', '0.00', '30000.00', '0.00', '0.00', '0.00', '0.00', 'active', '2026-05-14 17:43:38');
-INSERT INTO `employees` (`id`, `user_id`, `employee_code`, `full_name`, `father_name`, `dob`, `aadhaar_number`, `employee_type`, `email`, `password_hash`, `department`, `designation`, `department_id`, `designation_id`, `role`, `salary_type`, `shift_timing`, `shift_start`, `shift_end`, `contact_no`, `address`, `profile_image`, `joining_date`, `basic_salary`, `paid_leave_limit`, `half_paid_leave_limit`, `hra_percentage`, `hra_amount`, `pf_applicable`, `pf_percentage`, `esi_applicable`, `esi_percentage`, `esi_salary_limit`, `metro`, `payroll_auto_indian`, `medical_allowance`, `dearness_allowance`, `travel_allowance`, `special_allowance`, `other_allowances`, `gross_salary`, `gratuity_monthly`, `overtime_rate`, `daily_wage`, `hourly_rate`, `status`, `created_at`) VALUES (5, 2910, 'EMP003', 'Gagan Kumar Shah', 'Munna Shah', '2004-12-18', '567607543456', 'Staff', 'gaganshah011111@gmail.com', NULL, 'IT Support', 'IT Support Engineer', 10, 31, 'Employee', 'Monthly', 'Morning Shift', '09:00:00', '18:00:00', '09915492452', 'House No BXXX-1743/18/30 Dashmesh Market Dhandari Khurd Ludhiana', NULL, '2026-05-01', '12500.00', '2.00', '1.96', '40.00', '5000.00', 1, '12.00', 0, '0.75', '21000.00', 0, 1, '500.00', '625.00', '500.00', '5874.99', '0.00', '24999.99', '601.25', '120.10', '960.80', '120.10', 'active', '2026-05-17 18:41:30');
+INSERT INTO `employees` (`id`, `user_id`, `employee_code`, `full_name`, `father_name`, `dob`, `aadhaar_number`, `employee_type`, `email`, `password_hash`, `department`, `designation`, `department_id`, `designation_id`, `role`, `salary_type`, `shift_timing`, `shift_start`, `shift_end`, `contact_no`, `emergency_contact`, `address`, `profile_image`, `joining_date`, `basic_salary`, `paid_leave_limit`, `half_paid_leave_limit`, `hra_percentage`, `hra_amount`, `pf_applicable`, `pf_percentage`, `esi_applicable`, `esi_percentage`, `esi_salary_limit`, `metro`, `payroll_auto_indian`, `medical_allowance`, `dearness_allowance`, `travel_allowance`, `special_allowance`, `other_allowances`, `gross_salary`, `gratuity_monthly`, `overtime_rate`, `daily_wage`, `hourly_rate`, `status`, `created_at`) VALUES (1, 7, 'EMP001', 'Ravi Kumar', NULL, NULL, NULL, 'Staff', NULL, NULL, 'Tire Building / Product Assembly', '', 5, NULL, 'Employee', 'Monthly', NULL, NULL, NULL, '9876500001', NULL, NULL, NULL, '2024-01-15', '28000.00', '12.00', '6.00', '40.00', '0.00', 1, '12.00', 1, '0.75', '21000.00', 0, 0, '0.00', '0.00', '0.00', '0.00', '0.00', '28000.00', '0.00', '0.00', '0.00', '0.00', 'active', '2026-05-14 17:43:38');
+INSERT INTO `employees` (`id`, `user_id`, `employee_code`, `full_name`, `father_name`, `dob`, `aadhaar_number`, `employee_type`, `email`, `password_hash`, `department`, `designation`, `department_id`, `designation_id`, `role`, `salary_type`, `shift_timing`, `shift_start`, `shift_end`, `contact_no`, `emergency_contact`, `address`, `profile_image`, `joining_date`, `basic_salary`, `paid_leave_limit`, `half_paid_leave_limit`, `hra_percentage`, `hra_amount`, `pf_applicable`, `pf_percentage`, `esi_applicable`, `esi_percentage`, `esi_salary_limit`, `metro`, `payroll_auto_indian`, `medical_allowance`, `dearness_allowance`, `travel_allowance`, `special_allowance`, `other_allowances`, `gross_salary`, `gratuity_monthly`, `overtime_rate`, `daily_wage`, `hourly_rate`, `status`, `created_at`) VALUES (2, NULL, 'EMP002', 'Neha Sharma', NULL, NULL, NULL, 'Staff', NULL, NULL, 'Quality Assurance & Testing (QA/QC)', '', 7, NULL, 'Employee', 'Monthly', NULL, NULL, NULL, '9876500002', NULL, NULL, NULL, '2024-02-12', '30000.00', '12.00', '6.00', '40.00', '0.00', 1, '12.00', 1, '0.75', '21000.00', 0, 0, '0.00', '0.00', '0.00', '0.00', '0.00', '30000.00', '0.00', '0.00', '0.00', '0.00', 'active', '2026-05-14 17:43:38');
+INSERT INTO `employees` (`id`, `user_id`, `employee_code`, `full_name`, `father_name`, `dob`, `aadhaar_number`, `employee_type`, `email`, `password_hash`, `department`, `designation`, `department_id`, `designation_id`, `role`, `salary_type`, `shift_timing`, `shift_start`, `shift_end`, `contact_no`, `emergency_contact`, `address`, `profile_image`, `joining_date`, `basic_salary`, `paid_leave_limit`, `half_paid_leave_limit`, `hra_percentage`, `hra_amount`, `pf_applicable`, `pf_percentage`, `esi_applicable`, `esi_percentage`, `esi_salary_limit`, `metro`, `payroll_auto_indian`, `medical_allowance`, `dearness_allowance`, `travel_allowance`, `special_allowance`, `other_allowances`, `gross_salary`, `gratuity_monthly`, `overtime_rate`, `daily_wage`, `hourly_rate`, `status`, `created_at`) VALUES (5, 2910, 'EMP003', 'Gagan Kumar Shah', 'Munna Shah', '2004-12-18', '567607543456', 'Staff', 'gaganshah011111@gmail.com', NULL, 'IT Support', 'IT Support Engineer', 10, 31, 'Employee', 'Monthly', 'Morning Shift', '09:00:00', '18:00:00', '09915492452', NULL, 'House No BXXX-1743/18/30 Dashmesh Market Dhandari Khurd Ludhiana', 'assets/uploads/profiles/emp_5_1779359624.jpg', '2026-05-01', '12500.00', '2.00', '1.96', '40.00', '5000.00', 1, '12.00', 0, '0.75', '21000.00', 0, 1, '500.00', '625.00', '500.00', '5874.99', '0.00', '24999.99', '601.25', '120.10', '960.80', '120.10', 'active', '2026-05-17 18:41:30');
 
 DROP TABLE IF EXISTS `hr_holidays`;
 CREATE TABLE `hr_holidays` (
@@ -437,20 +462,36 @@ CREATE TABLE `leaves` (
   CONSTRAINT `fk_leave_employee` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+DROP TABLE IF EXISTS `machine_assignments`;
+CREATE TABLE `machine_assignments` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `order_id` int(11) NOT NULL,
+  `stage_id` int(11) NOT NULL,
+  `machine_id` int(11) NOT NULL,
+  `assigned_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `released_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_ma_order` (`order_id`),
+  CONSTRAINT `fk_ma_order` FOREIGN KEY (`order_id`) REFERENCES `production_orders` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 DROP TABLE IF EXISTS `machines`;
 CREATE TABLE `machines` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `machine_code` varchar(30) NOT NULL,
   `machine_name` varchar(120) NOT NULL,
-  `status` enum('Active','Under Maintenance','Inactive') NOT NULL DEFAULT 'Active',
+  `machine_type` varchar(80) DEFAULT NULL,
+  `shift_capacity` int(11) NOT NULL DEFAULT 0,
+  `status` varchar(30) NOT NULL DEFAULT 'Idle',
   `last_maintenance_date` date NOT NULL,
+  `notes` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `machine_code` (`machine_code`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `machines` (`id`, `machine_code`, `machine_name`, `status`, `last_maintenance_date`, `created_at`) VALUES (1, 'MC-101', 'Tyre Curing Press 1', 'Active', '2026-04-10', '2026-05-14 17:43:38');
-INSERT INTO `machines` (`id`, `machine_code`, `machine_name`, `status`, `last_maintenance_date`, `created_at`) VALUES (2, 'MC-102', 'Tyre Building Machine 1', 'Active', '2026-04-22', '2026-05-14 17:43:38');
+INSERT INTO `machines` (`id`, `machine_code`, `machine_name`, `machine_type`, `shift_capacity`, `status`, `last_maintenance_date`, `notes`, `created_at`) VALUES (1, 'MC-101', 'Tyre Curing Press 1', NULL, 0, 'Running', '2026-04-10', NULL, '2026-05-14 17:43:38');
+INSERT INTO `machines` (`id`, `machine_code`, `machine_name`, `machine_type`, `shift_capacity`, `status`, `last_maintenance_date`, `notes`, `created_at`) VALUES (2, 'MC-102', 'Tyre Building Machine 1', NULL, 0, 'Running', '2026-04-22', NULL, '2026-05-14 17:43:38');
 
 DROP TABLE IF EXISTS `payroll`;
 CREATE TABLE `payroll` (
@@ -469,7 +510,9 @@ CREATE TABLE `payroll` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_payroll_employee_month_year` (`employee_id`,`month`,`year`),
   CONSTRAINT `fk_payroll_employee` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `payroll` (`id`, `employee_id`, `month`, `year`, `present_days`, `paid_leave_days`, `unpaid_leave_days`, `overtime_amount`, `basic_salary`, `deduction`, `net_salary`, `created_at`) VALUES (8, 5, 5, 2026, '24.00', '0.00', '0.00', '1201.00', '26200.99', '2749.04', '23451.95', '2026-05-21 16:58:56');
 
 DROP TABLE IF EXISTS `payroll_settings`;
 CREATE TABLE `payroll_settings` (
@@ -498,10 +541,16 @@ CREATE TABLE `payroll_settings` (
   `ot_multiplier` decimal(6,2) NOT NULL DEFAULT 1.00,
   `late_deduction_pct_of_daily` decimal(6,2) NOT NULL DEFAULT 10.00,
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `full_day_min_hours` decimal(6,2) NOT NULL DEFAULT 8.00,
+  `half_day_min_hours` decimal(6,2) NOT NULL DEFAULT 4.00,
+  `grace_late_minutes` int(11) NOT NULL DEFAULT 15,
+  `min_valid_punch_hours` decimal(6,2) NOT NULL DEFAULT 0.50,
+  `auto_absent_after_hours` decimal(6,2) NOT NULL DEFAULT 0.00,
+  `ot_threshold_hours` decimal(6,2) NOT NULL DEFAULT 0.00,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-INSERT INTO `payroll_settings` (`id`, `basic_pct_of_gross`, `da_pct_of_basic`, `da_enabled`, `hra_pct_non_metro`, `hra_pct_metro`, `medical_enabled`, `medical_mode`, `medical_fixed`, `medical_pct_of_basic`, `travel_enabled`, `travel_mode`, `travel_fixed`, `travel_pct_of_basic`, `gratuity_pct_of_basic`, `pf_employee_pct`, `pf_employer_pct`, `esi_employee_pct`, `esi_employer_pct`, `esi_gross_limit`, `working_days_default`, `shift_hours_default`, `ot_multiplier`, `late_deduction_pct_of_daily`, `updated_at`) VALUES (1, '50.00', '5.00', 1, '40.00', '50.00', 1, 'fixed', '500.00', '0.00', 1, 'fixed', '500.00', '0.00', '4.810', '12.00', '12.00', '0.75', '3.25', '21000.00', '26.02', '8.00', '1.00', '10.00', '2026-05-15 18:42:48');
+INSERT INTO `payroll_settings` (`id`, `basic_pct_of_gross`, `da_pct_of_basic`, `da_enabled`, `hra_pct_non_metro`, `hra_pct_metro`, `medical_enabled`, `medical_mode`, `medical_fixed`, `medical_pct_of_basic`, `travel_enabled`, `travel_mode`, `travel_fixed`, `travel_pct_of_basic`, `gratuity_pct_of_basic`, `pf_employee_pct`, `pf_employer_pct`, `esi_employee_pct`, `esi_employer_pct`, `esi_gross_limit`, `working_days_default`, `shift_hours_default`, `ot_multiplier`, `late_deduction_pct_of_daily`, `updated_at`, `full_day_min_hours`, `half_day_min_hours`, `grace_late_minutes`, `min_valid_punch_hours`, `auto_absent_after_hours`, `ot_threshold_hours`) VALUES (1, '50.00', '5.00', 1, '40.00', '50.00', 1, 'fixed', '500.00', '0.00', 1, 'fixed', '500.00', '0.00', '4.810', '12.00', '12.00', '0.75', '3.25', '21000.00', '26.02', '8.00', '1.00', '10.00', '2026-05-15 18:42:48', '8.00', '4.00', 15, '0.50', '0.00', '0.00');
 
 DROP TABLE IF EXISTS `production`;
 CREATE TABLE `production` (
@@ -509,22 +558,154 @@ CREATE TABLE `production` (
   `production_date` date NOT NULL,
   `machine_id` int(11) NOT NULL,
   `shift` enum('Morning','Evening','Night') NOT NULL,
-  `raw_material_id` int(11) NOT NULL,
-  `material_used_qty` decimal(12,2) NOT NULL,
+  `operator_id` int(11) DEFAULT NULL,
+  `tyre_type` varchar(120) DEFAULT NULL,
+  `planned_quantity` int(11) NOT NULL DEFAULT 0,
+  `raw_material_id` int(11) DEFAULT NULL,
+  `material_used_qty` decimal(12,2) DEFAULT NULL,
   `output_quantity` int(11) NOT NULL,
+  `rejected_quantity` int(11) NOT NULL DEFAULT 0,
+  `downtime_minutes` int(11) NOT NULL DEFAULT 0,
+  `remarks` varchar(500) DEFAULT NULL,
+  `efficiency_pct` decimal(6,2) DEFAULT NULL,
+  `entry_status` varchar(30) NOT NULL DEFAULT 'Submitted',
+  `inventory_deducted` tinyint(1) NOT NULL DEFAULT 0,
+  `payroll_ot_flag` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Reserved for OT shift payroll link',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `idx_prod_date` (`production_date`),
   KEY `fk_prod_machine` (`machine_id`),
   KEY `fk_prod_material` (`raw_material_id`),
+  KEY `fk_production_operator` (`operator_id`),
   CONSTRAINT `fk_prod_machine` FOREIGN KEY (`machine_id`) REFERENCES `machines` (`id`),
-  CONSTRAINT `fk_prod_material` FOREIGN KEY (`raw_material_id`) REFERENCES `raw_materials` (`id`)
+  CONSTRAINT `fk_prod_material` FOREIGN KEY (`raw_material_id`) REFERENCES `raw_materials` (`id`),
+  CONSTRAINT `fk_production_operator` FOREIGN KEY (`operator_id`) REFERENCES `employees` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+DROP TABLE IF EXISTS `production_bom`;
+CREATE TABLE `production_bom` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `tyre_type` varchar(120) NOT NULL,
+  `raw_material_id` int(11) NOT NULL,
+  `qty_per_unit` decimal(12,4) NOT NULL DEFAULT 0.0000,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_bom_tyre_material` (`tyre_type`,`raw_material_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `production_bom` (`id`, `tyre_type`, `raw_material_id`, `qty_per_unit`) VALUES (1, 'TBR Truck', 1, '0.5000');
+INSERT INTO `production_bom` (`id`, `tyre_type`, `raw_material_id`, `qty_per_unit`) VALUES (2, 'TBR Truck', 2, '0.2000');
+INSERT INTO `production_bom` (`id`, `tyre_type`, `raw_material_id`, `qty_per_unit`) VALUES (3, 'PCR Car', 1, '0.4000');
+INSERT INTO `production_bom` (`id`, `tyre_type`, `raw_material_id`, `qty_per_unit`) VALUES (4, 'PCR Car', 2, '0.1500');
+
+DROP TABLE IF EXISTS `production_downtime`;
+CREATE TABLE `production_downtime` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `order_id` int(11) NOT NULL,
+  `stage_id` int(11) DEFAULT NULL,
+  `minutes` int(11) NOT NULL DEFAULT 0,
+  `reason` varchar(255) DEFAULT NULL,
+  `logged_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_pd_order` (`order_id`),
+  CONSTRAINT `fk_pd_order` FOREIGN KEY (`order_id`) REFERENCES `production_orders` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+DROP TABLE IF EXISTS `production_logs`;
+CREATE TABLE `production_logs` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `order_id` int(11) NOT NULL,
+  `stage_id` int(11) DEFAULT NULL,
+  `action` varchar(60) NOT NULL,
+  `message` varchar(500) NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_prod_logs_order` (`order_id`),
+  CONSTRAINT `fk_prod_log_order` FOREIGN KEY (`order_id`) REFERENCES `production_orders` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+DROP TABLE IF EXISTS `production_orders`;
+CREATE TABLE `production_orders` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `order_code` varchar(40) NOT NULL,
+  `tyre_type` varchar(120) NOT NULL,
+  `target_qty` int(11) NOT NULL DEFAULT 0,
+  `deadline` date DEFAULT NULL,
+  `priority` varchar(20) NOT NULL DEFAULT 'Normal',
+  `status` varchar(30) NOT NULL DEFAULT 'Pending',
+  `current_stage` varchar(40) NOT NULL DEFAULT 'Mixing',
+  `total_produced` int(11) NOT NULL DEFAULT 0,
+  `total_rejected` int(11) NOT NULL DEFAULT 0,
+  `total_downtime` int(11) NOT NULL DEFAULT 0,
+  `qc_passed_qty` int(11) NOT NULL DEFAULT 0,
+  `qc_failed_qty` int(11) NOT NULL DEFAULT 0,
+  `inventory_deducted` tinyint(1) NOT NULL DEFAULT 0,
+  `remarks` varchar(500) DEFAULT NULL,
+  `created_by_user_id` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `order_code` (`order_code`),
+  KEY `idx_prod_orders_status` (`status`),
+  KEY `idx_prod_orders_stage` (`current_stage`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+DROP TABLE IF EXISTS `production_stage_logs`;
+CREATE TABLE `production_stage_logs` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `order_id` int(11) NOT NULL,
+  `stage_id` int(11) DEFAULT NULL,
+  `stage_name` varchar(40) NOT NULL,
+  `machine_id` int(11) DEFAULT NULL,
+  `operator_id` int(11) DEFAULT NULL,
+  `shift` varchar(20) DEFAULT NULL,
+  `status` varchar(30) NOT NULL,
+  `produced_qty` int(11) NOT NULL DEFAULT 0,
+  `rejected_qty` int(11) NOT NULL DEFAULT 0,
+  `downtime_minutes` int(11) NOT NULL DEFAULT 0,
+  `started_at` datetime DEFAULT NULL,
+  `completed_at` datetime DEFAULT NULL,
+  `remarks` varchar(500) DEFAULT NULL,
+  `action_type` varchar(40) NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_psl_order` (`order_id`),
+  KEY `idx_psl_stage` (`stage_id`),
+  CONSTRAINT `fk_psl_order` FOREIGN KEY (`order_id`) REFERENCES `production_orders` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+DROP TABLE IF EXISTS `production_stages`;
+CREATE TABLE `production_stages` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `order_id` int(11) NOT NULL,
+  `stage_name` varchar(40) NOT NULL,
+  `stage_order` tinyint(4) NOT NULL DEFAULT 1,
+  `machine_id` int(11) DEFAULT NULL,
+  `operator_id` int(11) DEFAULT NULL,
+  `shift` varchar(20) DEFAULT 'Morning',
+  `status` varchar(20) NOT NULL DEFAULT 'Pending',
+  `produced_qty` int(11) NOT NULL DEFAULT 0,
+  `rejected_qty` int(11) NOT NULL DEFAULT 0,
+  `downtime_minutes` int(11) NOT NULL DEFAULT 0,
+  `started_at` datetime DEFAULT NULL,
+  `ended_at` datetime DEFAULT NULL,
+  `remarks` varchar(500) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_order_stage` (`order_id`,`stage_name`),
+  KEY `idx_prod_stages_status` (`status`),
+  KEY `fk_prod_stage_machine` (`machine_id`),
+  KEY `fk_prod_stage_operator` (`operator_id`),
+  CONSTRAINT `fk_prod_stage_machine` FOREIGN KEY (`machine_id`) REFERENCES `machines` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_prod_stage_operator` FOREIGN KEY (`operator_id`) REFERENCES `employees` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_prod_stage_order` FOREIGN KEY (`order_id`) REFERENCES `production_orders` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 DROP TABLE IF EXISTS `quality_checks`;
 CREATE TABLE `quality_checks` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `production_id` int(11) NOT NULL,
+  `production_order_id` int(11) DEFAULT NULL,
   `inspection_date` date NOT NULL,
   `inspector_name` varchar(120) NOT NULL,
   `passed_qty` int(11) NOT NULL,
@@ -534,6 +715,7 @@ CREATE TABLE `quality_checks` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `fk_qc_production` (`production_id`),
+  KEY `idx_qc_prod_order` (`production_order_id`),
   CONSTRAINT `fk_qc_production` FOREIGN KEY (`production_id`) REFERENCES `production` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -600,7 +782,10 @@ CREATE TABLE `salaries` (
   KEY `idx_salary_month` (`month_year`),
   KEY `fk_salary_employee` (`employee_id`),
   CONSTRAINT `fk_salary_employee` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `salaries` (`id`, `employee_id`, `month_year`, `present_days`, `paid_leave_days`, `half_paid_leave_days`, `unpaid_leave_days`, `overtime_hours`, `overtime_amount`, `basic`, `overtime`, `deductions`, `net_salary`, `payment_status`, `is_draft`, `paid_at`, `generated_at`, `created_at`, `hra_percentage`, `hra_amount`, `pf_percentage`, `pf_amount`, `esi_employee_percentage`, `esi_employee_amount`, `esi_employer_percentage`, `esi_employer_amount`, `medical_allowance`, `dearness_allowance`, `travel_allowance`, `special_allowance`, `other_allowances`, `pf_employer_amount`, `tax_deduction`, `gratuity_accrual`, `leave_deduction`, `half_day_deduction`, `late_entry_deduction`, `gross_salary`, `total_deduction`) VALUES (8, 5, '2026-05', '24.00', '0.00', '0.00', '0.00', '10.00', '1201.00', '12500.00', '0.00', '0.00', '23451.95', 'unpaid', 0, NULL, '2026-05-21 16:58:56', '2026-05-21 16:58:56', '40.00', '5000.00', '12.00', '1500.00', '0.75', '0.00', '3.25', '0.00', '500.00', '625.00', '500.00', '5874.99', '0.00', '1500.00', '0.00', '601.25', '0.00', '960.80', '288.24', '26200.99', '2749.04');
+INSERT INTO `salaries` (`id`, `employee_id`, `month_year`, `present_days`, `paid_leave_days`, `half_paid_leave_days`, `unpaid_leave_days`, `overtime_hours`, `overtime_amount`, `basic`, `overtime`, `deductions`, `net_salary`, `payment_status`, `is_draft`, `paid_at`, `generated_at`, `created_at`, `hra_percentage`, `hra_amount`, `pf_percentage`, `pf_amount`, `esi_employee_percentage`, `esi_employee_amount`, `esi_employer_percentage`, `esi_employer_amount`, `medical_allowance`, `dearness_allowance`, `travel_allowance`, `special_allowance`, `other_allowances`, `pf_employer_amount`, `tax_deduction`, `gratuity_accrual`, `leave_deduction`, `half_day_deduction`, `late_entry_deduction`, `gross_salary`, `total_deduction`) VALUES (9, 5, '2026-05', '24.00', '0.00', '0.00', '0.00', '10.00', '1201.00', '12500.00', '0.00', '0.00', '23451.95', 'unpaid', 0, NULL, '2026-05-21 16:59:01', '2026-05-21 16:59:01', '40.00', '5000.00', '12.00', '1500.00', '0.75', '0.00', '3.25', '0.00', '500.00', '625.00', '500.00', '5874.99', '0.00', '1500.00', '0.00', '601.25', '0.00', '960.80', '288.24', '26200.99', '2749.04');
 
 DROP TABLE IF EXISTS `salary_increments`;
 CREATE TABLE `salary_increments` (
@@ -635,6 +820,9 @@ INSERT INTO `schema_migrations` (`migration`, `batch`, `applied_at`) VALUES ('00
 INSERT INTO `schema_migrations` (`migration`, `batch`, `applied_at`) VALUES ('006_leave_module_update.sql', 1, '2026-05-17 19:39:05');
 INSERT INTO `schema_migrations` (`migration`, `batch`, `applied_at`) VALUES ('007_employee_department_links.sql', 1, '2026-05-17 19:39:05');
 INSERT INTO `schema_migrations` (`migration`, `batch`, `applied_at`) VALUES ('008_hr_notifications_and_leave_audit.sql', 2, '2026-05-20 19:38:44');
+INSERT INTO `schema_migrations` (`migration`, `batch`, `applied_at`) VALUES ('009_production_workflow.sql', 3, '2026-05-21 17:19:47');
+INSERT INTO `schema_migrations` (`migration`, `batch`, `applied_at`) VALUES ('010_production_orders_workflow.sql', 4, '2026-05-21 17:40:07');
+INSERT INTO `schema_migrations` (`migration`, `batch`, `applied_at`) VALUES ('011_production_stage_logs.sql', 5, '2026-05-21 18:13:33');
 
 DROP TABLE IF EXISTS `settings`;
 CREATE TABLE `settings` (
@@ -643,7 +831,7 @@ CREATE TABLE `settings` (
   `setting_value` text NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `setting_key` (`setting_key`)
-) ENGINE=InnoDB AUTO_INCREMENT=839 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1051 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `settings` (`id`, `setting_key`, `setting_value`) VALUES (1, 'company_name', 'Ralson India Private Limited');
 INSERT INTO `settings` (`id`, `setting_key`, `setting_value`) VALUES (104, 'employee_gross_backfill_v1', '1');
@@ -686,16 +874,16 @@ CREATE TABLE `users` (
   UNIQUE KEY `employee_id` (`employee_id`),
   UNIQUE KEY `username` (`username`),
   KEY `idx_users_role_status` (`role`,`status`)
-) ENGINE=InnoDB AUTO_INCREMENT=5629 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7100 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (1, NULL, 'Super Admin', 'superadmin@ralson.local', 'superadmin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Super Admin', 'active', 0, NULL, '2026-05-14 17:43:38');
-INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (2, NULL, 'HR Manager', 'hr@ralson.local', 'hrmanager', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'HR Manager', 'active', 0, '2026-05-20 18:32:47', '2026-05-14 17:43:38');
-INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (3, NULL, 'Production Manager', 'production@ralson.local', 'prodmanager', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Production Manager', 'active', 0, NULL, '2026-05-14 17:43:38');
+INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (2, NULL, 'HR Manager', 'hr@ralson.local', 'hrmanager', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'HR Manager', 'active', 0, '2026-05-21 16:58:28', '2026-05-14 17:43:38');
+INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (3, NULL, 'Production Manager', 'production@ralson.local', 'prodmanager', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Production Manager', 'active', 0, '2026-05-21 17:10:56', '2026-05-14 17:43:38');
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (4, NULL, 'Inventory Manager', 'inventory@ralson.local', 'invmanager', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Inventory Manager', 'active', 0, NULL, '2026-05-14 17:43:38');
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (5, NULL, 'Dispatch Manager', 'dispatch@ralson.local', 'dispatchmgr', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Dispatch Manager', 'active', 0, NULL, '2026-05-14 17:43:38');
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (6, NULL, 'Quality Manager', 'quality@ralson.local', 'qualitymgr', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Quality Manager', 'active', 0, NULL, '2026-05-14 17:43:38');
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (7, NULL, 'Employee User', 'employee@ralson.local', 'employeeuser', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Employee', 'active', 0, NULL, '2026-05-14 17:43:38');
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (561, NULL, 'Gagan Kumar Shah', NULL, 'gag43456', '$2y$10$PW5mc3q6.lKCixv6SLvF0eY5uGjOQJW5xDQ2oNaFLwEuKYvr5xY3C', 'Employee', 'active', 1, NULL, '2026-05-14 19:37:52');
-INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (2910, 5, 'Gagan Kumar Shah', NULL, 'gag53456', '$2y$10$GQQuDXgWFyGbUbXCkX/ML.aHjN.Qk7xzzhLuHJmM8VJXBaMBJA.V.', 'Employee', 'active', 0, '2026-05-20 17:37:20', '2026-05-17 18:41:30');
+INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (2910, 5, 'Gagan Kumar Shah', NULL, 'gag53456', '$2y$10$GQQuDXgWFyGbUbXCkX/ML.aHjN.Qk7xzzhLuHJmM8VJXBaMBJA.V.', 'Employee', 'active', 0, '2026-05-21 17:00:22', '2026-05-17 18:41:30');
 
 SET FOREIGN_KEY_CHECKS=1;

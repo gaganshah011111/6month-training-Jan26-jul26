@@ -19,6 +19,7 @@ $iconMap = [
     'Raw Materials' => 'bi-box-seam',
     'Suppliers' => 'bi-truck',
     'Production' => 'bi-building-gear',
+    'Production Entry' => 'bi-clipboard-plus',
     'Machines' => 'bi-cpu',
     'Production Reports' => 'bi-bar-chart',
     'Inventory' => 'bi-boxes',
@@ -40,7 +41,16 @@ $iconMap = [
             'HR Management' => ['hr/dashboard' => 'Dashboard', 'employees/list' => 'Employees', 'attendance/list' => 'Attendance', 'leave/list' => 'Leave', 'payroll/list' => 'Payroll', 'hr/payroll-settings' => 'Payroll Settings', 'reports/hr' => 'HR Reports'],
         ],
         'Production Manager' => [
-            'Production' => ['production/dashboard' => 'Dashboard', 'raw-materials/list' => 'Raw Materials', 'suppliers/list' => 'Suppliers', 'production/list' => 'Production', 'machines/list' => 'Machines', 'reports/production' => 'Production Reports'],
+            'Production' => [
+                'production/dashboard' => 'Dashboard',
+                'production/orders' => 'Production Orders',
+                'production/mixing' => 'Mixing',
+                'production/building' => 'Building',
+                'production/curing' => 'Curing',
+                'production/qc' => 'QC',
+                'machines/list' => 'Machines',
+                'reports/production' => 'Reports',
+            ],
         ],
         'Inventory Manager' => [
             'Inventory' => ['inventory/dashboard' => 'Dashboard', 'inventory/list' => 'Inventory', 'reports/inventory' => 'Inventory Reports'],

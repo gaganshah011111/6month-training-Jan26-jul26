@@ -344,6 +344,304 @@ class Database
         self::$initialized = true;
     }
 
+    /** Production & machines — tyre factory workflow schema. */
+    private static function migrateProductionModule(PDO $pdo): void
+    {
+        if (!self::hasTable($pdo, 'machines')) {
+            return;
+        }
+
+        if (!self::hasColumn($pdo, 'machines', 'machine_type')) {
+            $pdo->exec('ALTER TABLE machines ADD COLUMN machine_type VARCHAR(80) NULL AFTER machine_name');
+        }
+        if (!self::hasColumn($pdo, 'machines', 'shift_capacity')) {
+            $pdo->exec('ALTER TABLE machines ADD COLUMN shift_capacity INT NOT NULL DEFAULT 0 AFTER machine_type');
+        }
+        if (!self::hasColumn($pdo, 'machines', 'notes')) {
+            $pdo->exec('ALTER TABLE machines ADD COLUMN notes TEXT NULL AFTER last_maintenance_date');
+        }
+
+        try {
+            $pdo->exec("ALTER TABLE machines MODIFY status VARCHAR(30) NOT NULL DEFAULT 'Idle'");
+            $pdo->exec("UPDATE machines SET status = 'Running' WHERE status IN ('Active','active')");
+            $pdo->exec("UPDATE machines SET status = 'Idle' WHERE status IN ('Inactive','inactive')");
+            $pdo->exec("UPDATE machines SET status = 'Maintenance' WHERE status IN ('Under Maintenance','under maintenance')");
+        } catch (Throwable) {
+        }
+
+        if (!self::hasTable($pdo, 'production')) {
+            return;
+        }
+
+        if (!self::hasColumn($pdo, 'production', 'operator_id')) {
+            $pdo->exec('ALTER TABLE production ADD COLUMN operator_id INT NULL AFTER shift');
+            try {
+                $pdo->exec('ALTER TABLE production ADD CONSTRAINT fk_production_operator FOREIGN KEY (operator_id) REFERENCES employees(id) ON DELETE SET NULL');
+            } catch (Throwable) {
+            }
+        }
+        if (!self::hasColumn($pdo, 'production', 'tyre_type')) {
+            $pdo->exec("ALTER TABLE production ADD COLUMN tyre_type VARCHAR(120) NULL AFTER operator_id");
+        }
+        if (!self::hasColumn($pdo, 'production', 'planned_quantity')) {
+            $pdo->exec('ALTER TABLE production ADD COLUMN planned_quantity INT NOT NULL DEFAULT 0 AFTER tyre_type');
+        }
+        if (!self::hasColumn($pdo, 'production', 'rejected_quantity')) {
+            $pdo->exec('ALTER TABLE production ADD COLUMN rejected_quantity INT NOT NULL DEFAULT 0 AFTER output_quantity');
+        }
+        if (!self::hasColumn($pdo, 'production', 'downtime_minutes')) {
+            $pdo->exec('ALTER TABLE production ADD COLUMN downtime_minutes INT NOT NULL DEFAULT 0 AFTER rejected_quantity');
+        }
+        if (!self::hasColumn($pdo, 'production', 'remarks')) {
+            $pdo->exec('ALTER TABLE production ADD COLUMN remarks VARCHAR(500) NULL AFTER downtime_minutes');
+        }
+        if (!self::hasColumn($pdo, 'production', 'efficiency_pct')) {
+            $pdo->exec('ALTER TABLE production ADD COLUMN efficiency_pct DECIMAL(6,2) NULL AFTER remarks');
+        }
+        if (!self::hasColumn($pdo, 'production', 'entry_status')) {
+            $pdo->exec("ALTER TABLE production ADD COLUMN entry_status VARCHAR(30) NOT NULL DEFAULT 'Submitted' AFTER efficiency_pct");
+        }
+        if (!self::hasColumn($pdo, 'production', 'inventory_deducted')) {
+            $pdo->exec('ALTER TABLE production ADD COLUMN inventory_deducted TINYINT(1) NOT NULL DEFAULT 0 AFTER entry_status');
+        }
+        if (!self::hasColumn($pdo, 'production', 'payroll_ot_flag')) {
+            $pdo->exec('ALTER TABLE production ADD COLUMN payroll_ot_flag TINYINT(1) NOT NULL DEFAULT 0 COMMENT \'Reserved for OT shift payroll link\' AFTER inventory_deducted');
+        }
+
+        try {
+            $pdo->exec('ALTER TABLE production MODIFY raw_material_id INT NULL');
+            $pdo->exec('ALTER TABLE production MODIFY material_used_qty DECIMAL(12,2) NULL DEFAULT NULL');
+        } catch (Throwable) {
+        }
+    }
+
+    /** Production orders workflow — Mixing → Building → Curing → QC → Finished. */
+    private static function migrateProductionOrdersWorkflow(PDO $pdo): void
+    {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS production_orders (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            order_code VARCHAR(40) NOT NULL UNIQUE,
+            tyre_type VARCHAR(120) NOT NULL,
+            target_qty INT NOT NULL DEFAULT 0,
+            deadline DATE NULL,
+            priority VARCHAR(20) NOT NULL DEFAULT 'Normal',
+            status VARCHAR(30) NOT NULL DEFAULT 'Pending',
+            current_stage VARCHAR(40) NOT NULL DEFAULT 'Mixing',
+            total_produced INT NOT NULL DEFAULT 0,
+            total_rejected INT NOT NULL DEFAULT 0,
+            total_downtime INT NOT NULL DEFAULT 0,
+            qc_passed_qty INT NOT NULL DEFAULT 0,
+            qc_failed_qty INT NOT NULL DEFAULT 0,
+            inventory_deducted TINYINT(1) NOT NULL DEFAULT 0,
+            remarks VARCHAR(500) NULL,
+            created_by_user_id INT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_prod_orders_status (status),
+            INDEX idx_prod_orders_stage (current_stage)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS production_stages (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            order_id INT NOT NULL,
+            stage_name VARCHAR(40) NOT NULL,
+            stage_order TINYINT NOT NULL DEFAULT 1,
+            machine_id INT NULL,
+            operator_id INT NULL,
+            shift VARCHAR(20) NULL DEFAULT 'Morning',
+            status VARCHAR(20) NOT NULL DEFAULT 'Pending',
+            produced_qty INT NOT NULL DEFAULT 0,
+            rejected_qty INT NOT NULL DEFAULT 0,
+            downtime_minutes INT NOT NULL DEFAULT 0,
+            started_at DATETIME NULL,
+            ended_at DATETIME NULL,
+            remarks VARCHAR(500) NULL,
+            UNIQUE KEY uk_order_stage (order_id, stage_name),
+            INDEX idx_prod_stages_status (status),
+            CONSTRAINT fk_prod_stage_order FOREIGN KEY (order_id) REFERENCES production_orders(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS production_logs (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            order_id INT NOT NULL,
+            stage_id INT NULL,
+            action VARCHAR(60) NOT NULL,
+            message VARCHAR(500) NOT NULL,
+            user_id INT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_prod_logs_order (order_id),
+            CONSTRAINT fk_prod_log_order FOREIGN KEY (order_id) REFERENCES production_orders(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS machine_assignments (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            order_id INT NOT NULL,
+            stage_id INT NOT NULL,
+            machine_id INT NOT NULL,
+            assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            released_at DATETIME NULL,
+            INDEX idx_ma_order (order_id),
+            CONSTRAINT fk_ma_order FOREIGN KEY (order_id) REFERENCES production_orders(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS production_downtime (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            order_id INT NOT NULL,
+            stage_id INT NULL,
+            minutes INT NOT NULL DEFAULT 0,
+            reason VARCHAR(255) NULL,
+            logged_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_pd_order (order_id),
+            CONSTRAINT fk_pd_order FOREIGN KEY (order_id) REFERENCES production_orders(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS production_bom (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            tyre_type VARCHAR(120) NOT NULL,
+            raw_material_id INT NOT NULL,
+            qty_per_unit DECIMAL(12,4) NOT NULL DEFAULT 0,
+            UNIQUE KEY uk_bom_tyre_material (tyre_type, raw_material_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS production_stage_logs (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            order_id INT NOT NULL,
+            stage_id INT NULL,
+            stage_name VARCHAR(40) NOT NULL,
+            machine_id INT NULL,
+            operator_id INT NULL,
+            shift VARCHAR(20) NULL,
+            status VARCHAR(30) NOT NULL,
+            produced_qty INT NOT NULL DEFAULT 0,
+            rejected_qty INT NOT NULL DEFAULT 0,
+            downtime_minutes INT NOT NULL DEFAULT 0,
+            started_at DATETIME NULL,
+            completed_at DATETIME NULL,
+            remarks VARCHAR(500) NULL,
+            action_type VARCHAR(40) NOT NULL,
+            user_id INT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_psl_order (order_id),
+            INDEX idx_psl_stage (stage_id),
+            CONSTRAINT fk_psl_order FOREIGN KEY (order_id) REFERENCES production_orders(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+        if (self::hasTable($pdo, 'quality_checks') && !self::hasColumn($pdo, 'quality_checks', 'production_order_id')) {
+            $pdo->exec('ALTER TABLE quality_checks ADD COLUMN production_order_id INT NULL AFTER production_id');
+            try {
+                $pdo->exec('ALTER TABLE quality_checks ADD INDEX idx_qc_prod_order (production_order_id)');
+            } catch (Throwable) {
+            }
+        }
+
+        if (self::hasTable($pdo, 'production_stages') && self::hasTable($pdo, 'machines')) {
+            try {
+                $pdo->exec('ALTER TABLE production_stages ADD CONSTRAINT fk_prod_stage_machine FOREIGN KEY (machine_id) REFERENCES machines(id) ON DELETE SET NULL');
+            } catch (Throwable) {
+            }
+            try {
+                $pdo->exec('ALTER TABLE production_stages ADD CONSTRAINT fk_prod_stage_operator FOREIGN KEY (operator_id) REFERENCES employees(id) ON DELETE SET NULL');
+            } catch (Throwable) {
+            }
+        }
+    }
+
+    /** Parallel department production — Mixing, Building, Curing, QC batches. */
+    private static function migrateProductionDepartments(PDO $pdo): void
+    {
+        if (!self::hasTable($pdo, 'production_orders')) {
+            return;
+        }
+
+        if (self::hasTable($pdo, 'machines') && !self::hasColumn($pdo, 'machines', 'department')) {
+            $pdo->exec("ALTER TABLE machines ADD COLUMN department VARCHAR(40) NULL AFTER machine_type");
+        }
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS mixing_batches (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            order_id INT NULL,
+            batch_code VARCHAR(40) NOT NULL UNIQUE,
+            compound_name VARCHAR(120) NOT NULL DEFAULT 'Rubber Compound',
+            produced_qty DECIMAL(12,2) NOT NULL DEFAULT 0,
+            wastage_qty DECIMAL(12,2) NOT NULL DEFAULT 0,
+            unit VARCHAR(20) NOT NULL DEFAULT 'kg',
+            machine_id INT NULL,
+            operator_id INT NULL,
+            shift VARCHAR(20) NOT NULL DEFAULT 'Morning',
+            production_date DATE NOT NULL,
+            status VARCHAR(30) NOT NULL DEFAULT 'Ready',
+            notes VARCHAR(500) NULL,
+            inventory_deducted TINYINT(1) NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_mix_order (order_id),
+            INDEX idx_mix_date (production_date),
+            CONSTRAINT fk_mix_order FOREIGN KEY (order_id) REFERENCES production_orders(id) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS building_batches (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            order_id INT NULL,
+            mixing_batch_id INT NULL,
+            batch_code VARCHAR(40) NOT NULL UNIQUE,
+            produced_qty INT NOT NULL DEFAULT 0,
+            rejected_qty INT NOT NULL DEFAULT 0,
+            machine_id INT NULL,
+            operator_id INT NULL,
+            shift VARCHAR(20) NOT NULL DEFAULT 'Morning',
+            production_date DATE NOT NULL,
+            status VARCHAR(30) NOT NULL DEFAULT 'In Progress',
+            notes VARCHAR(500) NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_bld_order (order_id),
+            INDEX idx_bld_mix (mixing_batch_id),
+            CONSTRAINT fk_bld_order FOREIGN KEY (order_id) REFERENCES production_orders(id) ON DELETE SET NULL,
+            CONSTRAINT fk_bld_mix FOREIGN KEY (mixing_batch_id) REFERENCES mixing_batches(id) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS curing_batches (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            order_id INT NULL,
+            building_batch_id INT NULL,
+            batch_code VARCHAR(40) NOT NULL UNIQUE,
+            cured_qty INT NOT NULL DEFAULT 0,
+            rejected_qty INT NOT NULL DEFAULT 0,
+            cycle_time_min INT NOT NULL DEFAULT 0,
+            downtime_min INT NOT NULL DEFAULT 0,
+            machine_id INT NULL,
+            operator_id INT NULL,
+            shift VARCHAR(20) NOT NULL DEFAULT 'Morning',
+            production_date DATE NOT NULL,
+            status VARCHAR(30) NOT NULL DEFAULT 'In Progress',
+            notes VARCHAR(500) NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_cur_order (order_id),
+            INDEX idx_cur_bld (building_batch_id),
+            CONSTRAINT fk_cur_order FOREIGN KEY (order_id) REFERENCES production_orders(id) ON DELETE SET NULL,
+            CONSTRAINT fk_cur_bld FOREIGN KEY (building_batch_id) REFERENCES building_batches(id) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS production_qc_entries (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            order_id INT NULL,
+            curing_batch_id INT NULL,
+            batch_ref VARCHAR(40) NULL,
+            inspection_date DATE NOT NULL,
+            inspected_qty INT NOT NULL DEFAULT 0,
+            passed_qty INT NOT NULL DEFAULT 0,
+            rejected_qty INT NOT NULL DEFAULT 0,
+            defect_type VARCHAR(120) NULL,
+            inspector_name VARCHAR(150) NOT NULL,
+            remarks VARCHAR(500) NULL,
+            inventory_added TINYINT(1) NOT NULL DEFAULT 0,
+            warehouse_location VARCHAR(120) NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_pqc_order (order_id),
+            INDEX idx_pqc_date (inspection_date),
+            CONSTRAINT fk_pqc_order FOREIGN KEY (order_id) REFERENCES production_orders(id) ON DELETE SET NULL,
+            CONSTRAINT fk_pqc_cur FOREIGN KEY (curing_batch_id) REFERENCES curing_batches(id) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+    }
+
     private static function hasColumn(PDO $pdo, string $table, string $column): bool
     {
         $stmt = $pdo->prepare("SELECT COUNT(*)
@@ -1062,6 +1360,10 @@ class Database
         if (self::hasTable($pdo, 'departments') && !self::hasColumn($pdo, 'departments', 'min_staff_required')) {
             $pdo->exec('ALTER TABLE departments ADD COLUMN min_staff_required INT NULL DEFAULT NULL AFTER status');
         }
+
+        self::migrateProductionModule($pdo);
+        self::migrateProductionOrdersWorkflow($pdo);
+        self::migrateProductionDepartments($pdo);
 
         self::normalizeErpCollation($pdo);
         self::normalizeEmployeeFkCascade($pdo);

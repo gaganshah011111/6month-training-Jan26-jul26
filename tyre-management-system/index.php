@@ -48,7 +48,7 @@ if (str_starts_with((string)$page, 'api/')) {
     exit;
 }
 
-if ($page === 'employees/credential-slip' || $page === 'payroll/payslip') {
+if ($page === 'employees/credential-slip' || $page === 'payroll/payslip' || $page === 'dispatch/slip') {
     require __DIR__ . '/' . $path;
     exit;
 }
@@ -79,6 +79,9 @@ $postRedirectPaths = [
     'modules/dispatch/new.php',
     'modules/dispatch/history.php',
     'modules/dispatch/customers.php',
+    'modules/dispatch/drivers.php',
+    'modules/dispatch/transport.php',
+    'modules/dispatch/logistics.php',
     'modules/suppliers/index.php',
     'modules/settings/index.php',
     'modules/inventory/materials.php',

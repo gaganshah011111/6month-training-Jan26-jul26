@@ -1,0 +1,5 @@
+<?php
+declare(strict_types=1);
+require_once __DIR__ . '/../../includes/functions.php';
+header('Location: ' . route_url('dispatch/logistics') . '&tab=drivers');
+exit;

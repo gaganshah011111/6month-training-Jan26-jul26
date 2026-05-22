@@ -23,7 +23,7 @@ $d = dispatch_dashboard($pdo);
         <nav class="dsp-nav-quick">
             <a href="<?= e(route_url('dispatch/new')) ?>">New Dispatch</a>
             <a href="<?= e(route_url('dispatch/history')) ?>">History</a>
-            <a href="<?= e(route_url('dispatch/customers')) ?>">Customers</a>
+            <a href="<?= e(route_url('dispatch/logistics')) ?>">Logistics</a>
             <a href="<?= e(route_url('reports/dispatch')) ?>">Reports</a>
         </nav>
     </header>

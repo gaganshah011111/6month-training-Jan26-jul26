@@ -51,6 +51,9 @@ function erp_ui_extra_stylesheets(): array
         'dispatch/new' => ['dispatch-module.css'],
         'dispatch/history' => ['dispatch-module.css'],
         'dispatch/customers' => ['dispatch-module.css'],
+        'dispatch/drivers' => ['dispatch-module.css'],
+        'dispatch/transport' => ['dispatch-module.css'],
+        'dispatch/logistics' => ['dispatch-module.css'],
         'reports/dispatch' => ['dispatch-module.css'],
     ];
 

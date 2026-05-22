@@ -26,7 +26,7 @@ $autoPrint = ($export ?? '') === 'pdf';
         <thead>
             <tr>
                 <th>Dispatch ID</th><th>Invoice</th><th>Customer</th><th>Tyre</th>
-                <th class="text-end">Qty</th><th>Vehicle</th><th>Driver</th><th>Date</th><th>Status</th>
+                <th class="text-end">Qty</th><th>Vehicle</th><th>Driver</th><th>Transport</th><th>Date</th><th>Status</th>
             </tr>
         </thead>
         <tbody>
@@ -39,6 +39,7 @@ $autoPrint = ($export ?? '') === 'pdf';
                 <td class="text-end"><?= e(dispatch_format_qty((int)$r['qty'])) ?></td>
                 <td><?= e((string)($r['vehicle_no'] ?? '—')) ?></td>
                 <td><?= e((string)($r['driver_name'] ?? '—')) ?></td>
+                <td><?= e((string)($r['transport_company'] ?? '—')) ?></td>
                 <td><?= e((string)$r['dispatch_date']) ?></td>
                 <td><?= e((string)$r['status']) ?></td>
             </tr>

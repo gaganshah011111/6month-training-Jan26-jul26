@@ -806,6 +806,127 @@ class Database
                 'id' => (int)$id,
             ]);
         }
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS dispatch_drivers (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            driver_name VARCHAR(150) NOT NULL,
+            phone VARCHAR(30) NULL,
+            license_number VARCHAR(60) NULL,
+            vehicle_no VARCHAR(40) NULL,
+            transport_company VARCHAR(150) NULL,
+            address VARCHAR(255) NULL,
+            status ENUM('Active','Inactive') NOT NULL DEFAULT 'Active',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_ddriver_name (driver_name),
+            INDEX idx_ddriver_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+        if (!self::hasColumn($pdo, 'dispatch', 'driver_id')) {
+            $pdo->exec('ALTER TABLE dispatch ADD COLUMN driver_id INT NULL AFTER driver_name');
+        }
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS dispatch_transport_companies (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            company_name VARCHAR(150) NOT NULL,
+            contact_person VARCHAR(120) NULL,
+            phone VARCHAR(30) NULL,
+            gst_number VARCHAR(40) NULL,
+            address VARCHAR(255) NULL,
+            status ENUM('Active','Inactive') NOT NULL DEFAULT 'Active',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_transport_name (company_name),
+            INDEX idx_transport_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+        if (!self::hasColumn($pdo, 'dispatch_drivers', 'transport_company_id')) {
+            $pdo->exec('ALTER TABLE dispatch_drivers ADD COLUMN transport_company_id INT NULL AFTER vehicle_no');
+        }
+        if (!self::hasColumn($pdo, 'dispatch', 'transport_company_id')) {
+            $pdo->exec('ALTER TABLE dispatch ADD COLUMN transport_company_id INT NULL AFTER transport_company');
+        }
+        if (!self::hasColumn($pdo, 'dispatch', 'gross_weight_kg')) {
+            $pdo->exec('ALTER TABLE dispatch ADD COLUMN gross_weight_kg DECIMAL(12,2) NULL AFTER qty');
+        }
+        if (!self::hasColumn($pdo, 'dispatch', 'tare_weight_kg')) {
+            $pdo->exec('ALTER TABLE dispatch ADD COLUMN tare_weight_kg DECIMAL(12,2) NULL AFTER gross_weight_kg');
+        }
+        if (!self::hasColumn($pdo, 'dispatch', 'net_weight_kg')) {
+            $pdo->exec('ALTER TABLE dispatch ADD COLUMN net_weight_kg DECIMAL(12,2) NULL AFTER tare_weight_kg');
+        }
+
+        $transportCount = (int)$pdo->query('SELECT COUNT(*) FROM dispatch_transport_companies')->fetchColumn();
+        if ($transportCount === 0) {
+            $pdo->exec("INSERT INTO dispatch_transport_companies (company_name, contact_person, phone, gst_number, address, status) VALUES
+                ('Punjab Logistics', 'Harpreet Singh', '9876520001', '03AABCP1234F1Z5', 'Ludhiana, Punjab', 'Active'),
+                ('Western Freight Lines', 'Amit Shah', '9876520002', '24AABCW5678G1Z9', 'Ahmedabad, Gujarat', 'Active'),
+                ('North Star Transport', 'Vikram Mehta', '9876520003', '06AABCN9012H1Z3', 'Gurgaon, Haryana', 'Active')");
+        }
+
+        try {
+            $pdo->exec("UPDATE dispatch_drivers d
+                INNER JOIN dispatch_transport_companies t ON t.company_name = d.transport_company
+                SET d.transport_company_id = t.id
+                WHERE d.transport_company_id IS NULL AND d.transport_company IS NOT NULL AND d.transport_company != ''");
+        } catch (Throwable) {
+        }
+
+        $driverCount = (int)$pdo->query('SELECT COUNT(*) FROM dispatch_drivers')->fetchColumn();
+        if ($driverCount === 0) {
+            $pdo->exec("INSERT INTO dispatch_drivers (driver_name, phone, license_number, vehicle_no, transport_company_id, transport_company, address, status)
+                SELECT 'Ravi Kumar', '9876510001', 'DL-09-2018-0012345', 'PB10AX1234', id, 'Punjab Logistics', 'Ludhiana, Punjab', 'Active' FROM dispatch_transport_companies WHERE company_name = 'Punjab Logistics' LIMIT 1");
+            $pdo->exec("INSERT INTO dispatch_drivers (driver_name, phone, license_number, vehicle_no, transport_company_id, transport_company, address, status)
+                SELECT 'Suresh Patel', '9876510002', 'GJ-12-2019-0098765', 'GJ01BT5678', id, 'Western Freight Lines', 'Ahmedabad, Gujarat', 'Active' FROM dispatch_transport_companies WHERE company_name = 'Western Freight Lines' LIMIT 1");
+            $pdo->exec("INSERT INTO dispatch_drivers (driver_name, phone, license_number, vehicle_no, transport_company_id, transport_company, address, status)
+                SELECT 'Mohit Singh', '9876510003', 'HR-05-2020-0045678', 'HR26CD9012', id, 'North Star Transport', 'Gurgaon, Haryana', 'Active' FROM dispatch_transport_companies WHERE company_name = 'North Star Transport' LIMIT 1");
+        }
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS dispatch_vehicles (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            vehicle_number VARCHAR(40) NOT NULL,
+            vehicle_type VARCHAR(60) NULL,
+            capacity VARCHAR(40) NULL,
+            driver_id INT NULL,
+            transport_company_id INT NULL,
+            status ENUM('Active','Inactive') NOT NULL DEFAULT 'Active',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_vehicle_number (vehicle_number),
+            INDEX idx_vehicle_status (status),
+            INDEX idx_vehicle_driver (driver_id),
+            INDEX idx_vehicle_transport (transport_company_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+        if (!self::hasColumn($pdo, 'dispatch_drivers', 'vehicle_id')) {
+            $pdo->exec('ALTER TABLE dispatch_drivers ADD COLUMN vehicle_id INT NULL AFTER license_number');
+        }
+        if (!self::hasColumn($pdo, 'dispatch', 'vehicle_id')) {
+            $pdo->exec('ALTER TABLE dispatch ADD COLUMN vehicle_id INT NULL AFTER vehicle_no');
+        }
+
+        $vehicleCount = (int)$pdo->query('SELECT COUNT(*) FROM dispatch_vehicles')->fetchColumn();
+        if ($vehicleCount === 0) {
+            foreach ($pdo->query(
+                'SELECT id, vehicle_no, transport_company_id FROM dispatch_drivers WHERE vehicle_no IS NOT NULL AND vehicle_no != \'\''
+            )->fetchAll(PDO::FETCH_ASSOC) ?: [] as $dr) {
+                $vn = strtoupper(trim((string)$dr['vehicle_no']));
+                $tid = (int)($dr['transport_company_id'] ?? 0) ?: null;
+                $pdo->prepare(
+                    'INSERT IGNORE INTO dispatch_vehicles (vehicle_number, vehicle_type, capacity, driver_id, transport_company_id, status)
+                     VALUES (:n, \'Truck\', \'40 tyres\', :did, :tid, \'Active\')'
+                )->execute(['n' => $vn, 'did' => (int)$dr['id'], 'tid' => $tid]);
+                $vid = (int)$pdo->lastInsertId();
+                if ($vid < 1) {
+                    $st = $pdo->prepare('SELECT id FROM dispatch_vehicles WHERE vehicle_number = :n LIMIT 1');
+                    $st->execute(['n' => $vn]);
+                    $vid = (int)$st->fetchColumn();
+                }
+                if ($vid > 0) {
+                    $pdo->prepare('UPDATE dispatch_drivers SET vehicle_id = :vid WHERE id = :id')->execute([
+                        'vid' => $vid,
+                        'id' => (int)$dr['id'],
+                    ]);
+                }
+            }
+        }
     }
 
     /** Parallel department production — Mixing, Building, Curing, QC batches. */

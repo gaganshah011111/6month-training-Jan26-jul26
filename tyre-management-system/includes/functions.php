@@ -229,6 +229,13 @@ function page_allowed_roles(): array
         'dispatch/new' => ['Dispatch Manager', 'Super Admin', 'Admin'],
         'dispatch/history' => ['Dispatch Manager', 'Super Admin', 'Admin'],
         'dispatch/customers' => ['Dispatch Manager', 'Super Admin', 'Admin'],
+        'dispatch/drivers' => ['Dispatch Manager', 'Super Admin', 'Admin'],
+        'dispatch/transport' => ['Dispatch Manager', 'Super Admin', 'Admin'],
+        'dispatch/logistics' => ['Dispatch Manager', 'Super Admin', 'Admin'],
+        'dispatch/slip' => ['Dispatch Manager', 'Super Admin', 'Admin'],
+        'api/dispatch-stock' => ['Dispatch Manager', 'Super Admin', 'Admin'],
+        'api/dispatch-save' => ['Dispatch Manager', 'Super Admin', 'Admin'],
+        'api/dispatch-preview' => ['Dispatch Manager', 'Super Admin', 'Admin'],
         'reports/dispatch' => ['Dispatch Manager', 'Super Admin', 'Admin'],
 
         'employee/dashboard' => ['Employee'],

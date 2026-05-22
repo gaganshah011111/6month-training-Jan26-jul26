@@ -43,7 +43,7 @@ if ($export === 'csv') {
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="dispatch-history.csv"');
     $out = fopen('php://output', 'w');
-    fputcsv($out, ['Dispatch ID', 'Invoice', 'Customer', 'Tyre Type', 'Qty', 'Vehicle', 'Driver', 'Date', 'Status']);
+    fputcsv($out, ['Dispatch ID', 'Invoice', 'Customer', 'Tyre Type', 'Qty', 'Vehicle', 'Driver', 'Transport', 'Date', 'Status']);
     foreach ($rows as $r) {
         fputcsv($out, [
             $r['dispatch_code'] ?? '',
@@ -53,6 +53,7 @@ if ($export === 'csv') {
             $r['qty'] ?? '',
             $r['vehicle_no'] ?? '',
             $r['driver_name'] ?? '',
+            $r['transport_company'] ?? '',
             $r['dispatch_date'] ?? '',
             $r['status'] ?? '',
         ]);
@@ -80,6 +81,7 @@ $baseQs = 'page=dispatch/history&q=' . rawurlencode($search)
         </div>
         <nav class="dsp-nav-quick">
             <a href="<?= e(route_url('dispatch/new')) ?>">New dispatch</a>
+            <a href="<?= e(route_url('dispatch/logistics')) ?>">Logistics</a>
             <a href="<?= e(route_url('reports/dispatch')) ?>">Reports</a>
         </nav>
     </header>
@@ -122,7 +124,7 @@ $baseQs = 'page=dispatch/history&q=' . rawurlencode($search)
             <thead>
                 <tr>
                     <th>Dispatch ID</th><th>Invoice</th><th>Customer</th><th>Tyre type</th>
-                    <th class="text-end">Qty</th><th>Vehicle</th><th>Driver</th><th>Date</th><th>Status</th><th></th>
+                    <th class="text-end">Qty</th><th>Vehicle</th><th>Driver</th><th>Transport</th><th>Date</th><th>Status</th><th></th>
                 </tr>
             </thead>
             <tbody>
@@ -134,10 +136,12 @@ $baseQs = 'page=dispatch/history&q=' . rawurlencode($search)
                     <td><?= e((string)($r['tyre_type'] ?? '—')) ?></td>
                     <td class="text-end"><?= e(dispatch_format_qty((int)$r['qty'])) ?></td>
                     <td><?= e((string)($r['vehicle_no'] ?? '—')) ?></td>
-                    <td><?= e((string)($r['driver_name'] ?? '—')) ?></td>
+                    <td><?= e((string)($r['driver_name'] ?? '—')) ?><?php if (!empty($r['driver_id']) && empty($r['registered_driver_name'])): ?><span class="text-muted small"> (unregistered)</span><?php endif; ?></td>
+                    <td><?= e((string)($r['transport_company'] ?? '—')) ?></td>
                     <td><?= e((string)$r['dispatch_date']) ?></td>
                     <td><span class="dsp-badge dsp-badge--<?= e(dispatch_status_badge((string)$r['status'])) ?>"><?= e((string)$r['status']) ?></span></td>
                     <td class="text-nowrap">
+                        <a href="<?= e(dispatch_slip_url((int)$r['id'])) ?>" target="_blank" class="btn btn-link btn-sm p-0">PDF</a>
                         <?php if (($r['status'] ?? '') === DISPATCH_STATUS_PENDING): ?>
                             <form method="post" class="d-inline"><?= csrf_input() ?>
                                 <input type="hidden" name="action" value="dispatch">
@@ -156,7 +160,7 @@ $baseQs = 'page=dispatch/history&q=' . rawurlencode($search)
                 </tr>
             <?php endforeach; ?>
             <?php if ($rows === []): ?>
-                <tr><td colspan="10" class="dsp-empty">No dispatch records match your filters.</td></tr>
+                <tr><td colspan="11" class="dsp-empty">No dispatch records match your filters.</td></tr>
             <?php endif; ?>
             </tbody>
         </table>

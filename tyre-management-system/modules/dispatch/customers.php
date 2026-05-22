@@ -45,6 +45,7 @@ if ($editId > 0) {
         </div>
         <nav class="dsp-nav-quick">
             <a href="<?= e(route_url('dispatch/new')) ?>">New dispatch</a>
+            <a href="<?= e(route_url('dispatch/logistics')) ?>">Logistics</a>
         </nav>
     </header>
 

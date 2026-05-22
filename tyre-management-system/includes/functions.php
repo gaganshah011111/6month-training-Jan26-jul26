@@ -201,8 +201,6 @@ function page_allowed_roles(): array
         'raw-materials/list' => ['Production Manager', 'Super Admin', 'Admin'],
         'suppliers/list' => ['Production Manager', 'Super Admin', 'Admin'],
         'production/list' => ['Production Manager', 'Super Admin', 'Admin'],
-        'production/orders' => ['Production Manager', 'Super Admin', 'Admin'],
-        'production/order' => ['Production Manager', 'Super Admin', 'Admin'],
         'production/mixing' => ['Production Manager', 'Super Admin', 'Admin'],
         'production/building' => ['Production Manager', 'Super Admin', 'Admin'],
         'production/curing' => ['Production Manager', 'Super Admin', 'Admin'],

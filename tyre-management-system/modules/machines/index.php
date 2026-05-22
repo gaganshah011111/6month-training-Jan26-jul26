@@ -44,11 +44,11 @@ foreach ($rows as $r) {
     <header class="prod-page__head">
         <div>
             <h1 class="prod-page__title">Machines</h1>
-            <p class="prod-page__sub">Machines by department (Mixing / Building / Curing) — status only; output logged per department module.</p>
+            <p class="prod-page__sub">Machine master — assign department and status. Production quantities are entered on department entry pages.</p>
         </div>
         <nav class="prod-page__links">
             <a href="<?= e(route_url('production/dashboard')) ?>">Dashboard</a>
-            <a href="<?= e(route_url('production/mixing')) ?>">Mixing</a>
+            <a href="<?= e(route_url('production/mixing')) ?>">Mixing Entry</a>
         </nav>
     </header>
 

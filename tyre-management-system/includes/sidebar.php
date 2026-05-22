@@ -43,11 +43,10 @@ $iconMap = [
         'Production Manager' => [
             'Production' => [
                 'production/dashboard' => 'Dashboard',
-                'production/orders' => 'Production Orders',
-                'production/mixing' => 'Mixing',
-                'production/building' => 'Building',
-                'production/curing' => 'Curing',
-                'production/qc' => 'QC',
+                'production/mixing' => 'Mixing Entry',
+                'production/building' => 'Building Entry',
+                'production/curing' => 'Curing Entry',
+                'production/qc' => 'QC Entry',
                 'machines/list' => 'Machines',
                 'reports/production' => 'Reports',
             ],

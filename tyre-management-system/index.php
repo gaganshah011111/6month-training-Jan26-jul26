@@ -71,8 +71,6 @@ $postRedirectPaths = [
     'modules/employees/credential_reveal.php',
     'modules/employee/attendance.php',
     'modules/employee/dashboard.php',
-    'modules/production/orders.php',
-    'modules/production/order.php',
     'modules/production/mixing.php',
     'modules/production/building.php',
     'modules/production/curing.php',

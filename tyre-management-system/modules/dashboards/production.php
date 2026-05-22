@@ -3,8 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../includes/functions.php';
-require_once __DIR__ . '/../../includes/production_service.php';
-require_once __DIR__ . '/../../includes/production_departments.php';
+require_once __DIR__ . '/../../includes/production_entries.php';
 
 if (!has_role(['Production Manager', 'Super Admin', 'Admin'])) {
     echo 'Access denied';
@@ -12,100 +11,82 @@ if (!has_role(['Production Manager', 'Super Admin', 'Admin'])) {
 }
 
 $pdo = Database::connection();
-$s = prod_department_dashboard($pdo);
-$recentOrders = prod_list_master_orders($pdo, 6);
+$s = prod_entry_dashboard($pdo);
 ?>
 
 <div class="prod-page">
     <header class="prod-page__head">
         <div>
             <h1 class="prod-page__title">Production Dashboard</h1>
-            <p class="prod-page__sub">Live department output — parallel plant operations with batch traceability.</p>
+            <p class="prod-page__sub">Today’s factory output — enter production in each department module.</p>
         </div>
-        <a class="btn btn-primary btn-sm" href="<?= e(route_url('production/orders')) ?>">Master orders</a>
     </header>
 
-    <div class="row g-3 prod-dash-kpis">
-        <div class="col-6 col-md-4 col-lg-2">
-            <article class="prod-dash-kpi prod-dept-card--mixing">
-                <span class="prod-dash-kpi__k">Mixing today</span>
-                <span class="prod-dash-kpi__v"><?= e((string)$s['mixing_today']) ?> <small>kg</small></span>
-            </article>
-        </div>
-        <div class="col-6 col-md-4 col-lg-2">
-            <article class="prod-dash-kpi prod-dept-card--building">
-                <span class="prod-dash-kpi__k">Building today</span>
-                <span class="prod-dash-kpi__v"><?= e((string)$s['building_today']) ?></span>
-            </article>
-        </div>
-        <div class="col-6 col-md-4 col-lg-2">
-            <article class="prod-dash-kpi prod-dept-card--curing">
-                <span class="prod-dash-kpi__k">Curing today</span>
-                <span class="prod-dash-kpi__v"><?= e((string)$s['curing_today']) ?></span>
-            </article>
-        </div>
-        <div class="col-6 col-md-4 col-lg-2">
-            <article class="prod-dash-kpi prod-dept-card--qc">
-                <span class="prod-dash-kpi__k">QC passed</span>
-                <span class="prod-dash-kpi__v"><?= e((string)$s['qc_passed_today']) ?></span>
-            </article>
-        </div>
-        <div class="col-6 col-md-4 col-lg-2">
-            <article class="prod-dash-kpi">
-                <span class="prod-dash-kpi__k">QC rejected</span>
-                <span class="prod-dash-kpi__v text-danger"><?= e((string)$s['qc_rejected_today']) ?></span>
-            </article>
-        </div>
-        <div class="col-6 col-md-4 col-lg-2">
-            <article class="prod-dash-kpi">
-                <span class="prod-dash-kpi__k">Downtime (min)</span>
-                <span class="prod-dash-kpi__v"><?= e((string)$s['downtime_today']) ?></span>
-            </article>
-        </div>
+    <div class="row g-2 prod-dash-kpis mb-3">
+        <div class="col-6 col-md-4 col-lg-3"><article class="prod-dash-kpi"><span class="prod-dash-kpi__k">Today mixing</span><span class="prod-dash-kpi__v"><?= e((string)$s['mixing_today']) ?> <small>kg</small></span></article></div>
+        <div class="col-6 col-md-4 col-lg-3"><article class="prod-dash-kpi"><span class="prod-dash-kpi__k">Today building</span><span class="prod-dash-kpi__v"><?= e((string)$s['building_today']) ?></span></article></div>
+        <div class="col-6 col-md-4 col-lg-3"><article class="prod-dash-kpi"><span class="prod-dash-kpi__k">Today curing</span><span class="prod-dash-kpi__v"><?= e((string)$s['curing_today']) ?></span></article></div>
+        <div class="col-6 col-md-4 col-lg-3"><article class="prod-dash-kpi"><span class="prod-dash-kpi__k">QC passed</span><span class="prod-dash-kpi__v"><?= e((string)$s['qc_passed_today']) ?></span></article></div>
+        <div class="col-6 col-md-4 col-lg-3"><article class="prod-dash-kpi"><span class="prod-dash-kpi__k">Total rejected</span><span class="prod-dash-kpi__v text-danger"><?= e((string)$s['rejected_today']) ?></span></article></div>
+        <div class="col-6 col-md-4 col-lg-3"><article class="prod-dash-kpi"><span class="prod-dash-kpi__k">Active machines</span><span class="prod-dash-kpi__v"><?= e((string)$s['running_machines']) ?></span></article></div>
+        <div class="col-6 col-md-4 col-lg-3"><article class="prod-dash-kpi"><span class="prod-dash-kpi__k">Under maintenance</span><span class="prod-dash-kpi__v"><?= e((string)$s['maint_machines']) ?></span></article></div>
+        <div class="col-6 col-md-4 col-lg-3"><article class="prod-dash-kpi"><span class="prod-dash-kpi__k">Downtime today</span><span class="prod-dash-kpi__v"><?= e((string)$s['downtime_today']) ?> min</span></article></div>
     </div>
 
     <div class="prod-dept-quick mb-3">
-        <a class="prod-dept-quick__item" href="<?= e(route_url('production/mixing')) ?>"><i class="bi bi-droplet"></i> Mixing</a>
-        <a class="prod-dept-quick__item" href="<?= e(route_url('production/building')) ?>"><i class="bi bi-gear"></i> Building</a>
-        <a class="prod-dept-quick__item" href="<?= e(route_url('production/curing')) ?>"><i class="bi bi-fire"></i> Curing</a>
-        <a class="prod-dept-quick__item" href="<?= e(route_url('production/qc')) ?>"><i class="bi bi-clipboard-check"></i> QC</a>
-        <a class="prod-dept-quick__item" href="<?= e(route_url('machines/list')) ?>"><i class="bi bi-cpu"></i> Machines</a>
-        <a class="prod-dept-quick__item" href="<?= e(route_url('reports/production')) ?>"><i class="bi bi-file-bar-graph"></i> Reports</a>
+        <a class="prod-dept-quick__item" href="<?= e(route_url('production/mixing')) ?>">Mixing Entry</a>
+        <a class="prod-dept-quick__item" href="<?= e(route_url('production/building')) ?>">Building Entry</a>
+        <a class="prod-dept-quick__item" href="<?= e(route_url('production/curing')) ?>">Curing Entry</a>
+        <a class="prod-dept-quick__item" href="<?= e(route_url('production/qc')) ?>">QC Entry</a>
+        <a class="prod-dept-quick__item" href="<?= e(route_url('machines/list')) ?>">Machines</a>
+        <a class="prod-dept-quick__item" href="<?= e(route_url('reports/production')) ?>">Reports</a>
     </div>
 
-    <section class="prod-card prod-card--table">
-        <div class="prod-card__head">
-            <h2 class="prod-card__title">Master orders vs department output</h2>
-            <span class="text-muted small"><?= e((string)$s['open_orders']) ?> open orders · <?= e((string)$s['running_machines']) ?> machines running</span>
+    <div class="row g-3">
+        <div class="col-lg-8">
+            <section class="prod-card prod-card--table">
+                <div class="prod-card__head"><h2 class="prod-card__title">Latest production entries</h2></div>
+                <div class="table-responsive">
+                    <table class="table table-sm prod-table mb-0">
+                        <thead><tr><th>Date</th><th>Dept</th><th>Shift</th><th>Tyre</th><th class="text-end">Output</th><th class="text-end">Rej.</th><th>Machine</th><th>Operator</th></tr></thead>
+                        <tbody>
+                        <?php foreach ($s['recent'] as $r): ?>
+                            <tr>
+                                <td><?= e($r['dt']) ?></td>
+                                <td><?= e($r['department']) ?></td>
+                                <td><?= e($r['shift'] ?? '—') ?></td>
+                                <td><?= e($r['tyre_type'] ?? '—') ?></td>
+                                <td class="text-end"><?= e((string)($r['produced_qty'] ?? 0)) ?></td>
+                                <td class="text-end"><?= e((string)($r['rejected_qty'] ?? 0)) ?></td>
+                                <td><?= e($r['machine_code'] ?? '—') ?></td>
+                                <td><?= e($r['op'] ?? '—') ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        <?php if (!$s['recent']): ?>
+                            <tr><td colspan="8" class="text-center text-muted py-4">No production entries found.</td></tr>
+                        <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
         </div>
-        <div class="table-responsive">
-            <table class="table table-sm prod-table mb-0">
-                <thead>
-                    <tr>
-                        <th>Order</th>
-                        <th>Tyre</th>
-                        <th class="text-end">Target</th>
-                        <th class="text-end">Mixing</th>
-                        <th class="text-end">Building</th>
-                        <th class="text-end">Curing</th>
-                        <th class="text-end">QC pass</th>
-                    </tr>
-                </thead>
-                <tbody>
-                <?php foreach ($recentOrders as $o): ?>
-                    <?php $pct = min(100, (int)round(((int)$o['qc_passed'] / max(1, (int)$o['target_qty'])) * 100)); ?>
-                    <tr>
-                        <td><a href="<?= e(route_url('production/order')) ?>&id=<?= (int)$o['id'] ?>"><?= e($o['order_code']) ?></a></td>
-                        <td><?= e($o['tyre_type']) ?></td>
-                        <td class="text-end"><?= e((string)$o['target_qty']) ?></td>
-                        <td class="text-end"><?= e((string)$o['mixing_output']) ?></td>
-                        <td class="text-end"><?= e((string)$o['building_output']) ?></td>
-                        <td class="text-end"><?= e((string)$o['curing_output']) ?></td>
-                        <td class="text-end"><?= e((string)$o['qc_passed']) ?> <span class="text-muted">(<?= e((string)$pct) ?>%)</span></td>
-                    </tr>
-                <?php endforeach; ?>
-                </tbody>
-            </table>
+        <div class="col-lg-4">
+            <?php if ($s['machine_alerts']): ?>
+                <section class="prod-card mb-3">
+                    <div class="prod-card__head"><h2 class="prod-card__title text-warning">Machine alerts</h2></div>
+                    <ul class="list-unstyled small mb-0 px-3 pb-2">
+                        <?php foreach ($s['machine_alerts'] as $a): ?>
+                            <li class="py-1 border-bottom"><?= e($a) ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </section>
+            <?php endif; ?>
+            <?php if ((int)$s['downtime_today'] > 0): ?>
+                <section class="prod-card">
+                    <div class="prod-card__head"><h2 class="prod-card__title">Downtime alert</h2></div>
+                    <p class="small px-3 pb-2 mb-0"><?= e((string)$s['downtime_today']) ?> minutes logged in curing today. Check curing entries.</p>
+                </section>
+            <?php endif; ?>
         </div>
-    </section>
+    </div>
 </div>

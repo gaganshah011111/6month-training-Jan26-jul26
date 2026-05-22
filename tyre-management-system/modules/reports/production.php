@@ -3,7 +3,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../includes/functions.php';
-require_once __DIR__ . '/../../includes/production_departments.php';
+require_once __DIR__ . '/../../includes/production_entries.php';
+require_once __DIR__ . '/../../includes/production_service.php';
 
 if (!has_role(['Super Admin', 'Production Manager', 'Admin'])) {
     echo 'Access denied';
@@ -13,7 +14,10 @@ if (!has_role(['Super Admin', 'Production Manager', 'Admin'])) {
 $pdo = Database::connection();
 $from = (string)($_GET['from'] ?? date('Y-m-01'));
 $to = (string)($_GET['to'] ?? date('Y-m-d'));
-$dept = (string)($_GET['dept'] ?? 'mixing');
+$dept = (string)($_GET['department'] ?? 'all');
+$shift = (string)($_GET['shift'] ?? '');
+$machineId = (int)($_GET['machine_id'] ?? 0);
+
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) {
     $from = date('Y-m-01');
 }
@@ -21,112 +25,130 @@ if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) {
     $to = date('Y-m-d');
 }
 
-$export = (string)($_GET['export'] ?? '');
-$rows = match ($dept) {
-    'building' => prod_list_building_batches($pdo, $from, $to, 500),
-    'curing' => prod_list_curing_batches($pdo, $from, $to, 500),
-    'qc' => prod_list_qc_entries($pdo, $from, $to, 500),
-    'rejection' => prod_list_qc_entries($pdo, $from, $to, 500),
-    default => prod_list_mixing_batches($pdo, $from, $to, 500),
-};
+$report = ['rows' => [], 'summary' => ['total_produced' => 0, 'total_rejected' => 0, 'qc_pass_pct' => 0, 'downtime' => 0, 'active_machines' => 0]];
+$error = '';
 
-if ($export === 'csv') {
+try {
+    $report = prod_entry_report($pdo, $from, $to, $dept, $shift, $machineId);
+} catch (Throwable $e) {
+    $error = $e->getMessage();
+}
+
+$rows = $report['rows'];
+$sum = $report['summary'];
+
+if (isset($_GET['export']) && $_GET['export'] === 'csv') {
     header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="production-' . $dept . '.csv"');
+    header('Content-Disposition: attachment; filename="production-report.csv"');
     $out = fopen('php://output', 'w');
-    if ($rows) {
-        fputcsv($out, array_keys($rows[0]));
-        foreach ($rows as $r) {
-            fputcsv($out, $r);
-        }
+    fputcsv($out, ['Date', 'Shift', 'Department', 'Machine', 'Tyre type', 'Produced', 'Rejected', 'Operator']);
+    foreach ($rows as $r) {
+        fputcsv($out, [
+            $r['entry_date'],
+            $r['shift'],
+            $r['department'],
+            $r['machine'],
+            $r['tyre_type'],
+            $r['produced'],
+            $r['rejected'],
+            $r['operator'],
+        ]);
     }
     fclose($out);
     exit;
 }
 
-$summary = $pdo->prepare(
-    "SELECT
-        (SELECT COALESCE(SUM(produced_qty),0) FROM mixing_batches WHERE production_date BETWEEN :f AND :t) AS mix_kg,
-        (SELECT COALESCE(SUM(produced_qty),0) FROM building_batches WHERE production_date BETWEEN :f AND :t) AS bld_qty,
-        (SELECT COALESCE(SUM(cured_qty),0) FROM curing_batches WHERE production_date BETWEEN :f AND :t) AS cur_qty,
-        (SELECT COALESCE(SUM(passed_qty),0) FROM production_qc_entries WHERE inspection_date BETWEEN :f AND :t) AS qc_pass,
-        (SELECT COALESCE(SUM(rejected_qty),0) FROM production_qc_entries WHERE inspection_date BETWEEN :f AND :t) AS qc_rej"
-);
-$summary->execute(['f' => $from, 't' => $to]);
-$sum = $summary->fetch(PDO::FETCH_ASSOC) ?: [];
+$machines = production_list_machines($pdo);
 ?>
 
 <div class="prod-page">
     <header class="prod-page__head">
         <div>
             <h1 class="prod-page__title">Production Reports</h1>
-            <p class="prod-page__sub">Department-wise reports — parallel operations, batch traceability.</p>
+            <p class="prod-page__sub">Daily production entries by department — simple operational report.</p>
         </div>
     </header>
 
+    <?php if ($error !== ''): ?>
+        <div class="alert alert-danger"><?= e($error) ?></div>
+    <?php endif; ?>
+
     <form method="get" class="row g-2 mb-3 align-items-end">
         <input type="hidden" name="page" value="reports/production">
-        <div class="col-auto"><label class="small">From</label><input class="form-control form-control-sm" type="date" name="from" value="<?= e($from) ?>"></div>
-        <div class="col-auto"><label class="small">To</label><input class="form-control form-control-sm" type="date" name="to" value="<?= e($to) ?>"></div>
+        <div class="col-auto"><label class="form-label small">From</label><input type="date" class="form-control form-control-sm" name="from" value="<?= e($from) ?>"></div>
+        <div class="col-auto"><label class="form-label small">To</label><input type="date" class="form-control form-control-sm" name="to" value="<?= e($to) ?>"></div>
         <div class="col-auto">
-            <label class="small">Department</label>
-            <select class="form-select form-select-sm" name="dept">
-                <option value="mixing" <?= $dept === 'mixing' ? 'selected' : '' ?>>Mixing</option>
-                <option value="building" <?= $dept === 'building' ? 'selected' : '' ?>>Building</option>
-                <option value="curing" <?= $dept === 'curing' ? 'selected' : '' ?>>Curing</option>
-                <option value="qc" <?= $dept === 'qc' ? 'selected' : '' ?>>QC</option>
-                <option value="rejection" <?= $dept === 'rejection' ? 'selected' : '' ?>>Rejection (QC)</option>
+            <label class="form-label small">Department</label>
+            <select class="form-select form-select-sm" name="department">
+                <option value="all" <?= $dept === 'all' ? 'selected' : '' ?>>All</option>
+                <?php foreach (prod_entry_departments() as $d): ?>
+                    <option value="<?= e($d) ?>" <?= $dept === $d ? 'selected' : '' ?>><?= e($d) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label small">Shift</label>
+            <select class="form-select form-select-sm" name="shift">
+                <option value="">All</option>
+                <?php foreach (PRODUCTION_SHIFTS as $sh): ?>
+                    <option value="<?= e($sh) ?>" <?= $shift === $sh ? 'selected' : '' ?>><?= e($sh) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label small">Machine</label>
+            <select class="form-select form-select-sm" name="machine_id">
+                <option value="0">All</option>
+                <?php foreach ($machines as $m): ?>
+                    <option value="<?= (int)$m['id'] ?>" <?= $machineId === (int)$m['id'] ? 'selected' : '' ?>><?= e($m['machine_code']) ?></option>
+                <?php endforeach; ?>
             </select>
         </div>
         <div class="col-auto"><button class="btn btn-primary btn-sm">Apply</button></div>
         <div class="col-auto ms-auto">
-            <a class="btn btn-outline-secondary btn-sm" href="index.php?page=reports/production&from=<?= rawurlencode($from) ?>&to=<?= rawurlencode($to) ?>&dept=<?= rawurlencode($dept) ?>&export=csv">Export CSV</a>
+            <a class="btn btn-outline-secondary btn-sm" href="index.php?page=reports/production&amp;from=<?= rawurlencode($from) ?>&amp;to=<?= rawurlencode($to) ?>&amp;department=<?= rawurlencode($dept) ?>&amp;shift=<?= rawurlencode($shift) ?>&amp;machine_id=<?= $machineId ?>&amp;export=csv">CSV</a>
             <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">Print</button>
         </div>
     </form>
 
     <div class="row g-2 mb-3">
-        <div class="col"><article class="prod-dash-kpi"><span class="prod-dash-kpi__k">Mixing kg</span><span class="prod-dash-kpi__v"><?= e((string)($sum['mix_kg'] ?? 0)) ?></span></article></div>
-        <div class="col"><article class="prod-dash-kpi"><span class="prod-dash-kpi__k">Building</span><span class="prod-dash-kpi__v"><?= e((string)($sum['bld_qty'] ?? 0)) ?></span></article></div>
-        <div class="col"><article class="prod-dash-kpi"><span class="prod-dash-kpi__k">Cured</span><span class="prod-dash-kpi__v"><?= e((string)($sum['cur_qty'] ?? 0)) ?></span></article></div>
-        <div class="col"><article class="prod-dash-kpi"><span class="prod-dash-kpi__k">QC pass</span><span class="prod-dash-kpi__v"><?= e((string)($sum['qc_pass'] ?? 0)) ?></span></article></div>
-        <div class="col"><article class="prod-dash-kpi"><span class="prod-dash-kpi__k">QC reject</span><span class="prod-dash-kpi__v text-danger"><?= e((string)($sum['qc_rej'] ?? 0)) ?></span></article></div>
+        <div class="col"><article class="prod-dash-kpi"><span class="prod-dash-kpi__k">Total production</span><span class="prod-dash-kpi__v"><?= e((string)$sum['total_produced']) ?></span></article></div>
+        <div class="col"><article class="prod-dash-kpi"><span class="prod-dash-kpi__k">Total rejected</span><span class="prod-dash-kpi__v text-danger"><?= e((string)$sum['total_rejected']) ?></span></article></div>
+        <div class="col"><article class="prod-dash-kpi"><span class="prod-dash-kpi__k">QC pass %</span><span class="prod-dash-kpi__v"><?= e((string)$sum['qc_pass_pct']) ?>%</span></article></div>
+        <div class="col"><article class="prod-dash-kpi"><span class="prod-dash-kpi__k">Machine downtime</span><span class="prod-dash-kpi__v"><?= e((string)$sum['downtime']) ?> min</span></article></div>
+        <div class="col"><article class="prod-dash-kpi"><span class="prod-dash-kpi__k">Active machines</span><span class="prod-dash-kpi__v"><?= e((string)$sum['active_machines']) ?></span></article></div>
     </div>
 
     <section class="prod-card prod-card--table">
         <div class="table-responsive">
             <table class="table table-sm prod-table mb-0">
-                <thead><tr>
-                    <?php if ($dept === 'mixing'): ?>
-                        <th>Batch</th><th>Date</th><th>Order</th><th class="text-end">kg</th><th>Shift</th><th>Machine</th>
-                    <?php elseif ($dept === 'building'): ?>
-                        <th>GBT</th><th>CMP</th><th class="text-end">Produced</th><th class="text-end">Rej.</th><th>Shift</th>
-                    <?php elseif ($dept === 'curing'): ?>
-                        <th>CUR</th><th>GBT</th><th class="text-end">Cured</th><th class="text-end">Down</th>
-                    <?php else: ?>
-                        <th>Date</th><th>Batch</th><th class="text-end">Pass</th><th class="text-end">Fail</th><th>Defect</th>
-                    <?php endif; ?>
-                </tr></thead>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Shift</th>
+                        <th>Department</th>
+                        <th>Machine</th>
+                        <th>Tyre type</th>
+                        <th class="text-end">Produced</th>
+                        <th class="text-end">Rejected</th>
+                        <th>Operator</th>
+                    </tr>
+                </thead>
                 <tbody>
                 <?php foreach ($rows as $r): ?>
                     <tr>
-                        <?php if ($dept === 'mixing'): ?>
-                            <td><?= e($r['batch_code']) ?></td><td><?= e($r['production_date']) ?></td><td><?= e($r['order_code'] ?? '—') ?></td>
-                            <td class="text-end"><?= e((string)$r['produced_qty']) ?></td><td><?= e($r['shift']) ?></td><td><?= e($r['machine_code'] ?? '—') ?></td>
-                        <?php elseif ($dept === 'building'): ?>
-                            <td><?= e($r['batch_code']) ?></td><td><?= e($r['mixing_code'] ?? '—') ?></td>
-                            <td class="text-end"><?= e((string)$r['produced_qty']) ?></td><td class="text-end"><?= e((string)$r['rejected_qty']) ?></td><td><?= e($r['shift']) ?></td>
-                        <?php elseif ($dept === 'curing'): ?>
-                            <td><?= e($r['batch_code']) ?></td><td><?= e($r['building_code'] ?? '—') ?></td>
-                            <td class="text-end"><?= e((string)$r['cured_qty']) ?></td><td class="text-end"><?= e((string)$r['downtime_min']) ?></td>
-                        <?php else: ?>
-                            <td><?= e($r['inspection_date']) ?></td><td><?= e($r['batch_ref'] ?? '—') ?></td>
-                            <td class="text-end"><?= e((string)$r['passed_qty']) ?></td><td class="text-end"><?= e((string)$r['rejected_qty']) ?></td><td><?= e($r['defect_type'] ?? '—') ?></td>
-                        <?php endif; ?>
+                        <td><?= e($r['entry_date']) ?></td>
+                        <td><?= e($r['shift']) ?></td>
+                        <td><?= e($r['department']) ?></td>
+                        <td><?= e($r['machine']) ?></td>
+                        <td><?= e($r['tyre_type']) ?></td>
+                        <td class="text-end"><?= e((string)$r['produced']) ?></td>
+                        <td class="text-end"><?= e((string)$r['rejected']) ?></td>
+                        <td><?= e($r['operator']) ?></td>
                     </tr>
                 <?php endforeach; ?>
                 <?php if (!$rows): ?>
-                    <tr><td colspan="8" class="text-center text-muted py-4">No records in range.</td></tr>
+                    <tr><td colspan="8" class="text-center text-muted py-4">No production entries found.</td></tr>
                 <?php endif; ?>
                 </tbody>
             </table>

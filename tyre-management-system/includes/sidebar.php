@@ -25,6 +25,10 @@ $iconMap = [
     'Inventory' => 'bi-boxes',
     'Inventory Reports' => 'bi-archive',
     'Orders & Dispatch' => 'bi-send',
+    'New Dispatch' => 'bi-truck',
+    'Dispatch History' => 'bi-clock-history',
+    'Customers' => 'bi-building',
+    'Dispatch Reports' => 'bi-file-earmark-bar-graph',
     'Inspection & Defects' => 'bi-shield-check',
     'My Profile' => 'bi-person-circle',
     'Salary' => 'bi-receipt-cutoff',
@@ -52,10 +56,24 @@ $iconMap = [
             ],
         ],
         'Inventory Manager' => [
-            'Inventory' => ['inventory/dashboard' => 'Dashboard', 'inventory/list' => 'Inventory', 'reports/inventory' => 'Inventory Reports'],
+            'Inventory' => [
+                'inventory/dashboard' => 'Dashboard',
+                'inventory/materials' => 'Materials',
+                'inventory/add-stock' => 'Add Stock',
+                'inventory/use-stock' => 'Use Stock',
+                'inventory/adjust-stock' => 'Adjust Stock',
+                'inventory/suppliers' => 'Suppliers',
+                'reports/inventory' => 'Reports',
+            ],
         ],
         'Dispatch Manager' => [
-            'Dispatch' => ['dispatch/dashboard' => 'Dashboard', 'dispatch/list' => 'Orders & Dispatch'],
+            'Dispatch' => [
+                'dispatch/dashboard' => 'Dashboard',
+                'dispatch/new' => 'New Dispatch',
+                'dispatch/history' => 'Dispatch History',
+                'dispatch/customers' => 'Customers',
+                'reports/dispatch' => 'Dispatch Reports',
+            ],
         ],
         'Quality Manager' => [
             'Quality' => ['quality/dashboard' => 'Dashboard', 'quality/list' => 'Inspection & Defects'],

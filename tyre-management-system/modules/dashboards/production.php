@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../includes/functions.php';
 require_once __DIR__ . '/../../includes/production_entries.php';
+require_once __DIR__ . '/../../includes/inventory_service.php';
 
 if (!has_role(['Production Manager', 'Super Admin', 'Admin'])) {
     echo 'Access denied';
@@ -21,6 +22,8 @@ $s = prod_entry_dashboard($pdo);
             <p class="prod-page__sub">Today’s factory output — enter production in each department module.</p>
         </div>
     </header>
+
+    <?php inv_render_low_stock_banner($pdo); ?>
 
     <div class="row g-2 prod-dash-kpis mb-3">
         <div class="col-6 col-md-4 col-lg-3"><article class="prod-dash-kpi"><span class="prod-dash-kpi__k">Today mixing</span><span class="prod-dash-kpi__v"><?= e((string)$s['mixing_today']) ?> <small>kg</small></span></article></div>

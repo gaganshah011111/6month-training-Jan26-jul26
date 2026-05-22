@@ -214,10 +214,22 @@ function page_allowed_roles(): array
 
         'inventory/dashboard' => ['Inventory Manager', 'Super Admin', 'Admin'],
         'inventory/list' => ['Inventory Manager', 'Super Admin', 'Admin'],
+        'inventory/materials' => ['Inventory Manager', 'Super Admin', 'Admin'],
+        'inventory/add-stock' => ['Inventory Manager', 'Super Admin', 'Admin'],
+        'inventory/use-stock' => ['Inventory Manager', 'Super Admin', 'Admin'],
+        'inventory/adjust-stock' => ['Inventory Manager', 'Super Admin', 'Admin'],
+        'api/material-history' => ['Inventory Manager', 'Super Admin', 'Admin', 'Production Manager'],
+        'inventory/inward' => ['Inventory Manager', 'Super Admin', 'Admin'],
+        'inventory/usage' => ['Inventory Manager', 'Super Admin', 'Admin'],
+        'inventory/suppliers' => ['Inventory Manager', 'Super Admin', 'Admin'],
         'reports/inventory' => ['Inventory Manager', 'Super Admin', 'Admin'],
 
         'dispatch/dashboard' => ['Dispatch Manager', 'Super Admin', 'Admin'],
         'dispatch/list' => ['Dispatch Manager', 'Super Admin', 'Admin'],
+        'dispatch/new' => ['Dispatch Manager', 'Super Admin', 'Admin'],
+        'dispatch/history' => ['Dispatch Manager', 'Super Admin', 'Admin'],
+        'dispatch/customers' => ['Dispatch Manager', 'Super Admin', 'Admin'],
+        'reports/dispatch' => ['Dispatch Manager', 'Super Admin', 'Admin'],
 
         'employee/dashboard' => ['Employee'],
         'employee/profile' => ['Employee'],

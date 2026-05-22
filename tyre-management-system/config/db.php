@@ -609,6 +609,205 @@ class Database
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
     }
 
+    /** Warehouse: raw materials, inward, usage, activity log. */
+    private static function migrateInventoryWarehouse(PDO $pdo): void
+    {
+        if (!self::hasColumn($pdo, 'suppliers', 'status')) {
+            $pdo->exec("ALTER TABLE suppliers ADD COLUMN status ENUM('Active','Inactive') NOT NULL DEFAULT 'Active' AFTER address");
+        }
+        if (!self::hasColumn($pdo, 'suppliers', 'materials_supplied')) {
+            $pdo->exec('ALTER TABLE suppliers ADD COLUMN materials_supplied VARCHAR(500) NULL AFTER status');
+        }
+
+        if (!self::hasColumn($pdo, 'raw_materials', 'material_code')) {
+            $pdo->exec('ALTER TABLE raw_materials ADD COLUMN material_code VARCHAR(40) NULL AFTER id');
+        }
+        if (!self::hasColumn($pdo, 'raw_materials', 'category')) {
+            $pdo->exec("ALTER TABLE raw_materials ADD COLUMN category VARCHAR(80) NOT NULL DEFAULT 'General' AFTER material_name");
+        }
+        if (!self::hasColumn($pdo, 'raw_materials', 'storage_location')) {
+            $pdo->exec("ALTER TABLE raw_materials ADD COLUMN storage_location VARCHAR(120) NOT NULL DEFAULT 'Main Store' AFTER reorder_level");
+        }
+        if (!self::hasColumn($pdo, 'raw_materials', 'remarks')) {
+            $pdo->exec('ALTER TABLE raw_materials ADD COLUMN remarks VARCHAR(500) NULL AFTER storage_location');
+        }
+        if (!self::hasColumn($pdo, 'raw_materials', 'status')) {
+            $pdo->exec("ALTER TABLE raw_materials ADD COLUMN status ENUM('Active','Inactive') NOT NULL DEFAULT 'Active' AFTER remarks");
+        }
+        if (!self::hasColumn($pdo, 'raw_materials', 'max_stock_level')) {
+            $pdo->exec('ALTER TABLE raw_materials ADD COLUMN max_stock_level DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER reorder_level');
+        }
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS stock_inward (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            inward_date DATE NOT NULL,
+            supplier_id INT NULL,
+            invoice_no VARCHAR(80) NULL,
+            material_id INT NOT NULL,
+            quantity DECIMAL(12,2) NOT NULL DEFAULT 0,
+            rate DECIMAL(12,2) NOT NULL DEFAULT 0,
+            received_by VARCHAR(150) NULL,
+            remarks VARCHAR(500) NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_inward_date (inward_date),
+            INDEX idx_inward_material (material_id),
+            INDEX idx_inward_supplier (supplier_id),
+            CONSTRAINT fk_inward_material FOREIGN KEY (material_id) REFERENCES raw_materials(id),
+            CONSTRAINT fk_inward_supplier FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS stock_usage (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            usage_date DATE NOT NULL,
+            material_id INT NOT NULL,
+            quantity DECIMAL(12,2) NOT NULL DEFAULT 0,
+            usage_type ENUM('production','manual') NOT NULL DEFAULT 'manual',
+            department VARCHAR(40) NULL,
+            reference_id INT NULL,
+            remarks VARCHAR(500) NULL,
+            created_by VARCHAR(150) NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_usage_date (usage_date),
+            INDEX idx_usage_material (material_id),
+            INDEX idx_usage_type (usage_type),
+            CONSTRAINT fk_usage_material FOREIGN KEY (material_id) REFERENCES raw_materials(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS inventory_activity (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            activity_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            activity_type VARCHAR(40) NOT NULL,
+            material_id INT NULL,
+            qty_change DECIMAL(12,2) NOT NULL DEFAULT 0,
+            message VARCHAR(500) NOT NULL,
+            INDEX idx_inv_activity_at (activity_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+        if (!self::hasColumn($pdo, 'stock_inward', 'batch_no')) {
+            $pdo->exec('ALTER TABLE stock_inward ADD COLUMN batch_no VARCHAR(80) NULL AFTER material_id');
+        }
+        if (!self::hasColumn($pdo, 'stock_inward', 'expiry_date')) {
+            $pdo->exec('ALTER TABLE stock_inward ADD COLUMN expiry_date DATE NULL AFTER batch_no');
+        }
+        if (!self::hasColumn($pdo, 'stock_usage', 'usage_reason')) {
+            $pdo->exec("ALTER TABLE stock_usage ADD COLUMN usage_reason VARCHAR(80) NULL AFTER department");
+        }
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS stock_adjustments (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            adjust_date DATE NOT NULL,
+            material_id INT NOT NULL,
+            previous_qty DECIMAL(12,2) NOT NULL DEFAULT 0,
+            actual_qty DECIMAL(12,2) NOT NULL DEFAULT 0,
+            difference_qty DECIMAL(12,2) NOT NULL DEFAULT 0,
+            reason VARCHAR(80) NOT NULL,
+            operator_name VARCHAR(150) NULL,
+            remarks VARCHAR(500) NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_adj_date (adjust_date),
+            INDEX idx_adj_material (material_id),
+            CONSTRAINT fk_adj_material FOREIGN KEY (material_id) REFERENCES raw_materials(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+        $count = (int)$pdo->query('SELECT COUNT(*) FROM raw_materials')->fetchColumn();
+        if ($count === 0) {
+            $defaults = [
+                ['RM-RUBBER', 'Natural Rubber', 'Rubber', 'kg', 5000, 800, 'Store-A1'],
+                ['RM-CARBON', 'Carbon Black', 'Fillers', 'kg', 3000, 500, 'Store-A2'],
+                ['RM-STEEL', 'Steel Wire', 'Reinforcement', 'kg', 2000, 300, 'Store-B1'],
+                ['RM-FABRIC', 'Fabric', 'Reinforcement', 'piece', 1500, 200, 'Store-B2'],
+                ['RM-CHEM', 'Chemicals', 'Chemicals', 'kg', 800, 100, 'Store-C1'],
+                ['RM-PACK', 'Packaging', 'Packaging', 'piece', 5000, 500, 'Store-D1'],
+            ];
+            $ins = $pdo->prepare(
+                'INSERT INTO raw_materials (material_code, material_name, category, unit, stock_qty, reorder_level, storage_location, status)
+                 VALUES (:c, :n, :cat, :u, :q, :r, :loc, \'Active\')'
+            );
+            foreach ($defaults as [$code, $name, $cat, $unit, $stock, $reorder, $loc]) {
+                $ins->execute(['c' => $code, 'n' => $name, 'cat' => $cat, 'u' => $unit, 'q' => $stock, 'r' => $reorder, 'loc' => $loc]);
+            }
+        }
+
+        $codes = $pdo->query("SELECT id, material_code FROM raw_materials WHERE material_code IS NULL OR material_code = ''")->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        foreach ($codes as $row) {
+            $pdo->prepare('UPDATE raw_materials SET material_code = :c WHERE id = :id')
+                ->execute(['c' => 'RM-' . (int)$row['id'], 'id' => (int)$row['id']]);
+        }
+    }
+
+    /** Dispatch workflow — customers, extended dispatch records, simple statuses. */
+    private static function migrateDispatchModule(PDO $pdo): void
+    {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS dispatch_customers (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            customer_name VARCHAR(150) NOT NULL,
+            company VARCHAR(150) NULL,
+            phone VARCHAR(30) NULL,
+            gst_number VARCHAR(40) NULL,
+            address VARCHAR(255) NULL,
+            city VARCHAR(80) NULL,
+            state VARCHAR(80) NULL,
+            status ENUM('Active','Inactive') NOT NULL DEFAULT 'Active',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_dcust_name (customer_name)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+        if (!self::hasColumn($pdo, 'dispatch', 'dispatch_code')) {
+            $pdo->exec('ALTER TABLE dispatch ADD COLUMN dispatch_code VARCHAR(40) NULL AFTER id');
+        }
+        if (!self::hasColumn($pdo, 'dispatch', 'customer_id')) {
+            $pdo->exec('ALTER TABLE dispatch ADD COLUMN customer_id INT NULL AFTER customer_name');
+        }
+        if (!self::hasColumn($pdo, 'dispatch', 'tyre_type')) {
+            $pdo->exec('ALTER TABLE dispatch ADD COLUMN tyre_type VARCHAR(120) NULL AFTER customer_id');
+        }
+        if (!self::hasColumn($pdo, 'dispatch', 'vehicle_no')) {
+            $pdo->exec('ALTER TABLE dispatch ADD COLUMN vehicle_no VARCHAR(40) NULL AFTER invoice_no');
+        }
+        if (!self::hasColumn($pdo, 'dispatch', 'driver_name')) {
+            $pdo->exec('ALTER TABLE dispatch ADD COLUMN driver_name VARCHAR(150) NULL AFTER vehicle_no');
+        }
+        if (!self::hasColumn($pdo, 'dispatch', 'transport_company')) {
+            $pdo->exec('ALTER TABLE dispatch ADD COLUMN transport_company VARCHAR(150) NULL AFTER driver_name');
+        }
+        if (!self::hasColumn($pdo, 'dispatch', 'remarks')) {
+            $pdo->exec('ALTER TABLE dispatch ADD COLUMN remarks VARCHAR(500) NULL AFTER qty');
+        }
+        if (!self::hasColumn($pdo, 'dispatch', 'status')) {
+            $pdo->exec("ALTER TABLE dispatch ADD COLUMN status ENUM('Pending','Dispatched','Delivered') NOT NULL DEFAULT 'Pending' AFTER remarks");
+        }
+        if (!self::hasColumn($pdo, 'dispatch', 'stock_deducted')) {
+            $pdo->exec('ALTER TABLE dispatch ADD COLUMN stock_deducted TINYINT(1) NOT NULL DEFAULT 0 AFTER status');
+        }
+
+        try {
+            $pdo->exec("UPDATE dispatch SET status = CASE
+                WHEN dispatch_status IN ('Delivered') THEN 'Delivered'
+                WHEN dispatch_status IN ('In Transit','Created') THEN 'Dispatched'
+                ELSE 'Pending' END WHERE status IS NULL OR status = ''");
+        } catch (Throwable) {
+        }
+
+        if (self::hasColumn($pdo, 'dispatch', 'inventory_id')) {
+            $pdo->exec('ALTER TABLE dispatch MODIFY inventory_id INT NULL');
+        }
+
+        $count = (int)$pdo->query('SELECT COUNT(*) FROM dispatch_customers')->fetchColumn();
+        if ($count === 0) {
+            $pdo->exec("INSERT INTO dispatch_customers (customer_name, company, phone, city, state) VALUES
+                ('Metro Tyre Traders', 'Metro Tyre Traders Pvt Ltd', '9876500001', 'Mumbai', 'Maharashtra'),
+                ('North Highway Fleet', 'North Highway Fleet Services', '9876500002', 'Delhi', 'Delhi'),
+                ('Southern Auto Mart', 'Southern Auto Mart', '9876500003', 'Chennai', 'Tamil Nadu')");
+        }
+
+        foreach ($pdo->query('SELECT id FROM dispatch WHERE dispatch_code IS NULL OR dispatch_code = ""')->fetchAll(PDO::FETCH_COLUMN) ?: [] as $id) {
+            $pdo->prepare('UPDATE dispatch SET dispatch_code = :c WHERE id = :id')->execute([
+                'c' => 'DSP-' . str_pad((string)$id, 5, '0', STR_PAD_LEFT),
+                'id' => (int)$id,
+            ]);
+        }
+    }
+
     /** Parallel department production — Mixing, Building, Curing, QC batches. */
     private static function migrateProductionDepartments(PDO $pdo): void
     {
@@ -1388,17 +1587,6 @@ class Database
             $pdo->exec("ALTER TABLE inventory ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
         }
 
-        // dispatch compatibility
-        if (!self::hasColumn($pdo, 'dispatch', 'inventory_id')) {
-            $pdo->exec("ALTER TABLE dispatch ADD COLUMN inventory_id INT NULL FIRST");
-        }
-        if (!self::hasColumn($pdo, 'dispatch', 'dispatch_status')) {
-            $pdo->exec("ALTER TABLE dispatch ADD COLUMN dispatch_status ENUM('Created','In Transit','Delivered','Cancelled') NOT NULL DEFAULT 'Created' AFTER qty");
-        }
-        if (!self::hasColumn($pdo, 'dispatch', 'tracking_no')) {
-            $pdo->exec("ALTER TABLE dispatch ADD COLUMN tracking_no VARCHAR(80) NULL AFTER dispatch_status");
-        }
-
         // Optional compatibility table requested as payroll naming
         $pdo->exec("CREATE TABLE IF NOT EXISTS payroll (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -1428,6 +1616,8 @@ class Database
         self::migrateProductionOrdersWorkflow($pdo);
         self::migrateProductionDepartments($pdo);
         self::migrateProductionEntryTables($pdo);
+        self::migrateInventoryWarehouse($pdo);
+        self::migrateDispatchModule($pdo);
 
         self::normalizeErpCollation($pdo);
         self::normalizeEmployeeFkCascade($pdo);

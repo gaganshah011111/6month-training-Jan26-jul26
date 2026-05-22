@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../includes/functions.php';
 require_once __DIR__ . '/../../includes/production_entries.php';
+require_once __DIR__ . '/../../includes/inventory_service.php';
 
 if (!has_role(['Super Admin', 'Production Manager', 'Admin'])) {
     echo 'Access denied';
@@ -38,6 +39,8 @@ $rows = prod_list_department_entries($pdo, PROD_ENTRY_BUILDING, 40);
         </div>
         <nav class="prod-page__links"><a href="<?= e(route_url('production/dashboard')) ?>">Dashboard</a></nav>
     </header>
+
+    <?php inv_render_low_stock_banner($pdo); ?>
 
     <div class="row g-3">
         <div class="col-lg-4">

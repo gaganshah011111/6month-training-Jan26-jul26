@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/production_service.php';
+require_once __DIR__ . '/inventory_service.php';
 
 const PROD_ENTRY_MIXING = 'Mixing';
 const PROD_ENTRY_BUILDING = 'Building';
@@ -101,22 +102,33 @@ function prod_save_mixing_entry(PDO $pdo, array $data): int
         throw new InvalidArgumentException('Compound produced (kg) is required.');
     }
 
-    $st = $pdo->prepare(
-        'INSERT INTO mixing_entries (production_date, shift, machine_id, operator_id, tyre_type, produced_qty, rejected_qty, remarks)
-         VALUES (:d, :sh, :mid, :oid, :tt, :pq, :rq, :rm)'
-    );
-    $st->execute([
-        'd' => $data['production_date'],
-        'sh' => $data['shift'] ?? 'Morning',
-        'mid' => (int)$data['machine_id'],
-        'oid' => (int)($data['operator_id'] ?? 0) ?: null,
-        'tt' => $tyre,
-        'pq' => $produced,
-        'rq' => max(0, (float)($data['rejected_qty'] ?? 0)),
-        'rm' => trim((string)($data['remarks'] ?? '')) ?: null,
-    ]);
+    $pdo->beginTransaction();
+    try {
+        $st = $pdo->prepare(
+            'INSERT INTO mixing_entries (production_date, shift, machine_id, operator_id, tyre_type, produced_qty, rejected_qty, remarks)
+             VALUES (:d, :sh, :mid, :oid, :tt, :pq, :rq, :rm)'
+        );
+        $st->execute([
+            'd' => $data['production_date'],
+            'sh' => $data['shift'] ?? 'Morning',
+            'mid' => (int)$data['machine_id'],
+            'oid' => (int)($data['operator_id'] ?? 0) ?: null,
+            'tt' => $tyre,
+            'pq' => $produced,
+            'rq' => max(0, (float)($data['rejected_qty'] ?? 0)),
+            'rm' => trim((string)($data['remarks'] ?? '')) ?: null,
+        ]);
+        $entryId = (int)$pdo->lastInsertId();
+        inv_apply_production_usage($pdo, 'mixing', $entryId, $produced, (string)$data['production_date']);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $e;
+    }
 
-    return (int)$pdo->lastInsertId();
+    return $entryId;
 }
 
 function prod_save_building_entry(PDO $pdo, array $data): int
@@ -131,22 +143,33 @@ function prod_save_building_entry(PDO $pdo, array $data): int
         throw new InvalidArgumentException('Green tyres built is required.');
     }
 
-    $st = $pdo->prepare(
-        'INSERT INTO building_entries (production_date, shift, machine_id, operator_id, tyre_type, produced_qty, rejected_qty, remarks)
-         VALUES (:d, :sh, :mid, :oid, :tt, :pq, :rq, :rm)'
-    );
-    $st->execute([
-        'd' => $data['production_date'],
-        'sh' => $data['shift'] ?? 'Morning',
-        'mid' => (int)$data['machine_id'],
-        'oid' => (int)($data['operator_id'] ?? 0) ?: null,
-        'tt' => $tyre,
-        'pq' => $produced,
-        'rq' => max(0, (int)($data['rejected_qty'] ?? 0)),
-        'rm' => trim((string)($data['remarks'] ?? '')) ?: null,
-    ]);
+    $pdo->beginTransaction();
+    try {
+        $st = $pdo->prepare(
+            'INSERT INTO building_entries (production_date, shift, machine_id, operator_id, tyre_type, produced_qty, rejected_qty, remarks)
+             VALUES (:d, :sh, :mid, :oid, :tt, :pq, :rq, :rm)'
+        );
+        $st->execute([
+            'd' => $data['production_date'],
+            'sh' => $data['shift'] ?? 'Morning',
+            'mid' => (int)$data['machine_id'],
+            'oid' => (int)($data['operator_id'] ?? 0) ?: null,
+            'tt' => $tyre,
+            'pq' => $produced,
+            'rq' => max(0, (int)($data['rejected_qty'] ?? 0)),
+            'rm' => trim((string)($data['remarks'] ?? '')) ?: null,
+        ]);
+        $entryId = (int)$pdo->lastInsertId();
+        inv_apply_production_usage($pdo, 'building', $entryId, (float)$produced, (string)$data['production_date']);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $e;
+    }
 
-    return (int)$pdo->lastInsertId();
+    return $entryId;
 }
 
 function prod_save_curing_entry(PDO $pdo, array $data): int
@@ -157,23 +180,34 @@ function prod_save_curing_entry(PDO $pdo, array $data): int
         throw new InvalidArgumentException('Cured quantity is required.');
     }
 
-    $st = $pdo->prepare(
-        'INSERT INTO curing_entries (production_date, shift, machine_id, operator_id, tyre_type, produced_qty, rejected_qty, downtime_minutes, remarks)
-         VALUES (:d, :sh, :mid, :oid, :tt, :pq, :rq, :dt, :rm)'
-    );
-    $st->execute([
-        'd' => $data['production_date'],
-        'sh' => $data['shift'] ?? 'Morning',
-        'mid' => (int)$data['machine_id'],
-        'oid' => (int)($data['operator_id'] ?? 0) ?: null,
-        'tt' => trim((string)($data['tyre_type'] ?? 'Tyre')) ?: 'Tyre',
-        'pq' => $produced,
-        'rq' => max(0, (int)($data['rejected_qty'] ?? 0)),
-        'dt' => max(0, (int)($data['downtime_minutes'] ?? 0)),
-        'rm' => trim((string)($data['remarks'] ?? '')) ?: null,
-    ]);
+    $pdo->beginTransaction();
+    try {
+        $st = $pdo->prepare(
+            'INSERT INTO curing_entries (production_date, shift, machine_id, operator_id, tyre_type, produced_qty, rejected_qty, downtime_minutes, remarks)
+             VALUES (:d, :sh, :mid, :oid, :tt, :pq, :rq, :dt, :rm)'
+        );
+        $st->execute([
+            'd' => $data['production_date'],
+            'sh' => $data['shift'] ?? 'Morning',
+            'mid' => (int)$data['machine_id'],
+            'oid' => (int)($data['operator_id'] ?? 0) ?: null,
+            'tt' => trim((string)($data['tyre_type'] ?? 'Tyre')) ?: 'Tyre',
+            'pq' => $produced,
+            'rq' => max(0, (int)($data['rejected_qty'] ?? 0)),
+            'dt' => max(0, (int)($data['downtime_minutes'] ?? 0)),
+            'rm' => trim((string)($data['remarks'] ?? '')) ?: null,
+        ]);
+        $entryId = (int)$pdo->lastInsertId();
+        inv_apply_production_usage($pdo, 'curing', $entryId, (float)$produced, (string)$data['production_date']);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $e;
+    }
 
-    return (int)$pdo->lastInsertId();
+    return $entryId;
 }
 
 function prod_save_qc_entry(PDO $pdo, array $data): int

@@ -37,6 +37,21 @@ function erp_ui_extra_stylesheets(): array
         'quality/list' => ['production-module.css'],
         'machines/list' => ['production-module.css'],
         'reports/production' => ['production-module.css'],
+        'inventory/dashboard' => ['inventory-module.css'],
+        'inventory/list' => ['inventory-module.css'],
+        'inventory/materials' => ['inventory-module.css'],
+        'inventory/add-stock' => ['inventory-module.css'],
+        'inventory/use-stock' => ['inventory-module.css'],
+        'inventory/adjust-stock' => ['inventory-module.css'],
+        'inventory/inward' => ['inventory-module.css'],
+        'inventory/usage' => ['inventory-module.css'],
+        'inventory/suppliers' => ['inventory-module.css'],
+        'reports/inventory' => ['inventory-module.css'],
+        'dispatch/dashboard' => ['dispatch-module.css'],
+        'dispatch/new' => ['dispatch-module.css'],
+        'dispatch/history' => ['dispatch-module.css'],
+        'dispatch/customers' => ['dispatch-module.css'],
+        'reports/dispatch' => ['dispatch-module.css'],
     ];
 
     return $map[$page] ?? [];

@@ -76,10 +76,17 @@ $postRedirectPaths = [
     'modules/production/curing.php',
     'modules/production/qc.php',
     'modules/machines/index.php',
-    'modules/dispatch/index.php',
+    'modules/dispatch/new.php',
+    'modules/dispatch/history.php',
+    'modules/dispatch/customers.php',
     'modules/suppliers/index.php',
     'modules/settings/index.php',
-    'modules/inventory/index.php',
+    'modules/inventory/materials.php',
+    'modules/inventory/add_stock.php',
+    'modules/inventory/use_stock.php',
+    'modules/inventory/materials.php',
+    'modules/inventory/suppliers.php',
+    'modules/inventory/adjust_stock.php',
     'modules/quality/index.php',
     'modules/raw_materials/index.php',
 ];
@@ -95,6 +102,21 @@ if ($page === 'reports/hr' && isset($_GET['export'])) {
 
 if ($page === 'reports/production' && isset($_GET['export'])) {
     require __DIR__ . '/modules/reports/production.php';
+    exit;
+}
+
+if ($page === 'reports/inventory' && isset($_GET['export'])) {
+    require __DIR__ . '/modules/reports/inventory.php';
+    exit;
+}
+
+if ($page === 'reports/dispatch' && isset($_GET['export'])) {
+    require __DIR__ . '/modules/reports/dispatch.php';
+    exit;
+}
+
+if ($page === 'dispatch/history' && isset($_GET['export'])) {
+    require __DIR__ . '/modules/dispatch/history.php';
     exit;
 }
 

@@ -2,11 +2,35 @@
 
 This folder is the **source of truth** for database structure. After XAMPP reinstall or corruption, restore the ERP by importing SQL from here—not only from local MySQL.
 
+## Disaster recovery (failure / data loss)
+
+**Use this file to restore the whole database:**
+
+| File | Purpose |
+|------|---------|
+| **`FULL_DATABASE_BACKUP.sql`** | **Primary backup** — import to recover all tables and data |
+
+**Create backup (MySQL must be running):**
+
+```bash
+# Windows: double-click
+tools\backup_database.bat
+
+# Or command line
+php tools/db_sync.php backup
+```
+
+A copy is also saved as `full_latest_backup.sql`.
+
+See **`BACKUP_AND_RESTORE.md`** for step-by-step restore instructions.
+
 ## Folder layout
 
 ```
 database/sql/
-├── full_latest_backup.sql    ← Full dump (schema + data). Import this for fastest restore.
+├── FULL_DATABASE_BACKUP.sql  ← PRIMARY: full DB backup (schema + data after export)
+├── BACKUP_AND_RESTORE.md     ← How to backup & restore if MySQL fails
+├── full_latest_backup.sql    ← Copy of FULL_DATABASE_BACKUP.sql (same content)
 ├── restore_fresh.sql         ← Schema + default users only (clean XAMPP install)
 ├── schema_version.txt        ← Latest applied migration name + timestamp
 ├── migrations/               ← Ordered schema changes (run in filename order)
@@ -18,7 +42,13 @@ database/sql/
 │   ├── 005_create_payroll_tables.sql
 │   ├── 006_leave_module_update.sql
 │   ├── 007_employee_department_links.sql
-│   └── 008_hr_notifications_and_leave_audit.sql
+│   ├── 008_hr_notifications_and_leave_audit.sql
+│   ├── 009_production_workflow.sql
+│   ├── 010_production_orders_workflow.sql
+│   ├── 011_production_stage_logs.sql
+│   ├── 012_inventory_warehouse_module.sql
+│   ├── 013_dispatch_logistics_module.sql
+│   └── 014_production_entry_tables.sql
 └── seed/                     ← Optional demo/test data (not required for production)
     ├── demo_users.sql
     ├── demo_employees.sql
@@ -35,7 +65,7 @@ database/sql/
 
    | File | When to use |
    |------|-------------|
-   | `full_latest_backup.sql` | Restore everything (employees, attendance, payroll, departments) |
+   | **`FULL_DATABASE_BACKUP.sql`** | **Restore everything** (employees, dispatch, payroll, all data) |
    | `restore_fresh.sql` | New empty database + default logins only |
 
    **phpMyAdmin:** Import → choose the file above
@@ -43,7 +73,7 @@ database/sql/
    **Command line (full restore):**
 
    ```bash
-   c:\xampp\mysql\bin\mysql.exe -u root < database\sql\full_latest_backup.sql
+   c:\xampp\mysql\bin\mysql.exe -u root < database\sql\FULL_DATABASE_BACKUP.sql
    ```
 
    **Command line (fresh install):**
@@ -73,6 +103,12 @@ Migrations run automatically when the app connects (`config/db.php` → `Databas
 | 006 | Smart leave module + notifications |
 | 007 | Employee `department_id` / `designation_id` |
 | 008 | `hr_notification_reads`, leave `entry_source` / `recorded_by`, HR notification settings |
+| 009 | Production & machines workflow columns |
+| 010 | Production orders, stages, BOM, downtime |
+| 011 | `production_stage_logs` audit trail |
+| 012 | Inventory warehouse: `stock_inward`, `stock_usage`, `stock_adjustments`, raw material extensions |
+| 013 | Dispatch module: customers, drivers, vehicles, transport, dispatch weights & status |
+| 014 | Daily production entry tables: mixing, building, curing, QC |
 
 Applied migrations are recorded in table **`schema_migrations`**.
 
@@ -115,7 +151,7 @@ Whenever you change the database in code (`config/db.php`, new modules, etc.):
 1. Add a new numbered file under `migrations/` (e.g. `008_my_change.sql`).
 2. Use idempotent SQL where possible (`CREATE TABLE IF NOT EXISTS`, etc.).
 3. Run: `php tools/db_sync.php migrate`
-4. Run: `php tools/db_sync.php export` to refresh **`full_latest_backup.sql`**
+4. Run: `php tools/db_sync.php backup` to refresh **`FULL_DATABASE_BACKUP.sql`**
 5. Update seed SQL if demo data must reflect the change.
 
 Auto-export on migrate: set environment variable `ERP_AUTO_DB_BACKUP=1` or use `APP_ENV=local` in `config/app.php` (exports when new migrations apply).

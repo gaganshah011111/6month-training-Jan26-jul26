@@ -1,17 +1,22 @@
 ﻿-- =============================================================================
--- Tyre ERP â€” Fresh database restore (schema + default logins, no test data)
--- Generated: 2026-05-20
+-- Tyre ERP — FULL DATABASE BACKUP (disaster recovery)
+-- =============================================================================
 -- Database: tyre_erp
 --
--- Use when XAMPP MySQL is empty or corrupted and you want a clean ERP database.
--- For your full data (employees, attendance, payroll runs), use:
---   database/sql/full_latest_backup.sql
+-- THIS FILE:
+--   After you run tools/backup_database.bat (or: php tools/db_sync.php backup)
+--   this file contains ALL tables + ALL live data — use it to restore everything.
 --
--- Import (command line):
---   c:\xampp\mysql\bin\mysql.exe -u root < database\sql\restore_fresh.sql
+--   Until then, this copy holds full SCHEMA + default logins (no business data).
 --
--- phpMyAdmin: Import this file, then open the app once (seeds departments).
--- Default password for all demo users: password
+-- RESTORE (command line):
+--   c:\xampp\mysql\bin\mysql.exe -u root < database\sql\FULL_DATABASE_BACKUP.sql
+--
+-- phpMyAdmin: Import this file.
+-- Default logins password: password
+--
+-- Refresh backup: tools\backup_database.bat
+-- Guide: database\sql\BACKUP_AND_RESTORE.md
 -- =============================================================================
 
 SET NAMES utf8mb4;

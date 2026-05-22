@@ -1,34 +1,37 @@
 -- =============================================================================
 -- Tyre ERP — Database restore (portable SQL)
--- Updated: 2026-05-20 | Schema version: 008_hr_notifications_and_leave_audit
+-- Updated: 2026-05-21 | Schema version: 014_production_entry_tables
 -- =============================================================================
 --
--- This project keeps all restore SQL under database/sql/
+-- DISASTER RECOVERY — restore whole database if MySQL fails:
+--
+--   File:  database/sql/FULL_DATABASE_BACKUP.sql
+--   Guide: database/sql/BACKUP_AND_RESTORE.md
+--
+--   Create backup (XAMPP MySQL running):
+--     Double-click:  tools/backup_database.bat
+--     Or:          php tools/db_sync.php backup
+--
+--   Restore:
+--     c:\xampp\mysql\bin\mysql.exe -u root < database\sql\FULL_DATABASE_BACKUP.sql
 --
 -- CHOOSE ONE:
 --
--- 1) FULL RESTORE (schema + your data — recommended after XAMPP failure)
---    File: database/sql/full_latest_backup.sql
---    Command:
---      c:\xampp\mysql\bin\mysql.exe -u root < database\sql\full_latest_backup.sql
+-- 1) FULL RESTORE (schema + all your data — use after failure)
+--    File: database/sql/FULL_DATABASE_BACKUP.sql
 --
--- 2) FRESH INSTALL (empty ERP + default logins, no employees/attendance data)
+-- 2) FRESH INSTALL (empty ERP + default logins, no business data)
 --    File: database/sql/restore_fresh.sql
---    Command:
---      c:\xampp\mysql\bin\mysql.exe -u root < database\sql\restore_fresh.sql
---    Then open the app once (loads department master data automatically).
 --
 -- 3) MIGRATIONS ONLY (if database exists but schema is old)
---    From project root:
---      c:\xampp\php\php.exe tools\db_sync.php migrate
---      c:\xampp\php\php.exe tools\db_sync.php export
+--    php tools/db_sync.php migrate
+--    php tools/db_sync.php backup
 --
--- Default logins (password: password): see database/sql/seed/demo_users.sql
+-- Default logins (password: password): database/sql/seed/demo_users.sql
 -- Documentation: database/sql/README.md
 -- =============================================================================
 
 CREATE DATABASE IF NOT EXISTS `tyre_erp` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 USE `tyre_erp`;
 
--- Minimal marker so phpMyAdmin import does not fail on an empty file.
-SELECT 'Import database/sql/full_latest_backup.sql or database/sql/restore_fresh.sql' AS restore_instruction;
+SELECT 'Import database/sql/FULL_DATABASE_BACKUP.sql for full restore' AS restore_instruction;

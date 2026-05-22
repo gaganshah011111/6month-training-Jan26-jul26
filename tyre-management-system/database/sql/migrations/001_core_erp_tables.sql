@@ -276,17 +276,33 @@ CREATE TABLE IF NOT EXISTS inventory (
 
 CREATE TABLE IF NOT EXISTS dispatch (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    inventory_id INT NOT NULL,
+    dispatch_code VARCHAR(40) NULL,
+    inventory_id INT NULL,
     order_no VARCHAR(60) NOT NULL UNIQUE,
     customer_name VARCHAR(150) NOT NULL,
+    customer_id INT NULL,
+    tyre_type VARCHAR(120) NULL,
     invoice_no VARCHAR(80) NOT NULL UNIQUE,
+    vehicle_no VARCHAR(40) NULL,
+    vehicle_id INT NULL,
+    driver_name VARCHAR(150) NULL,
+    driver_id INT NULL,
+    transport_company VARCHAR(150) NULL,
+    transport_company_id INT NULL,
     dispatch_date DATE NOT NULL,
     qty INT NOT NULL,
+    gross_weight_kg DECIMAL(12,2) NULL,
+    tare_weight_kg DECIMAL(12,2) NULL,
+    net_weight_kg DECIMAL(12,2) NULL,
+    remarks VARCHAR(500) NULL,
+    status ENUM('Pending','Dispatched','Delivered') NOT NULL DEFAULT 'Pending',
+    stock_deducted TINYINT(1) NOT NULL DEFAULT 0,
     dispatch_status ENUM('Created','In Transit','Delivered','Cancelled') NOT NULL DEFAULT 'Created',
     tracking_no VARCHAR(80) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_dispatch_date (dispatch_date),
-    CONSTRAINT fk_dispatch_inventory FOREIGN KEY (inventory_id) REFERENCES inventory(id)
+    INDEX idx_dispatch_status (status),
+    CONSTRAINT fk_dispatch_inventory FOREIGN KEY (inventory_id) REFERENCES inventory(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS defect_logs (

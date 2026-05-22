@@ -26,6 +26,13 @@ final class DatabaseMigrationRunner
         return self::sqlRoot() . DIRECTORY_SEPARATOR . self::MIGRATIONS_DIR;
     }
 
+    /** Primary disaster-recovery dump (schema + all live data). */
+    public static function fullDatabaseBackupPath(): string
+    {
+        return self::sqlRoot() . DIRECTORY_SEPARATOR . 'FULL_DATABASE_BACKUP.sql';
+    }
+
+    /** Legacy alias; kept in sync when export runs. */
     public static function fullBackupPath(): string
     {
         return self::sqlRoot() . DIRECTORY_SEPARATOR . 'full_latest_backup.sql';
@@ -172,7 +179,7 @@ final class DatabaseMigrationRunner
 
     public static function exportFullBackup(PDO $pdo): bool
     {
-        $out = self::fullBackupPath();
+        $out = self::fullDatabaseBackupPath();
         $dir = dirname($out);
         if (!is_dir($dir)) {
             mkdir($dir, 0775, true);
@@ -190,10 +197,19 @@ final class DatabaseMigrationRunner
 
         if ($dumped) {
             self::prependBackupHeader($out, $dbName);
+            self::mirrorBackupCopy($out, self::fullBackupPath());
             self::writeSchemaVersion();
         }
 
         return $dumped;
+    }
+
+    private static function mirrorBackupCopy(string $source, string $target): void
+    {
+        if (!is_file($source)) {
+            return;
+        }
+        @copy($source, $target);
     }
 
     private static function tryMysqldump(string $dbName, string $outPath): bool
@@ -286,10 +302,22 @@ final class DatabaseMigrationRunner
 
     private static function prependBackupHeader(string $outPath, string $dbName): void
     {
-        $header = "-- Tyre ERP full_latest_backup.sql\n"
+        $header = "-- =============================================================================\n"
+            . "-- Tyre ERP — FULL DATABASE BACKUP (use this file if MySQL fails or data is lost)\n"
+            . "-- =============================================================================\n"
             . '-- Generated: ' . date('c') . "\n"
             . '-- Database: ' . $dbName . "\n"
-            . "-- Import: mysql -u root < full_latest_backup.sql\n\n";
+            . "-- File: database/sql/FULL_DATABASE_BACKUP.sql\n"
+            . "--\n"
+            . "-- RESTORE (XAMPP command line):\n"
+            . "--   c:\\xampp\\mysql\\bin\\mysql.exe -u root < database\\sql\\FULL_DATABASE_BACKUP.sql\n"
+            . "--\n"
+            . "-- RESTORE (phpMyAdmin): Import this file into server (no database selected first).\n"
+            . "--\n"
+            . "-- Regenerate backup after changes:\n"
+            . "--   php tools/db_sync.php export\n"
+            . "--   or double-click: tools/backup_database.bat\n"
+            . "-- =============================================================================\n\n";
         $body = (string)file_get_contents($outPath);
         file_put_contents($outPath, $header . $body);
     }

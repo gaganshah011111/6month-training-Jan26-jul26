@@ -7,7 +7,8 @@ declare(strict_types=1);
  * Usage (from project root):
  *   php tools/db_sync.php migrate          Run pending SQL migrations
  *   php tools/db_sync.php baseline         Mark all migration files as applied (existing DB)
- *   php tools/db_sync.php export           Export full_latest_backup.sql
+ *   php tools/db_sync.php export           Export FULL_DATABASE_BACKUP.sql (+ copy to full_latest_backup.sql)
+ *   php tools/db_sync.php backup           Same as export (disaster recovery dump)
  *   php tools/db_sync.php seed             Run all seed/*.sql files
  *   php tools/db_sync.php all              migrate + export + seed
  */
@@ -39,8 +40,15 @@ switch ($action) {
         echo "Marked {$n} migration(s) as applied.\n";
         break;
     case 'export':
+    case 'backup':
         $ok = DatabaseMigrationRunner::exportFullBackup($pdo);
-        echo $ok ? "Exported: " . DatabaseMigrationRunner::fullBackupPath() . "\n" : "Export failed.\n";
+        if ($ok) {
+            echo "Full backup saved:\n";
+            echo "  " . DatabaseMigrationRunner::fullDatabaseBackupPath() . "\n";
+            echo "  " . DatabaseMigrationRunner::fullBackupPath() . " (copy)\n";
+        } else {
+            echo "Backup export failed. Is MySQL running in XAMPP?\n";
+        }
         exit($ok ? 0 : 1);
     case 'seed':
         seedAll($pdo);
@@ -58,6 +66,9 @@ switch ($action) {
         echo "  php tools/db_sync.php migrate\n";
         echo "  php tools/db_sync.php baseline\n";
         echo "  php tools/db_sync.php export\n";
+        echo "  php tools/db_sync.php backup   (same as export)\n";
         echo "  php tools/db_sync.php seed\n";
         echo "  php tools/db_sync.php all\n";
+        echo "\nDisaster recovery file: database/sql/FULL_DATABASE_BACKUP.sql\n";
+        echo "Windows shortcut: tools/backup_database.bat\n";
 }

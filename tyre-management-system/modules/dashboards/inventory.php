@@ -63,6 +63,27 @@ $alertRows = array_merge($d['out_rows'], $d['low_rows']);
         </div>
     </section>
 
+    <?php if (isset($d['fg_dispatch_ready'])): ?>
+    <section class="inv-dash__section">
+        <h2 class="inv-dash__heading">Finished goods (QC)</h2>
+        <div class="inv-dash-kpis" style="grid-template-columns: repeat(3, 1fr);">
+            <article class="inv-dash-kpi inv-dash-kpi--stock">
+                <span class="inv-dash-kpi__label">QC passed (dispatch)</span>
+                <span class="inv-dash-kpi__value"><?= e((string)(int)$d['fg_dispatch_ready']) ?></span>
+            </article>
+            <article class="inv-dash-kpi">
+                <span class="inv-dash-kpi__label">Rework stock</span>
+                <span class="inv-dash-kpi__value"><?= e((string)(int)$d['fg_rework']) ?></span>
+            </article>
+            <article class="inv-dash-kpi inv-dash-kpi--alert">
+                <span class="inv-dash-kpi__label">Rejected / scrap</span>
+                <span class="inv-dash-kpi__value"><?= e((string)(int)$d['fg_scrap']) ?></span>
+            </article>
+        </div>
+        <p class="small text-muted mb-0">Dispatch module uses QC-passed finished goods only.</p>
+    </section>
+    <?php endif; ?>
+
     <?php if (($d['dept_today'] ?? []) !== []): ?>
     <section class="inv-dash__section">
         <h2 class="inv-dash__heading">Today’s consumption by department</h2>

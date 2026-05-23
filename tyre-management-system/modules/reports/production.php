@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../includes/functions.php';
 require_once __DIR__ . '/../../includes/production_entries.php';
 require_once __DIR__ . '/../../includes/production_service.php';
+require_once __DIR__ . '/../../includes/machine_service.php';
 
 if (!has_role(['Super Admin', 'Production Manager', 'Admin'])) {
     echo 'Access denied';
@@ -17,6 +18,8 @@ $to = (string)($_GET['to'] ?? date('Y-m-d'));
 $dept = (string)($_GET['department'] ?? 'all');
 $shift = (string)($_GET['shift'] ?? '');
 $machineId = (int)($_GET['machine_id'] ?? 0);
+$operatorId = (int)($_GET['operator_id'] ?? 0);
+$machineStatus = (string)($_GET['machine_status'] ?? '');
 
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) {
     $from = date('Y-m-01');
@@ -29,7 +32,7 @@ $report = ['rows' => [], 'summary' => ['total_produced' => 0, 'total_rejected' =
 $error = '';
 
 try {
-    $report = prod_entry_report($pdo, $from, $to, $dept, $shift, $machineId);
+    $report = prod_entry_report($pdo, $from, $to, $dept, $shift, $machineId, $operatorId, $machineStatus);
 } catch (Throwable $e) {
     $error = $e->getMessage();
 }
@@ -41,13 +44,16 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="production-report.csv"');
     $out = fopen('php://output', 'w');
-    fputcsv($out, ['Date', 'Shift', 'Department', 'Machine', 'Tyre type', 'Produced', 'Rejected', 'Operator']);
+    fputcsv($out, ['Date', 'Shift', 'Department', 'Machine', 'Machine dept', 'Machine status', 'Assigned operator', 'Tyre type', 'Produced', 'Rejected', 'Entry operator']);
     foreach ($rows as $r) {
         fputcsv($out, [
             $r['entry_date'],
             $r['shift'],
             $r['department'],
             $r['machine'],
+            $r['machine_department'] ?? '',
+            $r['machine_status'] ?? '',
+            $r['assigned_operator'] ?? '',
             $r['tyre_type'],
             $r['produced'],
             $r['rejected'],
@@ -58,15 +64,22 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
     exit;
 }
 
-$machines = production_list_machines($pdo);
+$machines = mach_list_machines($pdo, ['include_inactive' => true]);
+$operators = [];
+if ($dept !== 'all' && $dept !== 'QC') {
+    $operators = prod_entry_operators($pdo, $to, $dept);
+}
 ?>
 
-<div class="prod-page">
+<div class="prod-page mach-page">
     <header class="prod-page__head">
         <div>
             <h1 class="prod-page__title">Production Reports</h1>
-            <p class="prod-page__sub">Daily production entries by department — simple operational report.</p>
+            <p class="prod-page__sub">Daily production with machine assignment, operator, and machine status visibility.</p>
         </div>
+        <nav class="prod-page__links">
+            <a href="<?= e(route_url('machines/dashboard')) ?>">Machines</a>
+        </nav>
     </header>
 
     <?php if ($error !== ''): ?>
@@ -87,6 +100,33 @@ $machines = production_list_machines($pdo);
             </select>
         </div>
         <div class="col-auto">
+            <label class="form-label small">Machine</label>
+            <select class="form-select form-select-sm erp-select-search" name="machine_id" data-placeholder="All machines">
+                <option value="0">All</option>
+                <?php foreach ($machines as $m): ?>
+                    <option value="<?= (int)$m['id'] ?>" <?= $machineId === (int)$m['id'] ? 'selected' : '' ?>><?= e($m['machine_code']) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label small">Operator</label>
+            <select class="form-select form-select-sm erp-select-search" name="operator_id" data-placeholder="All operators">
+                <option value="0">All</option>
+                <?php foreach ($operators as $op): ?>
+                    <option value="<?= (int)$op['id'] ?>" <?= $operatorId === (int)$op['id'] ? 'selected' : '' ?>><?= e($op['full_name']) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label small">Machine status</label>
+            <select class="form-select form-select-sm" name="machine_status">
+                <option value="">All</option>
+                <?php foreach (MACHINE_MASTER_STATUSES as $st): ?>
+                    <option value="<?= e($st) ?>" <?= $machineStatus === $st ? 'selected' : '' ?>><?= e($st) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="col-auto">
             <label class="form-label small">Shift</label>
             <select class="form-select form-select-sm" name="shift">
                 <option value="">All</option>
@@ -95,18 +135,9 @@ $machines = production_list_machines($pdo);
                 <?php endforeach; ?>
             </select>
         </div>
-        <div class="col-auto">
-            <label class="form-label small">Machine</label>
-            <select class="form-select form-select-sm" name="machine_id">
-                <option value="0">All</option>
-                <?php foreach ($machines as $m): ?>
-                    <option value="<?= (int)$m['id'] ?>" <?= $machineId === (int)$m['id'] ? 'selected' : '' ?>><?= e($m['machine_code']) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
         <div class="col-auto"><button class="btn btn-primary btn-sm">Apply</button></div>
         <div class="col-auto ms-auto">
-            <a class="btn btn-outline-secondary btn-sm" href="index.php?page=reports/production&amp;from=<?= rawurlencode($from) ?>&amp;to=<?= rawurlencode($to) ?>&amp;department=<?= rawurlencode($dept) ?>&amp;shift=<?= rawurlencode($shift) ?>&amp;machine_id=<?= $machineId ?>&amp;export=csv">CSV</a>
+            <a class="btn btn-outline-secondary btn-sm" href="index.php?page=reports/production&amp;from=<?= rawurlencode($from) ?>&amp;to=<?= rawurlencode($to) ?>&amp;department=<?= rawurlencode($dept) ?>&amp;shift=<?= rawurlencode($shift) ?>&amp;machine_id=<?= $machineId ?>&amp;operator_id=<?= $operatorId ?>&amp;machine_status=<?= rawurlencode($machineStatus) ?>&amp;export=csv">CSV</a>
             <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">Print</button>
         </div>
     </form>
@@ -126,21 +157,28 @@ $machines = production_list_machines($pdo);
                     <tr>
                         <th>Date</th>
                         <th>Shift</th>
-                        <th>Department</th>
+                        <th>Dept</th>
                         <th>Machine</th>
+                        <th>Mach. dept</th>
+                        <th>Mach. status</th>
+                        <th>Assigned op.</th>
                         <th>Tyre type</th>
                         <th class="text-end">Produced</th>
                         <th class="text-end">Rejected</th>
-                        <th>Operator</th>
+                        <th>Entry operator</th>
                     </tr>
                 </thead>
                 <tbody>
                 <?php foreach ($rows as $r): ?>
+                    <?php $mb = mach_status_badge((string)($r['machine_status'] ?? '')); ?>
                     <tr>
                         <td><?= e($r['entry_date']) ?></td>
                         <td><?= e($r['shift']) ?></td>
                         <td><?= e($r['department']) ?></td>
                         <td><?= e($r['machine']) ?></td>
+                        <td><?= e($r['machine_department'] ?? '—') ?></td>
+                        <td><span class="<?= e($mb['class']) ?>"><?= e($mb['label']) ?></span></td>
+                        <td><?= e($r['assigned_operator'] ?? '—') ?></td>
                         <td><?= e($r['tyre_type']) ?></td>
                         <td class="text-end"><?= e((string)$r['produced']) ?></td>
                         <td class="text-end"><?= e((string)$r['rejected']) ?></td>
@@ -148,7 +186,7 @@ $machines = production_list_machines($pdo);
                     </tr>
                 <?php endforeach; ?>
                 <?php if (!$rows): ?>
-                    <tr><td colspan="8" class="text-center text-muted py-4">No production entries found.</td></tr>
+                    <tr><td colspan="11" class="text-center text-muted py-4">No production entries found.</td></tr>
                 <?php endif; ?>
                 </tbody>
             </table>

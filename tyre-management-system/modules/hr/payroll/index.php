@@ -247,7 +247,7 @@ $pendingVerificationCount = payroll_count_pending_verification($pdo, $payrollMon
                 </div>
                 <div class="col-md-6 col-lg-2">
                     <label class="form-label">Department</label>
-                    <select class="form-select" name="department">
+                    <select class="form-select erp-select-search" name="department" data-placeholder="All departments…">
                         <option value="">All departments</option>
                         <?php foreach ($deptOptions as $dept): ?>
                             <option value="<?= e($dept) ?>" <?= $filters['department'] === $dept ? 'selected' : '' ?>><?= e($dept) ?></option>
@@ -483,7 +483,7 @@ $pendingVerificationCount = payroll_count_pending_verification($pdo, $payrollMon
                         <div class="col-lg-7">
                             <div class="payroll-test-panel mb-4">
                                 <label class="form-label fw-semibold" for="payrollTestEmployeeId">Employee</label>
-                                <select class="form-select form-select-lg payroll-test-modal__select" name="employee_id" id="payrollTestEmployeeId" required onchange="if(window.loadPayrollTestPreview){window.loadPayrollTestPreview();}">
+                                <select class="form-select form-select-lg payroll-test-modal__select erp-select-search" name="employee_id" id="payrollTestEmployeeId" required data-placeholder="Search employee…" onchange="if(window.loadPayrollTestPreview){window.loadPayrollTestPreview();}">
                                     <option value="">— Select employee —</option>
                                     <?php foreach ($activeEmployeesForTest as $ae): ?>
                                         <option value="<?= (int)$ae['id'] ?>"><?= e((string)$ae['employee_code']) ?> — <?= e((string)$ae['full_name']) ?></option>

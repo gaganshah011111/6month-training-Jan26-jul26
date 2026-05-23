@@ -314,9 +314,14 @@ a:hover { color: var(--brand-red-dark); }
 }
 .employee-directory-scroll {
     max-width: 100%;
+    overflow-x: auto;
+    overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;
 }
 .employee-directory-card {
+    display: flex;
+    flex-direction: column;
     border: 1px solid var(--line);
     border-radius: 14px;
     overflow: hidden;

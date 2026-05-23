@@ -12,21 +12,22 @@ if (!has_role(['Super Admin', 'Production Manager', 'Admin'])) {
 
 $pdo = Database::connection();
 $today = date('Y-m-d');
+$formError = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
     try {
         $_POST['production_date'] = $_POST['production_date'] ?? $today;
         prod_save_curing_entry($pdo, $_POST);
-        set_flash('success', 'Curing entry saved.');
+        set_flash('success', 'Curing entry saved. Finished goods stock updated.');
+        redirect('production/curing');
     } catch (Throwable $e) {
-        set_flash('danger', $e->getMessage());
+        $formError = $e->getMessage();
     }
-    redirect('production/curing');
 }
 
 $machines = prod_machines_for_dept($pdo, PROD_ENTRY_CURING);
-$operators = prod_entry_operators($pdo, $today);
+$operators = prod_entry_operators($pdo, $today, PROD_ENTRY_CURING);
 $rows = prod_list_department_entries($pdo, PROD_ENTRY_CURING, 40);
 ?>
 
@@ -44,15 +45,18 @@ $rows = prod_list_department_entries($pdo, PROD_ENTRY_CURING, 40);
             <section class="prod-card">
                 <div class="prod-card__head"><h2 class="prod-card__title">New entry</h2></div>
                 <div class="prod-card__body">
+                    <?php if ($formError !== ''): ?>
+                        <div class="alert alert-danger py-2 small mb-2" role="alert"><?= e($formError) ?></div>
+                    <?php endif; ?>
                     <form method="post" class="vstack gap-2 prod-form">
                         <?= csrf_input() ?>
                         <div class="row g-2">
                             <div class="col-6"><label class="form-label">Date</label><input type="date" class="form-control form-control-sm" name="production_date" value="<?= e($today) ?>" required></div>
                             <div class="col-6"><label class="form-label">Shift</label><select class="form-select form-select-sm" name="shift"><?php foreach (PRODUCTION_SHIFTS as $sh): ?><option><?= e($sh) ?></option><?php endforeach; ?></select></div>
                         </div>
-                        <div><label class="form-label">Curing machine</label><select class="form-select form-select-sm" name="machine_id" required><option value="">Select</option><?php foreach ($machines as $m): ?><?php if (production_machine_can_run((string)$m['status'])): ?><option value="<?= (int)$m['id'] ?>"><?= e($m['machine_code']) ?></option><?php endif; ?><?php endforeach; ?></select></div>
-                        <div><label class="form-label">Operator</label><select class="form-select form-select-sm" name="operator_id"><option value="">—</option><?php foreach ($operators as $op): ?><option value="<?= (int)$op['id'] ?>"><?= e($op['full_name']) ?></option><?php endforeach; ?></select></div>
-                        <div><label class="form-label">Tyre type</label><select class="form-select form-select-sm" name="tyre_type"><?php foreach (TYRE_TYPES as $t): ?><option><?= e($t) ?></option><?php endforeach; ?></select></div>
+                        <div><label class="form-label">Curing machine</label><select class="form-select form-select-sm erp-select-search" name="machine_id" required data-placeholder="Search machine…"><option value="">Search machine…</option><?php foreach ($machines as $m): ?><?php $asg = prod_assigned_operator_for_machine($pdo, (int)$m['id'], $today); ?><option value="<?= (int)$m['id'] ?>" data-sub="<?= e((string)($m['machine_name'] ?? '')) ?>"<?= $asg ? ' data-operator-id="' . (int)$asg['employee_id'] . '"' : '' ?>><?= e($m['machine_code']) ?></option><?php endforeach; ?></select></div>
+                        <div><label class="form-label">Operator</label><select class="form-select form-select-sm erp-select-search" name="operator_id" data-placeholder="Search operator..."><option value="">Search operator...</option><?php foreach ($operators as $op): ?><option value="<?= (int)$op['id'] ?>" data-sub="<?= e((string)($op['employee_code'] ?? '')) ?>"><?= e($op['full_name']) ?></option><?php endforeach; ?></select></div>
+                        <div><label class="form-label">Tyre type</label><select class="form-select form-select-sm erp-select-search" name="tyre_type" data-placeholder="Search tyre type…"><option value="">Search tyre type…</option><?php foreach (TYRE_TYPES as $t): ?><option value="<?= e($t) ?>"><?= e($t) ?></option><?php endforeach; ?></select></div>
                         <div class="row g-2">
                             <div class="col-4"><label class="form-label">Cured qty</label><input type="number" class="form-control form-control-sm" name="produced_qty" min="1" required></div>
                             <div class="col-4"><label class="form-label">Rejected</label><input type="number" class="form-control form-control-sm" name="rejected_qty" min="0" value="0"></div>

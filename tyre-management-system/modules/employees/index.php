@@ -6,6 +6,9 @@ require_once __DIR__ . '/../../includes/employee_credentials.php';
 require_once __DIR__ . '/../../includes/payroll_logic.php';
 require_once __DIR__ . '/../../includes/indian_payroll.php';
 require_once __DIR__ . '/../../includes/employee_lifecycle.php';
+require_once __DIR__ . '/../../includes/employee_list_service.php';
+require_once __DIR__ . '/../../includes/employee_increment_service.php';
+require_once __DIR__ . '/../../includes/employee_profile_service.php';
 if (!has_role(['Super Admin', 'HR Manager'])) { echo 'Access denied'; return; }
 $pdo = Database::connection();
 verify_csrf();
@@ -54,6 +57,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $grossComputed = employee_fixed_gross_monthly(array_merge($salaryMerge, ['payroll_auto_indian' => 0, 'gross_salary' => 0.0]));
         }
 
+        $newStatus = strtolower(post_string('status', 20) ?: 'active');
+        $prevSt = $pdo->prepare('SELECT status FROM employees WHERE id = :id LIMIT 1');
+        $prevSt->execute(['id' => $empId]);
+        $prevStatus = strtolower((string)($prevSt->fetchColumn() ?: 'active'));
+        if ($prevStatus === 'active' && $newStatus !== 'active') {
+            require_once __DIR__ . '/../../includes/machine_service.php';
+            mach_close_assignments_for_employee($pdo, $empId, 'Employee marked inactive / left');
+        }
+
         $stmt = $pdo->prepare('UPDATE employees SET full_name=:n, father_name=:fn, dob=:dob, aadhaar_number=:aad, employee_type=:et, department_id=:did, designation_id=:dsid, role=:r, salary_type=:st, shift_timing=:sh, shift_start=:ss, shift_end=:se, contact_no=:p, address=:a, joining_date=:j, basic_salary=:s, paid_leave_limit=:pll, half_paid_leave_limit=:hpll, hra_percentage=:hrp, hra_amount=:hra, pf_applicable=:pfa, pf_percentage=:pfp, esi_applicable=:esia, esi_percentage=:esip, medical_allowance=:ma, special_allowance=:sa, other_allowances=:oa, metro=:metro, payroll_auto_indian=:pai, dearness_allowance=:da, travel_allowance=:ta, gratuity_monthly=:gr, gross_salary=:gs, overtime_rate=:otr, daily_wage=:dw, hourly_rate=:hr, status=:status WHERE id=:id');
         $stmt->execute([
             'id' => $empId,
@@ -93,7 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'otr' => post_float('overtime_rate'),
             'dw' => post_float('daily_wage'),
             'hr' => post_float('hourly_rate'),
-            'status' => post_string('status', 20) ?: 'active',
+            'status' => $newStatus,
         ]);
         if ($payrollAuto && $grossComputed > 0) {
             indian_apply_components_to_employee($pdo, $empId);
@@ -188,56 +200,114 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     redirect('employees/list');
 }
 
-$search = trim((string)($_GET['q'] ?? ''));
-$pageNo = max(1, (int)($_GET['p'] ?? 1));
-$limit = 12;
+$filters = emp_list_parse_filters($_GET);
+$profileExport = (string)($_GET['profile_export'] ?? '');
+$profileEmpId = (int)($_GET['emp_profile'] ?? 0);
+if ($profileExport !== '' && $profileEmpId > 0) {
+    emp_profile_render_export($pdo, $filters, $profileEmpId, $profileExport);
+}
+
+$incFilters = emp_inc_parse_filters($_GET);
+$empPerPageDefault = emp_list_per_page_default();
+$perPageAllowed = emp_list_per_page_allowed();
+$limit = (int)$filters['per_page'];
+$empScrollVisibleRows = min(max($limit, 3), 6);
+
+$incExport = (string)($_GET['inc_export'] ?? '');
+if ($incExport !== '') {
+    $incExportRows = emp_inc_export_rows($pdo, $incFilters);
+    $companyName = hr_reports_company_name($pdo);
+    $incTotal = count($incExportRows);
+    if ($incExport === 'excel') {
+        emp_inc_export_excel($incExportRows);
+        exit;
+    }
+    if ($incExport === 'pdf' || $incExport === 'print') {
+        header('Content-Type: text/html; charset=utf-8');
+        require __DIR__ . '/increment_print.php';
+        exit;
+    }
+}
+
+$export = (string)($_GET['export'] ?? '');
+if ($export !== '') {
+    $exportRows = emp_list_export_rows($pdo, $filters);
+    $companyName = hr_reports_company_name($pdo);
+    $totalFiltered = count($exportRows);
+    if ($export === 'excel') {
+        emp_list_export_excel($exportRows, $filters);
+        exit;
+    }
+    if ($export === 'pdf' || $export === 'print') {
+        header('Content-Type: text/html; charset=utf-8');
+        require __DIR__ . '/list_print.php';
+        exit;
+    }
+}
+
+$pageNo = (int)$filters['page'];
 $offset = ($pageNo - 1) * $limit;
-$sort = (string)($_GET['sort'] ?? 'recent');
-$orderBy = match ($sort) {
-    'name' => 'e.full_name ASC',
-    'salary_high' => 'e.gross_salary DESC, e.basic_salary DESC',
-    'salary_low' => 'e.gross_salary ASC, e.basic_salary ASC',
-    default => 'e.id DESC',
-};
-$orgJoinSql = ' FROM employees e
-    LEFT JOIN users u ON u.id = e.user_id
-    LEFT JOIN departments d ON d.id = e.department_id
-    LEFT JOIN designations des ON des.id = e.designation_id
-    LEFT JOIN department_categories dc ON dc.id = d.category_id ';
-
-$countStmt = $pdo->prepare('SELECT COUNT(DISTINCT e.id) ' . $orgJoinSql . ' WHERE e.full_name LIKE :q1 OR e.employee_code LIKE :q2 OR e.department LIKE :q3 OR d.department_name LIKE :q4 OR des.designation_name LIKE :q5 OR dc.category_name LIKE :q6');
-$countStmt->execute([
-    'q1' => '%' . $search . '%',
-    'q2' => '%' . $search . '%',
-    'q3' => '%' . $search . '%',
-    'q4' => '%' . $search . '%',
-    'q5' => '%' . $search . '%',
-    'q6' => '%' . $search . '%',
-]);
-$total = (int)$countStmt->fetchColumn();
+$listBundle = emp_list_fetch($pdo, $filters, $limit, $offset);
+$total = $listBundle['total'];
+$rows = $listBundle['rows'];
 $totalPages = max(1, (int)ceil($total / $limit));
+if ($pageNo > $totalPages) {
+    $pageNo = $totalPages;
+    $filters['page'] = $pageNo;
+    $offset = ($pageNo - 1) * $limit;
+    $listBundle = emp_list_fetch($pdo, $filters, $limit, $offset);
+    $rows = $listBundle['rows'];
+}
+$rows = emp_list_enrich_rows($pdo, $rows);
+$empIncrementsById = emp_list_increments_for_employees($pdo, array_column($rows, 'id'));
 
-$rowsStmt = $pdo->prepare("SELECT e.*, u.email AS user_email, u.username AS login_username, d.department_name AS dept_canonical_name, des.designation_name AS designation_canonical_name, dc.category_name AS dept_category_name, dc.id AS dept_category_id
-    {$orgJoinSql}
-    WHERE e.full_name LIKE :q1 OR e.employee_code LIKE :q2 OR e.department LIKE :q3 OR d.department_name LIKE :q4 OR des.designation_name LIKE :q5 OR dc.category_name LIKE :q6
-    ORDER BY {$orderBy} LIMIT :lim OFFSET :off");
-$rowsStmt->bindValue(':q1', '%' . $search . '%', PDO::PARAM_STR);
-$rowsStmt->bindValue(':q2', '%' . $search . '%', PDO::PARAM_STR);
-$rowsStmt->bindValue(':q3', '%' . $search . '%', PDO::PARAM_STR);
-$rowsStmt->bindValue(':q4', '%' . $search . '%', PDO::PARAM_STR);
-$rowsStmt->bindValue(':q5', '%' . $search . '%', PDO::PARAM_STR);
-$rowsStmt->bindValue(':q6', '%' . $search . '%', PDO::PARAM_STR);
-$rowsStmt->bindValue(':lim', $limit, PDO::PARAM_INT);
-$rowsStmt->bindValue(':off', $offset, PDO::PARAM_INT);
-$rowsStmt->execute();
-$rows = $rowsStmt->fetchAll();
+$empListQuery = static function (array $extra = []) use ($filters): string {
+    $merged = $filters;
+    foreach ($extra as $k => $v) {
+        if ($k === 'p') {
+            $merged['page'] = (int)$v;
+        } else {
+            $merged[$k] = $v;
+        }
+    }
 
-$incrementRows = $pdo->query('SELECT si.*, e.full_name FROM salary_increments si JOIN employees e ON e.id = si.employee_id ORDER BY si.id DESC LIMIT 20')->fetchAll();
+    return emp_list_build_url($merged);
+};
 
-$activeCount = (int)$pdo->query("SELECT COUNT(*) FROM employees WHERE status = 'active'")->fetchColumn();
-$staffCount = (int)$pdo->query("SELECT COUNT(*) FROM employees WHERE employee_type='Staff'")->fetchColumn();
-$presentToday = (int)$pdo->query("SELECT COUNT(*) FROM attendance WHERE attendance_date=CURDATE() AND status IN ('Present','Late','Half Day','Emergency Duty')")->fetchColumn();
-$monthPayroll = (float)$pdo->query("SELECT COALESCE(SUM(net_salary),0) FROM salaries WHERE month_year = DATE_FORMAT(CURDATE(), '%Y-%m')")->fetchColumn();
+$incPerPageDefault = emp_inc_per_page_default();
+$incPerPageAllowed = emp_inc_per_page_allowed();
+$incLimit = (int)$incFilters['per_page'];
+$incScrollVisibleRows = min(max($incLimit, 3), 6);
+$incPageNo = (int)$incFilters['page'];
+$incOffset = ($incPageNo - 1) * $incLimit;
+$incBundle = emp_inc_fetch($pdo, $incFilters, $incLimit, $incOffset);
+$incTotal = $incBundle['total'];
+$incrementRows = $incBundle['rows'];
+$incTotalPages = max(1, (int)ceil($incTotal / $incLimit));
+if ($incPageNo > $incTotalPages) {
+    $incPageNo = $incTotalPages;
+    $incFilters['page'] = $incPageNo;
+    $incOffset = ($incPageNo - 1) * $incLimit;
+    $incBundle = emp_inc_fetch($pdo, $incFilters, $incLimit, $incOffset);
+    $incrementRows = $incBundle['rows'];
+}
+$incShowFrom = $incTotal > 0 ? $incOffset + 1 : 0;
+$incShowTo = min($incOffset + count($incrementRows), $incTotal);
+$incExportBase = emp_inc_build_url($filters, $incFilters);
+$incResetUrl = emp_inc_build_url($filters, array_merge($incFilters, ['q' => '', 'from' => '', 'to' => '', 'page' => 1]));
+$incFilterSummary = emp_inc_filter_summary($incFilters);
+
+$dashStats = emp_list_dashboard_stats($pdo);
+$activeCount = $dashStats['active'];
+$staffCount = $dashStats['staff'];
+$presentToday = $dashStats['present'];
+$monthPayroll = $dashStats['payroll'];
+$filterSummary = emp_list_filter_summary_label($filters);
+$exportBase = emp_list_build_url($filters);
+$resetUrl = emp_list_build_url(array_merge($filters, [
+    'q' => '', 'department' => '', 'employee_type' => '', 'shift' => '', 'status' => '',
+    'join_from' => '', 'join_to' => '', 'page' => 1, 'sort' => 'recent', 'dir' => 'desc',
+]));
 $payrollSettingsApiUrl = route_url('api/payroll-settings');
 $scriptBaseEmp = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/index.php')), '/');
 $payrollSettingsApiUrlAbs = ($scriptBaseEmp !== '' ? $scriptBaseEmp . '/' : '/') . ltrim($payrollSettingsApiUrl, '/');
@@ -259,18 +329,77 @@ $showTo = min($offset + count($rows), $total);
             </div>
         </div>
         <div class="d-flex gap-2 flex-wrap align-items-center">
-            <form method="get" class="d-flex gap-2 employee-toolbar-form">
-                <input type="hidden" name="page" value="employees/list">
-                <input type="hidden" name="sort" value="<?= e($sort) ?>">
-                <div class="search-input-wrap">
-                    <i class="bi bi-search"></i>
-                    <input class="form-control" name="q" value="<?= e($search) ?>" placeholder="Search name, code, department, category…">
-                </div>
-                <button class="btn btn-outline-secondary"><i class="bi bi-funnel me-1"></i>Filter</button>
-            </form>
-            <a class="btn btn-primary" href="<?= e(route_url('employees/create')) ?>"><i class="bi bi-plus-lg me-1"></i>Add Employee</a>
+            <a class="btn btn-primary btn-sm" href="<?= e(route_url('employees/create')) ?>"><i class="bi bi-plus-lg me-1"></i>Add Employee</a>
         </div>
     </div>
+
+    <form method="get" class="emp-list-filters" id="empListFilterForm">
+        <input type="hidden" name="page" value="employees/list">
+        <div class="emp-list-filters__grid">
+            <div class="emp-list-filters__field emp-list-filters__field--search">
+                <label class="emp-list-filters__label" for="emp_q">Search employee</label>
+                <input type="search" class="form-control" id="emp_q" name="q" value="<?= e($filters['q']) ?>" placeholder="Name, code, phone, email…" autocomplete="off">
+            </div>
+            <div class="emp-list-filters__field">
+                <label class="emp-list-filters__label" for="emp_department">Department</label>
+                <select class="form-select" id="emp_department" name="department">
+                    <?php foreach (emp_list_department_filter_options() as $code => $label): ?>
+                        <option value="<?= e($code) ?>" <?= $filters['department'] === $code ? 'selected' : '' ?>><?= e($label) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="emp-list-filters__field">
+                <label class="emp-list-filters__label" for="emp_type">Employee type</label>
+                <select class="form-select" id="emp_type" name="employee_type">
+                    <option value="">All types</option>
+                    <option value="Worker" <?= $filters['employee_type'] === 'Worker' ? 'selected' : '' ?>>Worker</option>
+                    <option value="Staff" <?= $filters['employee_type'] === 'Staff' ? 'selected' : '' ?>>Staff</option>
+                </select>
+            </div>
+            <div class="emp-list-filters__field">
+                <label class="emp-list-filters__label" for="emp_shift">Shift</label>
+                <select class="form-select" id="emp_shift" name="shift">
+                    <option value="">All shifts</option>
+                    <?php foreach (['Morning', 'Evening', 'Night'] as $sh): ?>
+                        <option value="<?= e($sh) ?>" <?= $filters['shift'] === $sh ? 'selected' : '' ?>><?= e($sh) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="emp-list-filters__field">
+                <label class="emp-list-filters__label" for="emp_status">Status</label>
+                <select class="form-select" id="emp_status" name="status">
+                    <option value="">All status</option>
+                    <option value="active" <?= $filters['status'] === 'active' ? 'selected' : '' ?>>Active</option>
+                    <option value="inactive" <?= $filters['status'] === 'inactive' ? 'selected' : '' ?>>Inactive</option>
+                </select>
+            </div>
+            <div class="emp-list-filters__field emp-list-filters__field--dates">
+                <label class="emp-list-filters__label" for="emp_join_from">Joining from <span class="text-muted fw-normal">(optional)</span></label>
+                <input type="date" class="form-control" id="emp_join_from" name="join_from" value="<?= e($filters['join_from']) ?>">
+            </div>
+            <div class="emp-list-filters__field emp-list-filters__field--dates">
+                <label class="emp-list-filters__label" for="emp_join_to">Joining to <span class="text-muted fw-normal">(optional)</span></label>
+                <input type="date" class="form-control" id="emp_join_to" name="join_to" value="<?= e($filters['join_to']) ?>">
+            </div>
+        </div>
+        <div class="emp-list-filters__actions">
+            <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-funnel me-1"></i>Apply filter</button>
+            <a class="btn btn-outline-secondary btn-sm" href="<?= e($resetUrl) ?>">Reset filter</a>
+            <a class="btn btn-outline-secondary btn-sm" href="<?= e($exportBase . '&export=pdf') ?>" target="_blank"><i class="bi bi-file-pdf me-1"></i>Export PDF</a>
+            <a class="btn btn-outline-secondary btn-sm" href="<?= e($exportBase . '&export=excel') ?>"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Export Excel</a>
+            <a class="btn btn-outline-secondary btn-sm" href="<?= e($exportBase . '&export=print') ?>" target="_blank"><i class="bi bi-printer me-1"></i>Print</a>
+            <?php if ($limit !== $empPerPageDefault): ?>
+                <input type="hidden" name="per_page" value="<?= (int)$limit ?>">
+            <?php endif; ?>
+            <?php if ($filters['sort'] !== 'recent'): ?>
+                <input type="hidden" name="sort" value="<?= e($filters['sort']) ?>">
+            <?php endif; ?>
+            <?php if ($filters['dir'] !== ''): ?>
+                <input type="hidden" name="dir" value="<?= e($filters['dir']) ?>">
+            <?php endif; ?>
+            <span class="emp-list-filters__hint d-none d-lg-inline">Joining dates are optional · exports use current filters</span>
+        </div>
+    </form>
 
     <div class="row g-3 mb-3">
         <div class="col-lg col-md-6"><div class="card employee-stat-card"><div class="card-body"><span class="stat-icon soft-red"><i class="bi bi-people"></i></span><small>Total Employees</small><h5><?= e((string)$total) ?></h5><p>All Employees</p></div></div></div>
@@ -282,178 +411,200 @@ $showTo = min($offset + count($rows), $total);
 
     <div class="card mb-3 employee-directory-card">
         <div class="card-header employee-directory-card__head d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <div>
+            <div class="min-w-0">
                 <div class="employee-directory-card__title mb-0">Employee Directory</div>
-                <div class="employee-directory-card__meta"><?= e((string)$total) ?> employees<?= $search !== '' ? ' · filtered' : '' ?></div>
+                <div class="employee-directory-card__meta"><?= e((string)$total) ?> match<?= $total === 1 ? '' : 'es' ?><?= emp_list_has_active_filters($filters) ? ' (filtered)' : '' ?> · click row for full profile</div>
+                <div class="employee-directory-card__meta--filter" title="<?= e($filterSummary) ?>"><?= e($filterSummary) ?></div>
             </div>
-            <form method="get" class="employee-directory-sort d-flex align-items-center gap-2">
+            <form method="get" class="emp-table-toolbar">
                 <input type="hidden" name="page" value="employees/list">
-                <input type="hidden" name="q" value="<?= e($search) ?>">
-                <label class="small text-muted mb-0">Sort</label>
-                <select class="form-select form-select-sm" name="sort" onchange="this.form.submit()">
-                    <option value="recent" <?= $sort === 'recent' ? 'selected' : '' ?>>Recently added</option>
-                    <option value="name" <?= $sort === 'name' ? 'selected' : '' ?>>Name (A–Z)</option>
-                    <option value="salary_high" <?= $sort === 'salary_high' ? 'selected' : '' ?>>Gross (high → low)</option>
-                    <option value="salary_low" <?= $sort === 'salary_low' ? 'selected' : '' ?>>Gross (low → high)</option>
+                <input type="hidden" name="q" value="<?= e($filters['q']) ?>">
+                <input type="hidden" name="department" value="<?= e($filters['department']) ?>">
+                <input type="hidden" name="employee_type" value="<?= e($filters['employee_type']) ?>">
+                <input type="hidden" name="shift" value="<?= e($filters['shift']) ?>">
+                <input type="hidden" name="status" value="<?= e($filters['status']) ?>">
+                <input type="hidden" name="join_from" value="<?= e($filters['join_from']) ?>">
+                <input type="hidden" name="join_to" value="<?= e($filters['join_to']) ?>">
+                <input type="hidden" name="sort" value="<?= e($filters['sort']) ?>">
+                <input type="hidden" name="dir" value="<?= e($filters['dir']) ?>">
+                <label class="small text-muted mb-0">Rows</label>
+                <select class="form-select form-select-sm" name="per_page" onchange="this.form.submit()">
+                    <?php foreach ($perPageAllowed as $pp): ?>
+                        <option value="<?= $pp ?>" <?= $limit === $pp ? 'selected' : '' ?>><?= $pp ?></option>
+                    <?php endforeach; ?>
                 </select>
             </form>
         </div>
-        <div class="table-responsive employee-directory-scroll">
-            <table class="table table-hover align-middle mb-0 employee-list-table">
-                <thead>
-                <tr>
-                    <th class="emp-col-employee">Employee</th>
-                    <th class="emp-col-org">Organization</th>
-                    <th class="emp-col-type">Type</th>
-                    <th class="emp-col-salary text-end">Monthly gross</th>
-                    <th class="emp-col-status">Status</th>
-                    <th class="emp-col-actions text-end">Actions</th>
-                </tr>
-                </thead>
-                <tbody>
-                <?php if (!$rows): ?><tr><td colspan="6" class="text-center text-muted py-5">No employees match your search.</td></tr><?php endif; ?>
-                <?php foreach ($rows as $r): ?>
-                    <?php $initials = strtoupper(substr((string)$r['full_name'], 0, 1)); ?>
-                    <?php
-                    $dept = (string)($r['dept_canonical_name'] ?? $r['department'] ?? '');
-                    $deptLabel = $dept !== '' ? $dept : 'General';
-                    $desigRaw = trim((string)($r['designation_canonical_name'] ?? $r['designation'] ?? ''));
-                    $hasDesig = $desigRaw !== '' && $desigRaw !== '—';
-                    $loginUser = trim((string)($r['login_username'] ?? ''));
-                    $type = (string)($r['employee_type'] ?? 'Staff');
-                    $typeBadge = $type === 'Worker' ? 'badge-worker' : 'badge-staff';
-                    $rowGross = (float)($r['gross_salary'] ?? 0);
-                    if ($rowGross <= 0) {
-                        $rowGross = employee_fixed_gross_monthly($r);
-                    }
-                    ?>
-                    <tr>
-                        <td data-label="Employee">
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="employee-avatar"><?= e($initials) ?></span>
-                                <div class="min-w-0 flex-grow-1">
-                                    <div class="employee-name text-truncate" title="<?= e((string)$r['full_name']) ?>"><?= e((string)$r['full_name']) ?></div>
-                                    <div class="emp-employee-meta">
-                                        <span class="employee-code"><?= e((string)$r['employee_code']) ?></span>
-                                        <?php if ($loginUser !== ''): ?>
-                                            <span class="emp-meta-dot" aria-hidden="true">·</span>
-                                            <span class="emp-login-hint font-monospace" title="ERP login"><?= e($loginUser) ?></span>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                            </div>
-                        </td>
-                        <td data-label="Organization" class="emp-org-cell">
-                            <div class="emp-org-dept" title="<?= e($deptLabel) ?>"><?= e($deptLabel) ?></div>
-                            <?php if ($hasDesig): ?>
-                                <div class="emp-org-desig" title="<?= e($desigRaw) ?>"><?= e($desigRaw) ?></div>
-                            <?php else: ?>
-                                <div class="emp-org-desig emp-text-empty">No designation</div>
-                            <?php endif; ?>
-                        </td>
-                        <td data-label="Type"><span class="badge <?= e($typeBadge) ?>"><?= e($type) ?></span></td>
-                        <td data-label="Gross" class="emp-gross-cell text-end">
-                            <span class="emp-gross-value">₹<?= e(number_format($rowGross, 0, '.', ',')) ?></span><span class="emp-gross-period">/mo</span>
-                        </td>
-                        <td data-label="Status"><span class="badge <?= (($r['status'] ?? 'active') === 'active') ? 'bg-success' : 'bg-secondary' ?>"><?= e(ucfirst((string)($r['status'] ?? 'active'))) ?></span></td>
-                        <td data-label="Actions" class="table-actions text-end">
-                            <div class="dropdown employee-row-actions-dd">
-                                <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle emp-actions-toggle" data-bs-toggle="dropdown" data-bs-display="static" data-bs-auto-close="true" aria-expanded="false" aria-label="Row actions"><i class="bi bi-three-dots"></i></button>
-                                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                                    <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#viewEmp<?= (int)$r['id'] ?>"><i class="bi bi-eye me-2"></i>View</button></li>
-                                    <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#editEmp<?= (int)$r['id'] ?>"><i class="bi bi-pencil me-2"></i>Edit</button></li>
-                                    <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#incEmp<?= (int)$r['id'] ?>"><i class="bi bi-graph-up-arrow me-2"></i>Salary increment</button></li>
-                                    <?php if ((int)($r['user_id'] ?? 0) > 0): ?>
-                                    <li>
-                                        <form method="post" class="m-0" onsubmit="return confirm('Issue a new temporary password? The current password will stop working immediately.');">
-                                            <?= csrf_input() ?>
-                                            <input type="hidden" name="action" value="reset_employee_login">
-                                            <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
-                                            <button type="submit" class="dropdown-item"><i class="bi bi-key me-2"></i>Reset login</button>
-                                        </form>
-                                    </li>
-                                    <?php endif; ?>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li>
-                                        <form method="post" class="m-0" onsubmit="return confirm('Delete this employee and all related attendance, leave, and payroll records?');">
-                                            <?= csrf_input() ?>
-                                            <input type="hidden" name="action" value="delete">
-                                            <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
-                                            <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash me-2"></i>Delete</button>
-                                        </form>
-                                    </li>
-                                </ul>
-                            </div>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
+        <?php require __DIR__ . '/_directory_table.php'; ?>
         <div class="card-footer employee-directory-card__foot d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <span class="small text-muted mb-0">Showing <?= e((string)$showFrom) ?>–<?= e((string)$showTo) ?> of <?= e((string)$total) ?></span>
+            <span class="small text-muted mb-0">
+                Showing <?= e((string)$showFrom) ?>–<?= e((string)$showTo) ?> of <?= e((string)$total) ?>
+                <?php if ($totalPages > 1): ?> · Page <?= e((string)$pageNo) ?> of <?= e((string)$totalPages) ?><?php endif; ?>
+                <?php if (count($rows) > $empScrollVisibleRows): ?>
+                    <span class="employee-directory-scroll-hint d-none d-md-inline"> · Scroll table ↔↕</span>
+                <?php endif; ?>
+            </span>
             <?php if ($totalPages > 1): ?>
             <nav aria-label="Employee pages">
                 <ul class="pagination pagination-sm employee-directory-pagination mb-0">
+                    <li class="page-item <?= $pageNo <= 1 ? 'disabled' : '' ?>">
+                        <a class="page-link" href="<?= e($empListQuery(['p' => '1'])) ?>">First</a>
+                    </li>
+                    <li class="page-item <?= $pageNo <= 1 ? 'disabled' : '' ?>">
+                        <a class="page-link" href="<?= e($empListQuery(['p' => (string)max(1, $pageNo - 1)])) ?>">Prev</a>
+                    </li>
                 <?php for ($i = 1; $i <= $totalPages; $i++): ?>
                     <li class="page-item <?= $i === $pageNo ? 'active' : '' ?>">
-                        <a class="page-link" href="<?= e(route_url('employees/list') . '&q=' . urlencode($search) . '&sort=' . urlencode($sort) . '&p=' . $i) ?>"><?= $i ?></a>
+                        <a class="page-link" href="<?= e($empListQuery(['p' => (string)$i])) ?>"><?= $i ?></a>
                     </li>
                 <?php endfor; ?>
+                    <li class="page-item <?= $pageNo >= $totalPages ? 'disabled' : '' ?>">
+                        <a class="page-link" href="<?= e($empListQuery(['p' => (string)min($totalPages, $pageNo + 1)])) ?>">Next</a>
+                    </li>
+                    <li class="page-item <?= $pageNo >= $totalPages ? 'disabled' : '' ?>">
+                        <a class="page-link" href="<?= e($empListQuery(['p' => (string)$totalPages])) ?>">Last</a>
+                    </li>
                 </ul>
             </nav>
             <?php endif; ?>
         </div>
     </div>
 
-    <div class="card mt-4">
-        <div class="card-header section-title">Salary Increment History</div>
-        <div class="table-responsive">
-            <table class="table table-sm table-striped mb-0">
-                <thead><tr><th>Employee</th><th>Old</th><th>New</th><th>Amount</th><th>%</th><th>Effective</th><th>Reason</th></tr></thead>
+    <div class="card mt-4 employee-directory-card emp-increment-card" id="salaryIncrementSection">
+        <div class="card-header employee-directory-card__head d-flex flex-wrap justify-content-between align-items-start gap-2">
+            <div class="min-w-0">
+                <div class="employee-directory-card__title mb-0">Salary Increment History</div>
+                <div class="employee-directory-card__meta"><?= e((string)$incTotal) ?> record<?= $incTotal === 1 ? '' : 's' ?></div>
+                <div class="employee-directory-card__meta--filter" title="<?= e($incFilterSummary) ?>"><?= e($incFilterSummary) ?></div>
+            </div>
+            <form method="get" class="emp-inc-toolbar d-flex flex-wrap align-items-end gap-2">
+                <input type="hidden" name="page" value="employees/list">
+                <?php foreach (emp_list_query_params($filters) as $pk => $pv): if ($pk === 'page' || $pv === null) continue; ?>
+                    <input type="hidden" name="<?= e($pk === 'p' ? 'p' : $pk) ?>" value="<?= e((string)$pv) ?>">
+                <?php endforeach; ?>
+                <div>
+                    <label class="emp-list-filters__label" for="inc_q">Search</label>
+                    <input type="search" class="form-control form-control-sm" id="inc_q" name="inc_q" value="<?= e($incFilters['q']) ?>" placeholder="Name, code, reason…" style="min-width:10rem">
+                </div>
+                <div>
+                    <label class="emp-list-filters__label" for="inc_from">Effective from</label>
+                    <input type="date" class="form-control form-control-sm" id="inc_from" name="inc_from" value="<?= e($incFilters['from']) ?>">
+                </div>
+                <div>
+                    <label class="emp-list-filters__label" for="inc_to">Effective to</label>
+                    <input type="date" class="form-control form-control-sm" id="inc_to" name="inc_to" value="<?= e($incFilters['to']) ?>">
+                </div>
+                <div class="d-flex flex-wrap gap-1 align-items-end">
+                    <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+                    <a class="btn btn-outline-secondary btn-sm" href="<?= e($incResetUrl) ?>">Reset</a>
+                    <a class="btn btn-outline-secondary btn-sm" href="<?= e($incExportBase . '&inc_export=pdf') ?>" target="_blank"><i class="bi bi-file-pdf"></i></a>
+                    <a class="btn btn-outline-secondary btn-sm" href="<?= e($incExportBase . '&inc_export=excel') ?>"><i class="bi bi-file-earmark-spreadsheet"></i></a>
+                    <a class="btn btn-outline-secondary btn-sm" href="<?= e($incExportBase . '&inc_export=print') ?>" target="_blank"><i class="bi bi-printer"></i></a>
+                </div>
+            </form>
+        </div>
+        <div class="employee-directory-scroll emp-table-viewport emp-increment-scroll"
+             style="--emp-visible-rows: <?= (int)$incScrollVisibleRows ?>"
+             tabindex="0"
+             aria-label="Salary increments — scroll for more rows">
+            <table class="table table-sm table-hover align-middle mb-0 employee-list-table emp-increment-table">
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Code</th>
+                        <th>Department</th>
+                        <th class="text-end">Old (₹)</th>
+                        <th class="text-end">New (₹)</th>
+                        <th class="text-end">Amount</th>
+                        <th class="text-end">%</th>
+                        <th>Effective</th>
+                        <th>Reason</th>
+                    </tr>
+                </thead>
                 <tbody>
-                <?php if (!$incrementRows): ?><tr><td colspan="7" class="text-center text-muted">No increments recorded yet.</td></tr><?php endif; ?>
+                <?php if (!$incrementRows): ?><tr><td colspan="9" class="text-center text-muted py-4">No increments match your filters.</td></tr><?php endif; ?>
                 <?php foreach ($incrementRows as $inc): ?>
                     <tr>
                         <td><?= e((string)$inc['full_name']) ?></td>
-                        <td><?= e((string)$inc['old_salary']) ?></td>
-                        <td><?= e((string)$inc['new_salary']) ?></td>
-                        <td><?= e((string)$inc['increment_amount']) ?></td>
-                        <td><?= e((string)$inc['increment_percentage']) ?></td>
-                        <td><?= e((string)$inc['effective_date']) ?></td>
-                        <td><?= e((string)($inc['reason'] ?? '-')) ?></td>
+                        <td class="font-monospace small"><?= e((string)($inc['employee_code'] ?? '')) ?></td>
+                        <td><?= e((string)($inc['department_name'] ?? '—')) ?></td>
+                        <td class="text-end"><?= e(number_format((float)$inc['old_salary'], 2)) ?></td>
+                        <td class="text-end"><?= e(number_format((float)$inc['new_salary'], 2)) ?></td>
+                        <td class="text-end text-success fw-semibold"><?= e(number_format((float)$inc['increment_amount'], 2)) ?></td>
+                        <td class="text-end"><?= e(number_format((float)$inc['increment_percentage'], 2)) ?></td>
+                        <td class="emp-col-joined"><?= e((string)$inc['effective_date']) ?></td>
+                        <td><?= e((string)($inc['reason'] ?? '') !== '' ? $inc['reason'] : '—') ?></td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
+        <div class="card-footer employee-directory-card__foot d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="small text-muted mb-0">
+                    Showing <?= e((string)$incShowFrom) ?>–<?= e((string)$incShowTo) ?> of <?= e((string)$incTotal) ?>
+                    <?php if ($incTotalPages > 1): ?> · Page <?= e((string)$incPageNo) ?> of <?= e((string)$incTotalPages) ?><?php endif; ?>
+                    <?php if (count($incrementRows) > $incScrollVisibleRows): ?>
+                        <span class="employee-directory-scroll-hint d-none d-md-inline"> · Scroll table ↔↕</span>
+                    <?php endif; ?>
+                </span>
+                <form method="get" class="d-flex align-items-center gap-1 mb-0">
+                    <input type="hidden" name="page" value="employees/list">
+                    <?php foreach (array_merge(emp_list_query_params($filters), emp_inc_query_params($incFilters)) as $pk => $pv): ?>
+                        <?php if ($pk === 'page' || $pv === null || $pk === 'inc_per_page' || $pk === 'inc_p') continue; ?>
+                        <input type="hidden" name="<?= e($pk) ?>" value="<?= e((string)$pv) ?>">
+                    <?php endforeach; ?>
+                    <label class="small text-muted mb-0">Rows</label>
+                    <select class="form-select form-select-sm" name="inc_per_page" onchange="this.form.submit()" style="width:auto;min-width:3.5rem">
+                        <?php foreach ($incPerPageAllowed as $ipp): ?>
+                            <option value="<?= $ipp ?>" <?= $incLimit === $ipp ? 'selected' : '' ?>><?= $ipp ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </form>
+            </div>
+            <?php if ($incTotalPages > 1): ?>
+            <nav aria-label="Increment pages">
+                <ul class="pagination pagination-sm employee-directory-pagination mb-0">
+                    <li class="page-item <?= $incPageNo <= 1 ? 'disabled' : '' ?>">
+                        <a class="page-link" href="<?= e(emp_inc_build_url($filters, $incFilters, ['page' => 1])) ?>">First</a>
+                    </li>
+                    <li class="page-item <?= $incPageNo <= 1 ? 'disabled' : '' ?>">
+                        <a class="page-link" href="<?= e(emp_inc_build_url($filters, $incFilters, ['page' => max(1, $incPageNo - 1)])) ?>">Prev</a>
+                    </li>
+                    <?php for ($ii = 1; $ii <= $incTotalPages; $ii++): ?>
+                    <li class="page-item <?= $ii === $incPageNo ? 'active' : '' ?>">
+                        <a class="page-link" href="<?= e(emp_inc_build_url($filters, $incFilters, ['page' => $ii])) ?>"><?= $ii ?></a>
+                    </li>
+                    <?php endfor; ?>
+                    <li class="page-item <?= $incPageNo >= $incTotalPages ? 'disabled' : '' ?>">
+                        <a class="page-link" href="<?= e(emp_inc_build_url($filters, $incFilters, ['page' => min($incTotalPages, $incPageNo + 1)])) ?>">Next</a>
+                    </li>
+                    <li class="page-item <?= $incPageNo >= $incTotalPages ? 'disabled' : '' ?>">
+                        <a class="page-link" href="<?= e(emp_inc_build_url($filters, $incFilters, ['page' => $incTotalPages])) ?>">Last</a>
+                    </li>
+                </ul>
+            </nav>
+            <?php endif; ?>
+        </div>
     </div>
 </div>
 
-<?php foreach ($rows as $r): ?>
-    <div class="modal fade" id="viewEmp<?= (int)$r['id'] ?>" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-scrollable modal-lg">
-            <div class="modal-content">
-                <div class="modal-header"><h5 class="modal-title">Employee Details</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-                <div class="modal-body row g-2">
-                    <div class="col-md-6"><strong>Name:</strong> <?= e((string)$r['full_name']) ?></div>
-                    <div class="col-md-6"><strong>Code:</strong> <?= e((string)$r['employee_code']) ?></div>
-                    <div class="col-md-6"><strong>Category:</strong> <?= e((string)($r['dept_category_name'] ?? '—')) ?></div>
-                    <div class="col-md-6"><strong>Department:</strong> <?= e((string)($r['dept_canonical_name'] ?? $r['department'])) ?></div>
-                    <div class="col-md-6"><strong>Designation:</strong> <?= e((string)($r['designation_canonical_name'] ?? ($r['designation'] ?? '-'))) ?></div>
-                    <div class="col-md-6"><strong>Father name:</strong> <?= e((string)($r['father_name'] ?? '—')) ?></div>
-                    <div class="col-md-6"><strong>Date of birth:</strong> <?= e((string)($r['dob'] ?? '—')) ?></div>
-                    <div class="col-md-6"><strong>Aadhaar:</strong> <?= e(ec_mask_aadhaar($r['aadhaar_number'] ?? null)) ?></div>
-                    <div class="col-md-6"><strong>Login username:</strong> <?= e((string)($r['login_username'] ?: '—')) ?></div>
-                    <div class="col-md-6"><strong>Type:</strong> <?= e((string)($r['employee_type'] ?? 'Staff')) ?></div>
-                    <div class="col-md-6"><strong>Role:</strong> <?= e((string)($r['role'] ?? 'Employee')) ?></div>
-                    <div class="col-md-6"><strong>Shift:</strong> <?= e((string)($r['shift_timing'] ?? '-')) ?></div>
-                    <div class="col-md-6"><strong>Email (optional):</strong> <?= e((string)($r['email'] ?? '—')) ?></div>
-                    <div class="col-md-12"><strong>Address:</strong> <?= e((string)($r['address'] ?? '-')) ?></div>
-                </div>
-            </div>
-        </div>
+<div class="offcanvas offcanvas-end emp-record-drawer" tabindex="-1" id="empRecordDrawer" aria-labelledby="empRecordDrawerTitle">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="empRecordDrawerTitle">Employee record</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
     </div>
+    <div class="offcanvas-body" id="empRecordDrawerBody"></div>
+</div>
+
+<?php foreach ($rows as $r): ?>
+    <?php
+    $empIncrements = $empIncrementsById[(int)$r['id']] ?? [];
+    $profile = emp_profile_build($pdo, $r, $empIncrements);
+    ?>
+    <template id="empRecordTpl<?= (int)$r['id'] ?>">
+        <?php require __DIR__ . '/_record_drawer_content.php'; ?>
+    </template>
 
     <div class="modal fade employee-edit-modal" id="editEmp<?= (int)$r['id'] ?>" tabindex="-1" aria-hidden="true"
         data-initial-category-id="<?= (int)($r['dept_category_id'] ?? 0) ?>"
@@ -543,15 +694,15 @@ $showTo = min($offset + count($rows), $total);
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Department category <span class="text-danger">*</span></label>
-                                <select id="edit_org_<?= (int)$r['id'] ?>_category_id" class="form-select" required></select>
+                                <select id="edit_org_<?= (int)$r['id'] ?>_category_id" class="form-select" data-dept-cascade="1" required></select>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Department <span class="text-danger">*</span></label>
-                                <select id="edit_org_<?= (int)$r['id'] ?>_department_id" name="department_id" class="form-select" required></select>
+                                <select id="edit_org_<?= (int)$r['id'] ?>_department_id" name="department_id" class="form-select" data-dept-cascade="1" required></select>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Designation</label>
-                                <select id="edit_org_<?= (int)$r['id'] ?>_designation_id" name="designation_id" class="form-select"></select>
+                                <select id="edit_org_<?= (int)$r['id'] ?>_designation_id" name="designation_id" class="form-select" data-dept-cascade="1"></select>
                             </div>
                             <div class="col-md-6"><label class="form-label">Phone</label><input class="form-control" name="contact_no" value="<?= e((string)($r['contact_no'] ?? '')) ?>"></div>
                             <div class="col-md-6"><label class="form-label">Address</label><input class="form-control" name="address" value="<?= e((string)($r['address'] ?? '')) ?>"></div>

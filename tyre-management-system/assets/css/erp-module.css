@@ -309,7 +309,7 @@
 :is(.att-panel, .employee-directory-card, .payroll-filter-card, .payroll-table-card),
 .leave-main .table-responsive,
 .hr-reports .hr-report-block .table-responsive,
-.erp-page .table-responsive,
+.erp-page .table-responsive:not(.employee-directory-scroll):not(.emp-table-viewport),
 .erp-page > .card {
     background: #fff;
     border: 1px solid var(--erp-border);
@@ -322,6 +322,14 @@
     margin-bottom: 0.55rem;
     border-radius: 10px;
     box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+}
+
+/* HR employee forms — allow Tom Select focus ring; dropdown renders on body */
+.erp-page form .card:has([id*="org_category"]),
+.erp-page form .card:has([id*="create_org_"]),
+.erp-page form .card:has([id*="edit_org_"]),
+.modal .card:has([id*="edit_org_"]) {
+    overflow: visible;
 }
 
 .employee-directory-card__head,
@@ -392,10 +400,48 @@
     background: #fef8f8;
 }
 
-.employee-directory-scroll,
 .att-table-scroll {
     overflow: auto;
     max-height: min(62vh, 520px);
+}
+
+/* Employee directory: fixed in-card scroll (page length stays stable as headcount grows) */
+.employee-directory-card {
+    display: flex;
+    flex-direction: column;
+}
+.employee-directory-card .employee-directory-scroll,
+.employee-directory-card .emp-table-viewport {
+    --emp-row-h: 3.15rem;
+    --emp-head-h: 2.4rem;
+    --emp-visible-rows: 6;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;
+    min-height: calc(3 * var(--emp-row-h) + var(--emp-head-h));
+    max-height: min(
+        calc(var(--emp-visible-rows) * var(--emp-row-h) + var(--emp-head-h)),
+        58vh,
+        28rem
+    );
+    background: #fff;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+.employee-directory-card .employee-directory-scroll:focus-visible {
+    outline: 2px solid rgba(220, 38, 38, 0.35);
+    outline-offset: -2px;
+}
+.employee-directory-card__foot {
+    flex-shrink: 0;
+}
+.employee-directory-scroll-hint {
+    color: #94a3b8;
+    font-style: italic;
 }
 
 /* —— Segmented tabs —— */

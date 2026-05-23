@@ -1,7 +1,19 @@
--- Tyre ERP full_latest_backup.sql
--- Generated: 2026-05-21T18:13:33+05:30
+-- =============================================================================
+-- Tyre ERP — FULL DATABASE BACKUP (use this file if MySQL fails or data is lost)
+-- =============================================================================
+-- Generated: 2026-05-23T18:39:08+05:30
 -- Database: tyre_erp
--- Import: mysql -u root < full_latest_backup.sql
+-- File: database/sql/FULL_DATABASE_BACKUP.sql
+--
+-- RESTORE (XAMPP command line):
+--   c:\xampp\mysql\bin\mysql.exe -u root < database\sql\FULL_DATABASE_BACKUP.sql
+--
+-- RESTORE (phpMyAdmin): Import this file into server (no database selected first).
+--
+-- Regenerate backup after changes:
+--   php tools/db_sync.php export
+--   or double-click: tools/backup_database.bat
+-- =============================================================================
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS=0;
@@ -113,6 +125,45 @@ INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `stat
 INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (488, 5, '2026-05-28', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-28 09:00:00', '2026-05-28 18:00:00', '11.00', '2.00', 0, 0, 0, 0, NULL, NULL, '2026-05-21 16:59:01');
 INSERT INTO `attendance` (`id`, `employee_id`, `attendance_date`, `shift`, `status`, `remarks`, `linked_leave_id`, `punch_in_time`, `punch_out_time`, `total_hours`, `overtime_hours`, `is_late`, `is_early_exit`, `is_emergency_duty`, `needs_verification`, `verified_by`, `verified_at`, `created_at`) VALUES (489, 5, '2026-05-29', 'Morning', 'Present', '[PAYROLL_TEST] Auto-generated for payroll testing', NULL, '2026-05-29 09:00:00', '2026-05-29 18:00:00', '11.00', '2.00', 0, 0, 0, 0, NULL, NULL, '2026-05-21 16:59:01');
 
+DROP TABLE IF EXISTS `building_batches`;
+CREATE TABLE `building_batches` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `order_id` int(11) DEFAULT NULL,
+  `mixing_batch_id` int(11) DEFAULT NULL,
+  `batch_code` varchar(40) NOT NULL,
+  `produced_qty` int(11) NOT NULL DEFAULT 0,
+  `rejected_qty` int(11) NOT NULL DEFAULT 0,
+  `machine_id` int(11) DEFAULT NULL,
+  `operator_id` int(11) DEFAULT NULL,
+  `shift` varchar(20) NOT NULL DEFAULT 'Morning',
+  `production_date` date NOT NULL,
+  `status` varchar(30) NOT NULL DEFAULT 'In Progress',
+  `notes` varchar(500) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `batch_code` (`batch_code`),
+  KEY `idx_bld_order` (`order_id`),
+  KEY `idx_bld_mix` (`mixing_batch_id`),
+  CONSTRAINT `fk_bld_mix` FOREIGN KEY (`mixing_batch_id`) REFERENCES `mixing_batches` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_bld_order` FOREIGN KEY (`order_id`) REFERENCES `production_orders` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+DROP TABLE IF EXISTS `building_entries`;
+CREATE TABLE `building_entries` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `production_date` date NOT NULL,
+  `shift` varchar(20) NOT NULL DEFAULT 'Morning',
+  `machine_id` int(11) DEFAULT NULL,
+  `operator_id` int(11) DEFAULT NULL,
+  `tyre_type` varchar(120) NOT NULL,
+  `produced_qty` int(11) NOT NULL DEFAULT 0,
+  `rejected_qty` int(11) NOT NULL DEFAULT 0,
+  `remarks` varchar(500) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_bld_entry_date` (`production_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 DROP TABLE IF EXISTS `company_holidays`;
 CREATE TABLE `company_holidays` (
   `holiday_date` date NOT NULL,
@@ -120,6 +171,53 @@ CREATE TABLE `company_holidays` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`holiday_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+DROP TABLE IF EXISTS `curing_batches`;
+CREATE TABLE `curing_batches` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `order_id` int(11) DEFAULT NULL,
+  `building_batch_id` int(11) DEFAULT NULL,
+  `batch_code` varchar(40) NOT NULL,
+  `cured_qty` int(11) NOT NULL DEFAULT 0,
+  `rejected_qty` int(11) NOT NULL DEFAULT 0,
+  `cycle_time_min` int(11) NOT NULL DEFAULT 0,
+  `downtime_min` int(11) NOT NULL DEFAULT 0,
+  `machine_id` int(11) DEFAULT NULL,
+  `operator_id` int(11) DEFAULT NULL,
+  `shift` varchar(20) NOT NULL DEFAULT 'Morning',
+  `production_date` date NOT NULL,
+  `status` varchar(30) NOT NULL DEFAULT 'In Progress',
+  `notes` varchar(500) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `batch_code` (`batch_code`),
+  KEY `idx_cur_order` (`order_id`),
+  KEY `idx_cur_bld` (`building_batch_id`),
+  CONSTRAINT `fk_cur_bld` FOREIGN KEY (`building_batch_id`) REFERENCES `building_batches` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_cur_order` FOREIGN KEY (`order_id`) REFERENCES `production_orders` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+DROP TABLE IF EXISTS `curing_entries`;
+CREATE TABLE `curing_entries` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `batch_code` varchar(40) DEFAULT NULL,
+  `production_date` date NOT NULL,
+  `shift` varchar(20) NOT NULL DEFAULT 'Morning',
+  `machine_id` int(11) DEFAULT NULL,
+  `operator_id` int(11) DEFAULT NULL,
+  `tyre_type` varchar(120) NOT NULL DEFAULT 'Tyre',
+  `produced_qty` int(11) NOT NULL DEFAULT 0,
+  `rejected_qty` int(11) NOT NULL DEFAULT 0,
+  `downtime_minutes` int(11) NOT NULL DEFAULT 0,
+  `remarks` varchar(500) DEFAULT NULL,
+  `qc_status` varchar(30) NOT NULL DEFAULT 'Pending',
+  `qc_inspection_id` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_cur_entry_date` (`production_date`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `curing_entries` (`id`, `batch_code`, `production_date`, `shift`, `machine_id`, `operator_id`, `tyre_type`, `produced_qty`, `rejected_qty`, `downtime_minutes`, `remarks`, `qc_status`, `qc_inspection_id`, `created_at`) VALUES (1, 'CUR-20260522-0001', '2026-05-22', 'Morning', 1, 1, 'PCR Car', 10, 23, 40, NULL, 'Inspecting', NULL, '2026-05-22 17:27:47');
 
 DROP TABLE IF EXISTS `defect_logs`;
 CREATE TABLE `defect_logs` (
@@ -145,7 +243,7 @@ CREATE TABLE `department_categories` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_dept_cat_code` (`category_code`)
-) ENGINE=InnoDB AUTO_INCREMENT=5905 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8257 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `department_categories` (`id`, `category_name`, `category_code`, `status`, `created_at`) VALUES (1, 'Core Production', 'CORE_PROD', 'active', '2026-05-14 18:28:16');
 INSERT INTO `department_categories` (`id`, `category_name`, `category_code`, `status`, `created_at`) VALUES (2, 'Quality & Safety', 'QUAL_SAFETY', 'active', '2026-05-14 18:28:16');
@@ -169,7 +267,7 @@ CREATE TABLE `departments` (
   UNIQUE KEY `uk_dept_cat_name` (`category_id`,`department_name`),
   KEY `idx_dept_category` (`category_id`),
   CONSTRAINT `fk_dept_category` FOREIGN KEY (`category_id`) REFERENCES `department_categories` (`id`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=19681 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=27521 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `departments` (`id`, `category_id`, `department_name`, `department_short_name`, `department_code`, `status`, `min_staff_required`, `created_at`) VALUES (1, 1, 'Production Planning & Control (PPC)', 'PPC', 'DEPT_PPC', 'active', NULL, '2026-05-14 18:28:16');
 INSERT INTO `departments` (`id`, `category_id`, `department_name`, `department_short_name`, `department_code`, `status`, `min_staff_required`, `created_at`) VALUES (2, 1, 'Raw Materials & Inventory Management', 'Raw Materials', 'DEPT_RAW_MAT', 'active', NULL, '2026-05-14 18:28:16');
@@ -204,7 +302,7 @@ CREATE TABLE `designations` (
   UNIQUE KEY `uk_desig_dept_code` (`department_id`,`designation_code`),
   KEY `idx_desig_department` (`department_id`),
   CONSTRAINT `fk_desig_department` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=62977 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=88065 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `designations` (`id`, `department_id`, `designation_name`, `designation_code`, `status`, `created_at`) VALUES (1, 1, 'PPC Executive', 'DES_PPC_EXEC', 'active', '2026-05-14 18:28:16');
 INSERT INTO `designations` (`id`, `department_id`, `designation_name`, `designation_code`, `status`, `created_at`) VALUES (2, 1, 'PPC Manager', 'DES_PPC_MGR', 'active', '2026-05-14 18:28:16');
@@ -275,11 +373,26 @@ DROP TABLE IF EXISTS `dispatch`;
 CREATE TABLE `dispatch` (
   `inventory_id` int(11) DEFAULT NULL,
   `id` int(11) NOT NULL AUTO_INCREMENT,
+  `dispatch_code` varchar(40) DEFAULT NULL,
   `order_no` varchar(40) NOT NULL,
   `customer_name` varchar(120) NOT NULL,
+  `customer_id` int(11) DEFAULT NULL,
+  `tyre_type` varchar(120) DEFAULT NULL,
   `invoice_no` varchar(40) NOT NULL,
+  `vehicle_no` varchar(40) DEFAULT NULL,
+  `vehicle_id` int(11) DEFAULT NULL,
+  `driver_name` varchar(150) DEFAULT NULL,
+  `driver_id` int(11) DEFAULT NULL,
+  `transport_company` varchar(150) DEFAULT NULL,
+  `transport_company_id` int(11) DEFAULT NULL,
   `dispatch_date` date NOT NULL,
   `qty` int(11) NOT NULL,
+  `gross_weight_kg` decimal(12,2) DEFAULT NULL,
+  `tare_weight_kg` decimal(12,2) DEFAULT NULL,
+  `net_weight_kg` decimal(12,2) DEFAULT NULL,
+  `remarks` varchar(500) DEFAULT NULL,
+  `status` enum('Pending','Dispatched','Delivered') NOT NULL DEFAULT 'Pending',
+  `stock_deducted` tinyint(1) NOT NULL DEFAULT 0,
   `dispatch_status` enum('Created','In Transit','Delivered') DEFAULT 'Created',
   `tracking_no` varchar(60) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -287,7 +400,92 @@ CREATE TABLE `dispatch` (
   UNIQUE KEY `order_no` (`order_no`),
   KEY `idx_dispatch_status` (`dispatch_status`),
   KEY `idx_dispatch_date` (`dispatch_date`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `dispatch` (`inventory_id`, `id`, `dispatch_code`, `order_no`, `customer_name`, `customer_id`, `tyre_type`, `invoice_no`, `vehicle_no`, `vehicle_id`, `driver_name`, `driver_id`, `transport_company`, `transport_company_id`, `dispatch_date`, `qty`, `gross_weight_kg`, `tare_weight_kg`, `net_weight_kg`, `remarks`, `status`, `stock_deducted`, `dispatch_status`, `tracking_no`, `created_at`) VALUES (NULL, 1, 'DSP-20260522-001', 'ORD-260522-001', 'Metro Tyre Traders', 1, 'TBR Truck', 'INV-20260522-2226', 'PB10AX1234', 1, 'Ravi Kumar', 1, 'Punjab Logistics', 1, '2026-05-22', 4, '769.00', '700.00', '69.00', 'lkk', 'Dispatched', 1, 'In Transit', NULL, '2026-05-22 19:43:34');
+INSERT INTO `dispatch` (`inventory_id`, `id`, `dispatch_code`, `order_no`, `customer_name`, `customer_id`, `tyre_type`, `invoice_no`, `vehicle_no`, `vehicle_id`, `driver_name`, `driver_id`, `transport_company`, `transport_company_id`, `dispatch_date`, `qty`, `gross_weight_kg`, `tare_weight_kg`, `net_weight_kg`, `remarks`, `status`, `stock_deducted`, `dispatch_status`, `tracking_no`, `created_at`) VALUES (NULL, 2, 'DSP-20260523-001', 'ORD-260523-001', 'North Highway Fleet', 2, 'TBR Truck', 'INV-20260523-5366', 'PB10AX1234', 1, 'Ravi Kumar', 1, 'Punjab Logistics', 1, '2026-05-23', 24, '1000.00', '200.00', '800.00', 'do it care', 'Dispatched', 1, 'In Transit', NULL, '2026-05-23 17:32:31');
+
+DROP TABLE IF EXISTS `dispatch_customers`;
+CREATE TABLE `dispatch_customers` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `customer_name` varchar(150) NOT NULL,
+  `company` varchar(150) DEFAULT NULL,
+  `phone` varchar(30) DEFAULT NULL,
+  `gst_number` varchar(40) DEFAULT NULL,
+  `address` varchar(255) DEFAULT NULL,
+  `city` varchar(80) DEFAULT NULL,
+  `state` varchar(80) DEFAULT NULL,
+  `status` enum('Active','Inactive') NOT NULL DEFAULT 'Active',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_dcust_name` (`customer_name`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `dispatch_customers` (`id`, `customer_name`, `company`, `phone`, `gst_number`, `address`, `city`, `state`, `status`, `created_at`) VALUES (1, 'Metro Tyre Traders', 'Metro Tyre Traders Pvt Ltd', '9876500001', NULL, NULL, 'Mumbai', 'Maharashtra', 'Active', '2026-05-22 18:50:37');
+INSERT INTO `dispatch_customers` (`id`, `customer_name`, `company`, `phone`, `gst_number`, `address`, `city`, `state`, `status`, `created_at`) VALUES (2, 'North Highway Fleet', 'North Highway Fleet Services', '9876500002', NULL, NULL, 'Delhi', 'Delhi', 'Active', '2026-05-22 18:50:37');
+INSERT INTO `dispatch_customers` (`id`, `customer_name`, `company`, `phone`, `gst_number`, `address`, `city`, `state`, `status`, `created_at`) VALUES (3, 'Southern Auto Mart', 'Southern Auto Mart', '9876500003', NULL, NULL, 'Chennai', 'Tamil Nadu', 'Active', '2026-05-22 18:50:37');
+
+DROP TABLE IF EXISTS `dispatch_drivers`;
+CREATE TABLE `dispatch_drivers` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `driver_name` varchar(150) NOT NULL,
+  `phone` varchar(30) DEFAULT NULL,
+  `license_number` varchar(60) DEFAULT NULL,
+  `vehicle_id` int(11) DEFAULT NULL,
+  `vehicle_no` varchar(40) DEFAULT NULL,
+  `transport_company_id` int(11) DEFAULT NULL,
+  `transport_company` varchar(150) DEFAULT NULL,
+  `address` varchar(255) DEFAULT NULL,
+  `status` enum('Active','Inactive') NOT NULL DEFAULT 'Active',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_ddriver_name` (`driver_name`),
+  KEY `idx_ddriver_status` (`status`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `dispatch_drivers` (`id`, `driver_name`, `phone`, `license_number`, `vehicle_id`, `vehicle_no`, `transport_company_id`, `transport_company`, `address`, `status`, `created_at`) VALUES (1, 'Ravi Kumar', '9876510001', 'DL-09-2018-0012345', 1, 'PB10AX1234', 1, 'Punjab Logistics', 'Ludhiana, Punjab', 'Active', '2026-05-22 19:04:30');
+INSERT INTO `dispatch_drivers` (`id`, `driver_name`, `phone`, `license_number`, `vehicle_id`, `vehicle_no`, `transport_company_id`, `transport_company`, `address`, `status`, `created_at`) VALUES (2, 'Suresh Patel', '9876510002', 'GJ-12-2019-0098765', 2, 'GJ01BT5678', 2, 'Western Freight Lines', 'Ahmedabad, Gujarat', 'Active', '2026-05-22 19:04:30');
+INSERT INTO `dispatch_drivers` (`id`, `driver_name`, `phone`, `license_number`, `vehicle_id`, `vehicle_no`, `transport_company_id`, `transport_company`, `address`, `status`, `created_at`) VALUES (3, 'Mohit Singh', '9876510003', 'HR-05-2020-0045678', 3, 'HR26CD9012', 3, 'North Star Transport', 'Gurgaon, Haryana', 'Active', '2026-05-22 19:04:30');
+
+DROP TABLE IF EXISTS `dispatch_transport_companies`;
+CREATE TABLE `dispatch_transport_companies` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `company_name` varchar(150) NOT NULL,
+  `contact_person` varchar(120) DEFAULT NULL,
+  `phone` varchar(30) DEFAULT NULL,
+  `gst_number` varchar(40) DEFAULT NULL,
+  `address` varchar(255) DEFAULT NULL,
+  `status` enum('Active','Inactive') NOT NULL DEFAULT 'Active',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_transport_name` (`company_name`),
+  KEY `idx_transport_status` (`status`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `dispatch_transport_companies` (`id`, `company_name`, `contact_person`, `phone`, `gst_number`, `address`, `status`, `created_at`) VALUES (1, 'Punjab Logistics', 'Harpreet Singh', '9876520001', '03AABCP1234F1Z5', 'Ludhiana, Punjab', 'Active', '2026-05-22 19:15:32');
+INSERT INTO `dispatch_transport_companies` (`id`, `company_name`, `contact_person`, `phone`, `gst_number`, `address`, `status`, `created_at`) VALUES (2, 'Western Freight Lines', 'Amit Shah', '9876520002', '24AABCW5678G1Z9', 'Ahmedabad, Gujarat', 'Active', '2026-05-22 19:15:32');
+INSERT INTO `dispatch_transport_companies` (`id`, `company_name`, `contact_person`, `phone`, `gst_number`, `address`, `status`, `created_at`) VALUES (3, 'North Star Transport', 'Vikram Mehta', '9876520003', '06AABCN9012H1Z3', 'Gurgaon, Haryana', 'Active', '2026-05-22 19:15:32');
+
+DROP TABLE IF EXISTS `dispatch_vehicles`;
+CREATE TABLE `dispatch_vehicles` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `vehicle_number` varchar(40) NOT NULL,
+  `vehicle_type` varchar(60) DEFAULT NULL,
+  `capacity` varchar(40) DEFAULT NULL,
+  `driver_id` int(11) DEFAULT NULL,
+  `transport_company_id` int(11) DEFAULT NULL,
+  `status` enum('Active','Inactive') NOT NULL DEFAULT 'Active',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_vehicle_number` (`vehicle_number`),
+  KEY `idx_vehicle_status` (`status`),
+  KEY `idx_vehicle_driver` (`driver_id`),
+  KEY `idx_vehicle_transport` (`transport_company_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `dispatch_vehicles` (`id`, `vehicle_number`, `vehicle_type`, `capacity`, `driver_id`, `transport_company_id`, `status`, `created_at`) VALUES (1, 'PB10AX1234', 'Truck', '40 tyres', 1, 1, 'Active', '2026-05-22 19:24:33');
+INSERT INTO `dispatch_vehicles` (`id`, `vehicle_number`, `vehicle_type`, `capacity`, `driver_id`, `transport_company_id`, `status`, `created_at`) VALUES (2, 'GJ01BT5678', 'Truck', '40 tyres', 2, 2, 'Active', '2026-05-22 19:24:33');
+INSERT INTO `dispatch_vehicles` (`id`, `vehicle_number`, `vehicle_type`, `capacity`, `driver_id`, `transport_company_id`, `status`, `created_at`) VALUES (3, 'HR26CD9012', 'Truck', '40 tyres', 3, 3, 'Active', '2026-05-22 19:24:33');
 
 DROP TABLE IF EXISTS `employees`;
 CREATE TABLE `employees` (
@@ -388,10 +586,37 @@ CREATE TABLE `inventory` (
   `qty` int(11) NOT NULL DEFAULT 0,
   `reorder_level` int(11) NOT NULL DEFAULT 0,
   `warehouse_location` varchar(120) NOT NULL,
+  `stock_category` varchar(30) DEFAULT NULL,
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `idx_inventory_qty` (`qty`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `inventory` (`id`, `product_name`, `batch_ref`, `qty`, `reorder_level`, `warehouse_location`, `stock_category`, `updated_at`) VALUES (1, 'TBR Truck', 'QC-20260522-1', 1, 50, 'FG-A1', NULL, '2026-05-23 17:32:31');
+
+DROP TABLE IF EXISTS `inventory_activity`;
+CREATE TABLE `inventory_activity` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `activity_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `activity_type` varchar(40) NOT NULL,
+  `material_id` int(11) DEFAULT NULL,
+  `qty_change` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `message` varchar(500) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_inv_activity_at` (`activity_at`)
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `inventory_activity` (`id`, `activity_at`, `activity_type`, `material_id`, `qty_change`, `message`) VALUES (1, '2026-05-22 18:08:26', 'adjustment', 3, '10000.00', 'New material added: gaga');
+INSERT INTO `inventory_activity` (`id`, `activity_at`, `activity_type`, `material_id`, `qty_change`, `message`) VALUES (2, '2026-05-22 18:08:30', 'adjustment', 4, '10000.00', 'New material added: gaga');
+INSERT INTO `inventory_activity` (`id`, `activity_at`, `activity_type`, `material_id`, `qty_change`, `message`) VALUES (3, '2026-05-22 18:17:43', 'inward', 2, '7887.97', 'Carbon Black stock added +7887.97 kg');
+INSERT INTO `inventory_activity` (`id`, `activity_at`, `activity_type`, `material_id`, `qty_change`, `message`) VALUES (4, '2026-05-22 18:18:06', 'inward', 2, '120000000.00', 'Carbon Black stock added +120000000 kg');
+INSERT INTO `inventory_activity` (`id`, `activity_at`, `activity_type`, `material_id`, `qty_change`, `message`) VALUES (5, '2026-05-22 18:18:36', 'usage', 2, '-13000000.00', 'Building used 13000000 kg Carbon Black');
+INSERT INTO `inventory_activity` (`id`, `activity_at`, `activity_type`, `material_id`, `qty_change`, `message`) VALUES (6, '2026-05-23 18:17:09', 'usage', 1, '-270.00', 'Mixing used 270 kg Natural Rubber');
+INSERT INTO `inventory_activity` (`id`, `activity_at`, `activity_type`, `material_id`, `qty_change`, `message`) VALUES (7, '2026-05-23 18:17:09', 'usage', 2, '-150.00', 'Mixing used 150 kg Carbon Black');
+INSERT INTO `inventory_activity` (`id`, `activity_at`, `activity_type`, `material_id`, `qty_change`, `message`) VALUES (8, '2026-05-23 18:17:09', 'usage', 5, '-30.00', 'Mixing used 30 kg Chemicals');
+INSERT INTO `inventory_activity` (`id`, `activity_at`, `activity_type`, `material_id`, `qty_change`, `message`) VALUES (9, '2026-05-23 18:17:19', 'usage', 1, '-270.00', 'Mixing used 270 kg Natural Rubber');
+INSERT INTO `inventory_activity` (`id`, `activity_at`, `activity_type`, `material_id`, `qty_change`, `message`) VALUES (10, '2026-05-23 18:17:19', 'usage', 2, '-150.00', 'Mixing used 150 kg Carbon Black');
+INSERT INTO `inventory_activity` (`id`, `activity_at`, `activity_type`, `material_id`, `qty_change`, `message`) VALUES (11, '2026-05-23 18:17:19', 'usage', 5, '-30.00', 'Mixing used 30 kg Chemicals');
 
 DROP TABLE IF EXISTS `leave_notifications`;
 CREATE TABLE `leave_notifications` (
@@ -475,23 +700,127 @@ CREATE TABLE `machine_assignments` (
   CONSTRAINT `fk_ma_order` FOREIGN KEY (`order_id`) REFERENCES `production_orders` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+DROP TABLE IF EXISTS `machine_audit_log`;
+CREATE TABLE `machine_audit_log` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `machine_id` int(11) NOT NULL,
+  `field_name` varchar(40) NOT NULL,
+  `old_value` varchar(255) DEFAULT NULL,
+  `new_value` varchar(255) DEFAULT NULL,
+  `changed_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `changed_by` int(11) DEFAULT NULL,
+  `remarks` text DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_mal_machine` (`machine_id`),
+  CONSTRAINT `fk_mal_machine` FOREIGN KEY (`machine_id`) REFERENCES `machines` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+DROP TABLE IF EXISTS `machine_operator_assignments`;
+CREATE TABLE `machine_operator_assignments` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `machine_id` int(11) NOT NULL,
+  `employee_id` int(11) NOT NULL,
+  `department` varchar(40) NOT NULL,
+  `shift` varchar(20) DEFAULT NULL,
+  `assigned_from` date NOT NULL,
+  `assigned_till` date DEFAULT NULL,
+  `remarks` text DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `closed_at` datetime DEFAULT NULL,
+  `closed_reason` varchar(120) DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_moa_machine` (`machine_id`),
+  KEY `idx_moa_employee` (`employee_id`),
+  KEY `idx_moa_active` (`machine_id`,`is_active`),
+  CONSTRAINT `fk_moa_employee` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`id`),
+  CONSTRAINT `fk_moa_machine` FOREIGN KEY (`machine_id`) REFERENCES `machines` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+DROP TABLE IF EXISTS `machine_status_history`;
+CREATE TABLE `machine_status_history` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `machine_id` int(11) NOT NULL,
+  `old_status` varchar(40) DEFAULT NULL,
+  `new_status` varchar(40) NOT NULL,
+  `changed_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `changed_by` int(11) DEFAULT NULL,
+  `remarks` text DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_msh_machine` (`machine_id`),
+  CONSTRAINT `fk_msh_machine` FOREIGN KEY (`machine_id`) REFERENCES `machines` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 DROP TABLE IF EXISTS `machines`;
 CREATE TABLE `machines` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `machine_code` varchar(30) NOT NULL,
   `machine_name` varchar(120) NOT NULL,
   `machine_type` varchar(80) DEFAULT NULL,
+  `department` varchar(40) DEFAULT NULL,
+  `section` varchar(80) DEFAULT NULL,
+  `installation_date` date DEFAULT NULL,
   `shift_capacity` int(11) NOT NULL DEFAULT 0,
   `status` varchar(30) NOT NULL DEFAULT 'Idle',
   `last_maintenance_date` date NOT NULL,
   `notes` text DEFAULT NULL,
+  `remarks` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `deactivated_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `machine_code` (`machine_code`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `machines` (`id`, `machine_code`, `machine_name`, `machine_type`, `shift_capacity`, `status`, `last_maintenance_date`, `notes`, `created_at`) VALUES (1, 'MC-101', 'Tyre Curing Press 1', NULL, 0, 'Running', '2026-04-10', NULL, '2026-05-14 17:43:38');
-INSERT INTO `machines` (`id`, `machine_code`, `machine_name`, `machine_type`, `shift_capacity`, `status`, `last_maintenance_date`, `notes`, `created_at`) VALUES (2, 'MC-102', 'Tyre Building Machine 1', NULL, 0, 'Running', '2026-04-22', NULL, '2026-05-14 17:43:38');
+INSERT INTO `machines` (`id`, `machine_code`, `machine_name`, `machine_type`, `department`, `section`, `installation_date`, `shift_capacity`, `status`, `last_maintenance_date`, `notes`, `remarks`, `created_at`, `is_active`, `deactivated_at`) VALUES (1, 'MC-101', 'Tyre Curing Press 1', NULL, NULL, NULL, NULL, 0, 'Active', '2026-04-10', NULL, NULL, '2026-05-14 17:43:38', 1, NULL);
+INSERT INTO `machines` (`id`, `machine_code`, `machine_name`, `machine_type`, `department`, `section`, `installation_date`, `shift_capacity`, `status`, `last_maintenance_date`, `notes`, `remarks`, `created_at`, `is_active`, `deactivated_at`) VALUES (2, 'MC-102', 'Tyre Building Machine 1', NULL, NULL, NULL, NULL, 0, 'Active', '2026-04-22', NULL, NULL, '2026-05-14 17:43:38', 1, NULL);
+
+DROP TABLE IF EXISTS `mixing_batches`;
+CREATE TABLE `mixing_batches` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `order_id` int(11) DEFAULT NULL,
+  `batch_code` varchar(40) NOT NULL,
+  `compound_name` varchar(120) NOT NULL DEFAULT 'Rubber Compound',
+  `produced_qty` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `wastage_qty` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `unit` varchar(20) NOT NULL DEFAULT 'kg',
+  `machine_id` int(11) DEFAULT NULL,
+  `operator_id` int(11) DEFAULT NULL,
+  `shift` varchar(20) NOT NULL DEFAULT 'Morning',
+  `production_date` date NOT NULL,
+  `status` varchar(30) NOT NULL DEFAULT 'Ready',
+  `notes` varchar(500) DEFAULT NULL,
+  `inventory_deducted` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `batch_code` (`batch_code`),
+  KEY `idx_mix_order` (`order_id`),
+  KEY `idx_mix_date` (`production_date`),
+  CONSTRAINT `fk_mix_order` FOREIGN KEY (`order_id`) REFERENCES `production_orders` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+DROP TABLE IF EXISTS `mixing_entries`;
+CREATE TABLE `mixing_entries` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `production_date` date NOT NULL,
+  `shift` varchar(20) NOT NULL DEFAULT 'Morning',
+  `machine_id` int(11) DEFAULT NULL,
+  `operator_id` int(11) DEFAULT NULL,
+  `tyre_type` varchar(120) NOT NULL,
+  `produced_qty` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `rejected_qty` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `remarks` varchar(500) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_mix_entry_date` (`production_date`),
+  KEY `idx_mix_entry_shift` (`shift`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `mixing_entries` (`id`, `production_date`, `shift`, `machine_id`, `operator_id`, `tyre_type`, `produced_qty`, `rejected_qty`, `remarks`, `created_at`) VALUES (1, '2026-05-25', 'Morning', 2, 2, 'TBR Truck', '1000.00', '4.81', NULL, '2026-05-22 17:25:09');
+INSERT INTO `mixing_entries` (`id`, `production_date`, `shift`, `machine_id`, `operator_id`, `tyre_type`, `produced_qty`, `rejected_qty`, `remarks`, `created_at`) VALUES (5, '2026-05-23', 'Morning', 1, 1, 'PCR Car', '600.00', '0.00', NULL, '2026-05-23 18:17:09');
+INSERT INTO `mixing_entries` (`id`, `production_date`, `shift`, `machine_id`, `operator_id`, `tyre_type`, `produced_qty`, `rejected_qty`, `remarks`, `created_at`) VALUES (6, '2026-05-23', 'Morning', 1, 1, 'PCR Car', '600.00', '0.00', NULL, '2026-05-23 18:17:19');
 
 DROP TABLE IF EXISTS `payroll`;
 CREATE TABLE `payroll` (
@@ -622,7 +951,10 @@ CREATE TABLE `production_logs` (
   PRIMARY KEY (`id`),
   KEY `idx_prod_logs_order` (`order_id`),
   CONSTRAINT `fk_prod_log_order` FOREIGN KEY (`order_id`) REFERENCES `production_orders` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `production_logs` (`id`, `order_id`, `stage_id`, `action`, `message`, `user_id`, `created_at`) VALUES (1, 1, NULL, 'order_created', 'Production job ticket PRD-20260521-001 created — production not started yet.', 3, '2026-05-21 18:14:18');
+INSERT INTO `production_logs` (`id`, `order_id`, `stage_id`, `action`, `message`, `user_id`, `created_at`) VALUES (2, 2, NULL, 'order_created', 'Master production target PRD-20260522-001 — departments work independently.', 3, '2026-05-22 17:03:43');
 
 DROP TABLE IF EXISTS `production_orders`;
 CREATE TABLE `production_orders` (
@@ -648,6 +980,33 @@ CREATE TABLE `production_orders` (
   UNIQUE KEY `order_code` (`order_code`),
   KEY `idx_prod_orders_status` (`status`),
   KEY `idx_prod_orders_stage` (`current_stage`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `production_orders` (`id`, `order_code`, `tyre_type`, `target_qty`, `deadline`, `priority`, `status`, `current_stage`, `total_produced`, `total_rejected`, `total_downtime`, `qc_passed_qty`, `qc_failed_qty`, `inventory_deducted`, `remarks`, `created_by_user_id`, `created_at`, `updated_at`) VALUES (1, 'PRD-20260521-001', 'TBR Truck', 1000, '2026-05-13', 'Normal', 'Pending', 'Mixing', 0, 0, 0, 0, 0, 0, 'ggdd', 3, '2026-05-21 18:14:18', NULL);
+INSERT INTO `production_orders` (`id`, `order_code`, `tyre_type`, `target_qty`, `deadline`, `priority`, `status`, `current_stage`, `total_produced`, `total_rejected`, `total_downtime`, `qc_passed_qty`, `qc_failed_qty`, `inventory_deducted`, `remarks`, `created_by_user_id`, `created_at`, `updated_at`) VALUES (2, 'PRD-20260522-001', 'Two Wheeler', 1000, '2026-05-21', 'High', 'Open', 'Plant', 0, 0, 0, 0, 0, 0, 'bb', 3, '2026-05-22 17:03:43', NULL);
+
+DROP TABLE IF EXISTS `production_qc_entries`;
+CREATE TABLE `production_qc_entries` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `order_id` int(11) DEFAULT NULL,
+  `curing_batch_id` int(11) DEFAULT NULL,
+  `batch_ref` varchar(40) DEFAULT NULL,
+  `inspection_date` date NOT NULL,
+  `inspected_qty` int(11) NOT NULL DEFAULT 0,
+  `passed_qty` int(11) NOT NULL DEFAULT 0,
+  `rejected_qty` int(11) NOT NULL DEFAULT 0,
+  `defect_type` varchar(120) DEFAULT NULL,
+  `inspector_name` varchar(150) NOT NULL,
+  `remarks` varchar(500) DEFAULT NULL,
+  `inventory_added` tinyint(1) NOT NULL DEFAULT 0,
+  `warehouse_location` varchar(120) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_pqc_order` (`order_id`),
+  KEY `idx_pqc_date` (`inspection_date`),
+  KEY `fk_pqc_cur` (`curing_batch_id`),
+  CONSTRAINT `fk_pqc_cur` FOREIGN KEY (`curing_batch_id`) REFERENCES `curing_batches` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_pqc_order` FOREIGN KEY (`order_id`) REFERENCES `production_orders` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 DROP TABLE IF EXISTS `production_stage_logs`;
@@ -699,6 +1058,71 @@ CREATE TABLE `production_stages` (
   CONSTRAINT `fk_prod_stage_machine` FOREIGN KEY (`machine_id`) REFERENCES `machines` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_prod_stage_operator` FOREIGN KEY (`operator_id`) REFERENCES `employees` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_prod_stage_order` FOREIGN KEY (`order_id`) REFERENCES `production_orders` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `production_stages` (`id`, `order_id`, `stage_name`, `stage_order`, `machine_id`, `operator_id`, `shift`, `status`, `produced_qty`, `rejected_qty`, `downtime_minutes`, `started_at`, `ended_at`, `remarks`) VALUES (1, 1, 'Mixing', 1, NULL, NULL, 'Morning', 'Pending', 0, 0, 0, NULL, NULL, NULL);
+INSERT INTO `production_stages` (`id`, `order_id`, `stage_name`, `stage_order`, `machine_id`, `operator_id`, `shift`, `status`, `produced_qty`, `rejected_qty`, `downtime_minutes`, `started_at`, `ended_at`, `remarks`) VALUES (2, 1, 'Building', 2, NULL, NULL, 'Morning', 'Pending', 0, 0, 0, NULL, NULL, NULL);
+INSERT INTO `production_stages` (`id`, `order_id`, `stage_name`, `stage_order`, `machine_id`, `operator_id`, `shift`, `status`, `produced_qty`, `rejected_qty`, `downtime_minutes`, `started_at`, `ended_at`, `remarks`) VALUES (3, 1, 'Curing', 3, NULL, NULL, 'Morning', 'Pending', 0, 0, 0, NULL, NULL, NULL);
+INSERT INTO `production_stages` (`id`, `order_id`, `stage_name`, `stage_order`, `machine_id`, `operator_id`, `shift`, `status`, `produced_qty`, `rejected_qty`, `downtime_minutes`, `started_at`, `ended_at`, `remarks`) VALUES (4, 1, 'QC', 4, NULL, NULL, 'Morning', 'Pending', 0, 0, 0, NULL, NULL, NULL);
+INSERT INTO `production_stages` (`id`, `order_id`, `stage_name`, `stage_order`, `machine_id`, `operator_id`, `shift`, `status`, `produced_qty`, `rejected_qty`, `downtime_minutes`, `started_at`, `ended_at`, `remarks`) VALUES (5, 1, 'Finished', 5, NULL, NULL, 'Morning', 'Pending', 0, 0, 0, NULL, NULL, NULL);
+
+DROP TABLE IF EXISTS `qc_defect_lines`;
+CREATE TABLE `qc_defect_lines` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `inspection_id` int(11) NOT NULL,
+  `defect_type` varchar(40) NOT NULL,
+  `defect_label` varchar(120) NOT NULL,
+  `qty` int(11) NOT NULL DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_qc_def_insp` (`inspection_id`),
+  CONSTRAINT `fk_qc_def_insp` FOREIGN KEY (`inspection_id`) REFERENCES `qc_inspections` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+DROP TABLE IF EXISTS `qc_entries`;
+CREATE TABLE `qc_entries` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `entry_date` date NOT NULL,
+  `shift` varchar(20) NOT NULL DEFAULT 'Morning',
+  `inspector_name` varchar(150) NOT NULL,
+  `tyre_type` varchar(120) NOT NULL,
+  `checked_qty` int(11) NOT NULL DEFAULT 0,
+  `passed_qty` int(11) NOT NULL DEFAULT 0,
+  `failed_qty` int(11) NOT NULL DEFAULT 0,
+  `defect_type` varchar(120) DEFAULT NULL,
+  `remarks` varchar(500) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_qc_entry_date` (`entry_date`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `qc_entries` (`id`, `entry_date`, `shift`, `inspector_name`, `tyre_type`, `checked_qty`, `passed_qty`, `failed_qty`, `defect_type`, `remarks`, `created_at`) VALUES (1, '2026-05-22', 'Morning', 'sd', 'TBR Truck', 150, 29, 30, NULL, 'h', '2026-05-22 17:26:30');
+
+DROP TABLE IF EXISTS `qc_inspections`;
+CREATE TABLE `qc_inspections` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `curing_entry_id` int(11) NOT NULL,
+  `batch_code` varchar(40) NOT NULL,
+  `tyre_type` varchar(120) NOT NULL,
+  `machine_id` int(11) DEFAULT NULL,
+  `production_date` date NOT NULL,
+  `production_shift` varchar(20) NOT NULL DEFAULT 'Morning',
+  `produced_qty` int(11) NOT NULL DEFAULT 0,
+  `inspected_qty` int(11) NOT NULL DEFAULT 0,
+  `passed_qty` int(11) NOT NULL DEFAULT 0,
+  `rejected_qty` int(11) NOT NULL DEFAULT 0,
+  `rework_qty` int(11) NOT NULL DEFAULT 0,
+  `inspector_name` varchar(150) NOT NULL,
+  `inspection_date` date NOT NULL,
+  `inspection_shift` varchar(20) NOT NULL DEFAULT 'Morning',
+  `qc_status` varchar(30) NOT NULL DEFAULT 'Pending',
+  `remarks` varchar(500) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_qc_curing` (`curing_entry_id`),
+  KEY `idx_qc_insp_date` (`inspection_date`),
+  KEY `idx_qc_batch` (`batch_code`),
+  CONSTRAINT `fk_qc_curing` FOREIGN KEY (`curing_entry_id`) REFERENCES `curing_entries` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 DROP TABLE IF EXISTS `quality_checks`;
@@ -722,20 +1146,30 @@ CREATE TABLE `quality_checks` (
 DROP TABLE IF EXISTS `raw_materials`;
 CREATE TABLE `raw_materials` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
+  `material_code` varchar(40) DEFAULT NULL,
   `material_name` varchar(120) NOT NULL,
+  `category` varchar(80) NOT NULL DEFAULT 'General',
   `unit` varchar(20) NOT NULL,
   `stock_qty` decimal(12,2) NOT NULL DEFAULT 0.00,
   `reorder_level` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `max_stock_level` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `storage_location` varchar(120) NOT NULL DEFAULT 'Main Store',
+  `remarks` varchar(500) DEFAULT NULL,
+  `status` enum('Active','Inactive') NOT NULL DEFAULT 'Active',
   `supplier_id` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `idx_material_stock` (`stock_qty`),
   KEY `fk_material_supplier` (`supplier_id`),
   CONSTRAINT `fk_material_supplier` FOREIGN KEY (`supplier_id`) REFERENCES `suppliers` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `raw_materials` (`id`, `material_name`, `unit`, `stock_qty`, `reorder_level`, `supplier_id`, `created_at`) VALUES (1, 'Natural Rubber', 'kg', '5000.00', '1200.00', 1, '2026-05-14 17:43:38');
-INSERT INTO `raw_materials` (`id`, `material_name`, `unit`, `stock_qty`, `reorder_level`, `supplier_id`, `created_at`) VALUES (2, 'Carbon Black', 'kg', '2200.00', '800.00', 2, '2026-05-14 17:43:38');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (1, 'RM-1', 'Natural Rubber', 'General', 'kg', '4460.00', '1200.00', '0.00', 'Main Store', NULL, 'Active', 1, '2026-05-14 17:43:38');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (2, 'RM-2', 'Carbon Black', 'General', 'kg', '107009787.97', '800.00', '0.00', 'Main Store', NULL, 'Active', 2, '2026-05-14 17:43:38');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (3, '677', 'gaga', 'Rubber', 'kg', '10000.00', '49.93', '0.00', 'Main Store', NULL, 'Active', 2, '2026-05-22 18:08:26');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (4, '677', 'gaga', 'Rubber', 'kg', '10000.00', '49.93', '0.00', 'Main Store', NULL, 'Active', 2, '2026-05-22 18:08:30');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (5, 'RM-CHEM', 'Chemicals', 'Chemicals', 'kg', '740.00', '100.00', '0.00', 'Store-C1', NULL, 'Active', NULL, '2026-05-23 17:19:25');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (6, 'RM-PACK', 'Packaging', 'Packaging', 'piece', '5000.00', '500.00', '0.00', 'Store-D1', NULL, 'Active', NULL, '2026-05-23 17:19:25');
 
 DROP TABLE IF EXISTS `salaries`;
 CREATE TABLE `salaries` (
@@ -823,6 +1257,11 @@ INSERT INTO `schema_migrations` (`migration`, `batch`, `applied_at`) VALUES ('00
 INSERT INTO `schema_migrations` (`migration`, `batch`, `applied_at`) VALUES ('009_production_workflow.sql', 3, '2026-05-21 17:19:47');
 INSERT INTO `schema_migrations` (`migration`, `batch`, `applied_at`) VALUES ('010_production_orders_workflow.sql', 4, '2026-05-21 17:40:07');
 INSERT INTO `schema_migrations` (`migration`, `batch`, `applied_at`) VALUES ('011_production_stage_logs.sql', 5, '2026-05-21 18:13:33');
+INSERT INTO `schema_migrations` (`migration`, `batch`, `applied_at`) VALUES ('012_inventory_warehouse_module.sql', 6, '2026-05-23 17:19:25');
+INSERT INTO `schema_migrations` (`migration`, `batch`, `applied_at`) VALUES ('013_dispatch_logistics_module.sql', 6, '2026-05-23 17:19:25');
+INSERT INTO `schema_migrations` (`migration`, `batch`, `applied_at`) VALUES ('014_production_entry_tables.sql', 6, '2026-05-23 17:19:25');
+INSERT INTO `schema_migrations` (`migration`, `batch`, `applied_at`) VALUES ('015_quality_control_module.sql', 7, '2026-05-23 18:00:17');
+INSERT INTO `schema_migrations` (`migration`, `batch`, `applied_at`) VALUES ('016_machine_master_assignments.sql', 8, '2026-05-23 18:39:08');
 
 DROP TABLE IF EXISTS `settings`;
 CREATE TABLE `settings` (
@@ -831,7 +1270,7 @@ CREATE TABLE `settings` (
   `setting_value` text NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `setting_key` (`setting_key`)
-) ENGINE=InnoDB AUTO_INCREMENT=1051 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1443 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `settings` (`id`, `setting_key`, `setting_value`) VALUES (1, 'company_name', 'Ralson India Private Limited');
 INSERT INTO `settings` (`id`, `setting_key`, `setting_value`) VALUES (104, 'employee_gross_backfill_v1', '1');
@@ -841,6 +1280,77 @@ INSERT INTO `settings` (`id`, `setting_key`, `setting_value`) VALUES (407, 'atte
 INSERT INTO `settings` (`id`, `setting_key`, `setting_value`) VALUES (488, 'leave_auto_approve_enabled', '0');
 INSERT INTO `settings` (`id`, `setting_key`, `setting_value`) VALUES (489, 'leave_min_present_pct', '50');
 
+DROP TABLE IF EXISTS `stock_adjustments`;
+CREATE TABLE `stock_adjustments` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `adjust_date` date NOT NULL,
+  `material_id` int(11) NOT NULL,
+  `previous_qty` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `actual_qty` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `difference_qty` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `reason` varchar(80) NOT NULL,
+  `operator_name` varchar(150) DEFAULT NULL,
+  `remarks` varchar(500) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_adj_date` (`adjust_date`),
+  KEY `idx_adj_material` (`material_id`),
+  CONSTRAINT `fk_adj_material` FOREIGN KEY (`material_id`) REFERENCES `raw_materials` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+DROP TABLE IF EXISTS `stock_inward`;
+CREATE TABLE `stock_inward` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `inward_date` date NOT NULL,
+  `supplier_id` int(11) DEFAULT NULL,
+  `invoice_no` varchar(80) DEFAULT NULL,
+  `material_id` int(11) NOT NULL,
+  `batch_no` varchar(80) DEFAULT NULL,
+  `expiry_date` date DEFAULT NULL,
+  `quantity` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `rate` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `received_by` varchar(150) DEFAULT NULL,
+  `remarks` varchar(500) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_inward_date` (`inward_date`),
+  KEY `idx_inward_material` (`material_id`),
+  KEY `idx_inward_supplier` (`supplier_id`),
+  CONSTRAINT `fk_inward_material` FOREIGN KEY (`material_id`) REFERENCES `raw_materials` (`id`),
+  CONSTRAINT `fk_inward_supplier` FOREIGN KEY (`supplier_id`) REFERENCES `suppliers` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `stock_inward` (`id`, `inward_date`, `supplier_id`, `invoice_no`, `material_id`, `batch_no`, `expiry_date`, `quantity`, `rate`, `received_by`, `remarks`, `created_at`) VALUES (1, '2026-05-22', 1, NULL, 2, NULL, NULL, '7887.97', '0.00', NULL, NULL, '2026-05-22 18:17:43');
+INSERT INTO `stock_inward` (`id`, `inward_date`, `supplier_id`, `invoice_no`, `material_id`, `batch_no`, `expiry_date`, `quantity`, `rate`, `received_by`, `remarks`, `created_at`) VALUES (2, '2026-05-22', 2, NULL, 2, NULL, NULL, '120000000.00', '0.00', NULL, NULL, '2026-05-22 18:18:06');
+
+DROP TABLE IF EXISTS `stock_usage`;
+CREATE TABLE `stock_usage` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `usage_date` date NOT NULL,
+  `material_id` int(11) NOT NULL,
+  `quantity` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `usage_type` enum('production','manual') NOT NULL DEFAULT 'manual',
+  `department` varchar(40) DEFAULT NULL,
+  `usage_reason` varchar(80) DEFAULT NULL,
+  `reference_id` int(11) DEFAULT NULL,
+  `remarks` varchar(500) DEFAULT NULL,
+  `created_by` varchar(150) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_usage_date` (`usage_date`),
+  KEY `idx_usage_material` (`material_id`),
+  KEY `idx_usage_type` (`usage_type`),
+  CONSTRAINT `fk_usage_material` FOREIGN KEY (`material_id`) REFERENCES `raw_materials` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `stock_usage` (`id`, `usage_date`, `material_id`, `quantity`, `usage_type`, `department`, `usage_reason`, `reference_id`, `remarks`, `created_by`, `created_at`) VALUES (1, '2026-05-22', 2, '13000000.00', 'manual', 'Building', NULL, NULL, NULL, NULL, '2026-05-22 18:18:36');
+INSERT INTO `stock_usage` (`id`, `usage_date`, `material_id`, `quantity`, `usage_type`, `department`, `usage_reason`, `reference_id`, `remarks`, `created_by`, `created_at`) VALUES (2, '2026-05-23', 1, '270.00', 'production', 'Mixing', 'production', 5, 'Auto from mixing entry #5', 'System', '2026-05-23 18:17:09');
+INSERT INTO `stock_usage` (`id`, `usage_date`, `material_id`, `quantity`, `usage_type`, `department`, `usage_reason`, `reference_id`, `remarks`, `created_by`, `created_at`) VALUES (3, '2026-05-23', 2, '150.00', 'production', 'Mixing', 'production', 5, 'Auto from mixing entry #5', 'System', '2026-05-23 18:17:09');
+INSERT INTO `stock_usage` (`id`, `usage_date`, `material_id`, `quantity`, `usage_type`, `department`, `usage_reason`, `reference_id`, `remarks`, `created_by`, `created_at`) VALUES (4, '2026-05-23', 5, '30.00', 'production', 'Mixing', 'production', 5, 'Auto from mixing entry #5', 'System', '2026-05-23 18:17:09');
+INSERT INTO `stock_usage` (`id`, `usage_date`, `material_id`, `quantity`, `usage_type`, `department`, `usage_reason`, `reference_id`, `remarks`, `created_by`, `created_at`) VALUES (5, '2026-05-23', 1, '270.00', 'production', 'Mixing', 'production', 6, 'Auto from mixing entry #6', 'System', '2026-05-23 18:17:19');
+INSERT INTO `stock_usage` (`id`, `usage_date`, `material_id`, `quantity`, `usage_type`, `department`, `usage_reason`, `reference_id`, `remarks`, `created_by`, `created_at`) VALUES (6, '2026-05-23', 2, '150.00', 'production', 'Mixing', 'production', 6, 'Auto from mixing entry #6', 'System', '2026-05-23 18:17:19');
+INSERT INTO `stock_usage` (`id`, `usage_date`, `material_id`, `quantity`, `usage_type`, `department`, `usage_reason`, `reference_id`, `remarks`, `created_by`, `created_at`) VALUES (7, '2026-05-23', 5, '30.00', 'production', 'Mixing', 'production', 6, 'Auto from mixing entry #6', 'System', '2026-05-23 18:17:19');
+
 DROP TABLE IF EXISTS `suppliers`;
 CREATE TABLE `suppliers` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -849,12 +1359,14 @@ CREATE TABLE `suppliers` (
   `phone` varchar(20) DEFAULT NULL,
   `email` varchar(120) DEFAULT NULL,
   `address` varchar(255) DEFAULT NULL,
+  `status` enum('Active','Inactive') NOT NULL DEFAULT 'Active',
+  `materials_supplied` varchar(500) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `created_at`) VALUES (1, 'Punjab Rubber Corp', 'Harjit Singh', '9811111111', 'harjit@rubber.local', 'Ludhiana', '2026-05-14 17:43:38');
-INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `created_at`) VALUES (2, 'ChemTech Industries', 'K. Mehta', '9822222222', 'mehta@chem.local', 'Delhi NCR', '2026-05-14 17:43:38');
+INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `status`, `materials_supplied`, `created_at`) VALUES (1, 'Punjab Rubber Corp', 'Harjit Singh', '9811111111', 'harjit@rubber.local', 'Ludhiana', 'Active', NULL, '2026-05-14 17:43:38');
+INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `status`, `materials_supplied`, `created_at`) VALUES (2, 'ChemTech Industries', 'K. Mehta', '9822222222', 'mehta@chem.local', 'Delhi NCR', 'Active', NULL, '2026-05-14 17:43:38');
 
 DROP TABLE IF EXISTS `users`;
 CREATE TABLE `users` (
@@ -874,14 +1386,14 @@ CREATE TABLE `users` (
   UNIQUE KEY `employee_id` (`employee_id`),
   UNIQUE KEY `username` (`username`),
   KEY `idx_users_role_status` (`role`,`status`)
-) ENGINE=InnoDB AUTO_INCREMENT=7100 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=9832 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (1, NULL, 'Super Admin', 'superadmin@ralson.local', 'superadmin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Super Admin', 'active', 0, NULL, '2026-05-14 17:43:38');
-INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (2, NULL, 'HR Manager', 'hr@ralson.local', 'hrmanager', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'HR Manager', 'active', 0, '2026-05-21 16:58:28', '2026-05-14 17:43:38');
-INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (3, NULL, 'Production Manager', 'production@ralson.local', 'prodmanager', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Production Manager', 'active', 0, '2026-05-21 17:10:56', '2026-05-14 17:43:38');
-INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (4, NULL, 'Inventory Manager', 'inventory@ralson.local', 'invmanager', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Inventory Manager', 'active', 0, NULL, '2026-05-14 17:43:38');
-INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (5, NULL, 'Dispatch Manager', 'dispatch@ralson.local', 'dispatchmgr', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Dispatch Manager', 'active', 0, NULL, '2026-05-14 17:43:38');
-INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (6, NULL, 'Quality Manager', 'quality@ralson.local', 'qualitymgr', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Quality Manager', 'active', 0, NULL, '2026-05-14 17:43:38');
+INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (2, NULL, 'HR Manager', 'hr@ralson.local', 'hrmanager', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'HR Manager', 'active', 0, '2026-05-23 18:26:31', '2026-05-14 17:43:38');
+INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (3, NULL, 'Production Manager', 'production@ralson.local', 'prodmanager', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Production Manager', 'active', 0, '2026-05-23 18:27:08', '2026-05-14 17:43:38');
+INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (4, NULL, 'Inventory Manager', 'inventory@ralson.local', 'invmanager', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Inventory Manager', 'active', 0, '2026-05-23 18:04:18', '2026-05-14 17:43:38');
+INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (5, NULL, 'Dispatch Manager', 'dispatch@ralson.local', 'dispatchmgr', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Dispatch Manager', 'active', 0, '2026-05-23 18:14:45', '2026-05-14 17:43:38');
+INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (6, NULL, 'Quality Manager', 'quality@ralson.local', 'qualitymgr', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Quality Manager', 'active', 0, '2026-05-23 17:47:10', '2026-05-14 17:43:38');
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (7, NULL, 'Employee User', 'employee@ralson.local', 'employeeuser', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Employee', 'active', 0, NULL, '2026-05-14 17:43:38');
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (561, NULL, 'Gagan Kumar Shah', NULL, 'gag43456', '$2y$10$PW5mc3q6.lKCixv6SLvF0eY5uGjOQJW5xDQ2oNaFLwEuKYvr5xY3C', 'Employee', 'active', 1, NULL, '2026-05-14 19:37:52');
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (2910, 5, 'Gagan Kumar Shah', NULL, 'gag53456', '$2y$10$GQQuDXgWFyGbUbXCkX/ML.aHjN.Qk7xzzhLuHJmM8VJXBaMBJA.V.', 'Employee', 'active', 0, '2026-05-21 17:00:22', '2026-05-17 18:41:30');

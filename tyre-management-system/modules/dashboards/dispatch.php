@@ -18,7 +18,7 @@ $d = dispatch_dashboard($pdo);
     <header class="dsp-page__head">
         <div>
             <h1 class="dsp-page__title">Dispatch Dashboard</h1>
-            <p class="dsp-page__sub">Finished goods shipping — Production → Inventory → Dispatch → Delivery</p>
+            <p class="dsp-page__sub">Create dispatch — stock is reduced and orders are marked delivered in one step.</p>
         </div>
         <nav class="dsp-nav-quick">
             <a href="<?= e(route_url('dispatch/new')) ?>">New Dispatch</a>
@@ -31,66 +31,23 @@ $d = dispatch_dashboard($pdo);
     <div class="dsp-kpis">
         <article class="dsp-kpi dsp-kpi--qty">
             <div>
-                <span class="dsp-kpi__label">Today dispatch qty</span>
+                <span class="dsp-kpi__label">Tyres dispatched today</span>
                 <span class="dsp-kpi__value"><?= e(dispatch_format_qty($d['today_qty'])) ?></span>
-            </div>
-        </article>
-        <article class="dsp-kpi dsp-kpi--pending">
-            <div>
-                <span class="dsp-kpi__label">Pending dispatch</span>
-                <span class="dsp-kpi__value"><?= e((string)$d['pending_count']) ?></span>
             </div>
         </article>
         <article class="dsp-kpi dsp-kpi--done">
             <div>
-                <span class="dsp-kpi__label">Delivered today</span>
-                <span class="dsp-kpi__value"><?= e((string)$d['delivered_today']) ?></span>
+                <span class="dsp-kpi__label">Dispatches today</span>
+                <span class="dsp-kpi__value"><?= e((string)$d['dispatches_today']) ?></span>
             </div>
         </article>
         <article class="dsp-kpi dsp-kpi--vehicle">
             <div>
-                <span class="dsp-kpi__label">Vehicles out</span>
-                <span class="dsp-kpi__value"><?= e((string)$d['vehicles_out']) ?></span>
+                <span class="dsp-kpi__label">Vehicles used today</span>
+                <span class="dsp-kpi__value"><?= e((string)$d['vehicles_today']) ?></span>
             </div>
         </article>
     </div>
-
-    <section class="mb-3">
-        <h2 class="dsp-section__heading">Pending dispatch</h2>
-        <div class="dsp-table-wrap">
-            <table class="dsp-table">
-                <thead>
-                    <tr>
-                        <th>Order no</th><th>Customer</th><th>Tyre type</th><th class="text-end">Qty</th>
-                        <th>Dispatch date</th><th>Status</th><th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                <?php foreach ($d['pending_rows'] as $r): ?>
-                    <tr>
-                        <td><?= e((string)($r['order_no'] ?? $r['dispatch_code'])) ?></td>
-                        <td><?= e((string)$r['customer_name']) ?></td>
-                        <td><?= e((string)$r['tyre_type']) ?></td>
-                        <td class="text-end"><?= e(dispatch_format_qty((int)$r['qty'])) ?></td>
-                        <td><?= e((string)$r['dispatch_date']) ?></td>
-                        <td><span class="dsp-badge dsp-badge--pending">Pending</span></td>
-                        <td>
-                            <form method="post" action="<?= e(route_url('dispatch/history')) ?>" class="d-inline">
-                                <?= csrf_input() ?>
-                                <input type="hidden" name="action" value="dispatch">
-                                <input type="hidden" name="id" value="<?= (int)($r['id'] ?? 0) ?>">
-                                <button type="submit" class="btn btn-link btn-sm p-0">Ship</button>
-                            </form>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-                <?php if ($d['pending_rows'] === []): ?>
-                    <tr><td colspan="7" class="dsp-empty">No pending dispatch orders.</td></tr>
-                <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
-    </section>
 
     <section>
         <h2 class="dsp-section__heading">Recent dispatch</h2>
@@ -98,23 +55,25 @@ $d = dispatch_dashboard($pdo);
             <table class="dsp-table">
                 <thead>
                     <tr>
-                        <th>Invoice no</th><th>Customer</th><th>Vehicle</th><th class="text-end">Qty</th>
-                        <th>Driver</th><th>Status</th>
+                        <th>Dispatch ID</th><th>Invoice</th><th>Customer</th><th>Vehicle</th>
+                        <th class="text-end">Qty</th><th>Driver</th><th>Date</th><th>Status</th>
                     </tr>
                 </thead>
                 <tbody>
                 <?php foreach ($d['recent_rows'] as $r): ?>
                     <tr>
+                        <td><?= e((string)($r['dispatch_code'] ?? '—')) ?></td>
                         <td><?= e((string)$r['invoice_no']) ?></td>
                         <td><?= e((string)$r['customer_name']) ?></td>
                         <td><?= e((string)($r['vehicle_no'] ?? '—')) ?></td>
                         <td class="text-end"><?= e(dispatch_format_qty((int)$r['qty'])) ?></td>
                         <td><?= e((string)($r['driver_name'] ?? '—')) ?></td>
-                        <td><span class="dsp-badge dsp-badge--<?= e(dispatch_status_badge((string)$r['status'])) ?>"><?= e((string)$r['status']) ?></span></td>
+                        <td><?= e((string)($r['dispatch_date'] ?? '—')) ?></td>
+                        <td><span class="dsp-badge dsp-badge--delivered">Delivered</span></td>
                     </tr>
                 <?php endforeach; ?>
                 <?php if ($d['recent_rows'] === []): ?>
-                    <tr><td colspan="6" class="dsp-empty">No recent dispatches yet.</td></tr>
+                    <tr><td colspan="8" class="dsp-empty">No dispatches yet. <a href="<?= e(route_url('dispatch/new')) ?>">Create your first dispatch</a>.</td></tr>
                 <?php endif; ?>
                 </tbody>
             </table>

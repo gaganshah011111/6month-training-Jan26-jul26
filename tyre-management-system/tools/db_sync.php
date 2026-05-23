@@ -15,6 +15,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/database_migration.php';
+require_once __DIR__ . '/../includes/demo_seed_service.php';
 
 $action = $argv[1] ?? 'help';
 $pdo = Database::connection();
@@ -54,6 +55,16 @@ switch ($action) {
         seedAll($pdo);
         echo "Seed complete.\n";
         break;
+    case 'demo':
+        $force = in_array('--force', array_slice($argv, 2), true);
+        $result = demo_seed_run($pdo, $force);
+        if (!empty($result['skipped'])) {
+            echo $result['message'] . "\n";
+        } else {
+            echo "Demo factory data inserted.\n";
+            echo "  Employees: {$result['employees']}, Machines: {$result['machines']}, Materials: {$result['materials']}\n";
+        }
+        break;
     case 'all':
         $ran = DatabaseMigrationRunner::runPending($pdo, false);
         echo $ran === [] ? "Migrations up to date.\n" : "Applied: " . implode(', ', $ran) . "\n";
@@ -68,6 +79,7 @@ switch ($action) {
         echo "  php tools/db_sync.php export\n";
         echo "  php tools/db_sync.php backup   (same as export)\n";
         echo "  php tools/db_sync.php seed\n";
+        echo "  php tools/db_sync.php demo [--force]\n";
         echo "  php tools/db_sync.php all\n";
         echo "\nDisaster recovery file: database/sql/FULL_DATABASE_BACKUP.sql\n";
         echo "Windows shortcut: tools/backup_database.bat\n";

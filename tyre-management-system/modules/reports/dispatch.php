@@ -73,23 +73,17 @@ $baseQs = 'page=reports/dispatch&from=' . rawurlencode($from) . '&to=' . rawurle
         </nav>
     </header>
 
-    <div class="dsp-kpis" style="grid-template-columns: repeat(3, 1fr);">
+    <div class="dsp-kpis" style="grid-template-columns: repeat(2, 1fr);">
         <article class="dsp-kpi dsp-kpi--qty">
             <div>
-                <span class="dsp-kpi__label">Total dispatch</span>
-                <span class="dsp-kpi__value"><?= e((string)$sum['total_dispatch']) ?> orders</span>
+                <span class="dsp-kpi__label">Total dispatch orders</span>
+                <span class="dsp-kpi__value"><?= e((string)$sum['total_dispatch']) ?></span>
             </div>
         </article>
         <article class="dsp-kpi dsp-kpi--done">
             <div>
-                <span class="dsp-kpi__label">Total delivered (qty)</span>
-                <span class="dsp-kpi__value"><?= e(dispatch_format_qty((int)$sum['delivered_qty'])) ?></span>
-            </div>
-        </article>
-        <article class="dsp-kpi dsp-kpi--pending">
-            <div>
-                <span class="dsp-kpi__label">Pending orders (qty)</span>
-                <span class="dsp-kpi__value"><?= e(dispatch_format_qty((int)$sum['pending_qty'])) ?></span>
+                <span class="dsp-kpi__label">Total tyres dispatched (qty)</span>
+                <span class="dsp-kpi__value"><?= e(dispatch_format_qty((int)$sum['total_qty'])) ?></span>
             </div>
         </article>
     </div>

@@ -54,7 +54,7 @@ if (inv_table_exists($pdo, 'stock_adjustments')) {
                     <form method="post" class="vstack gap-2" id="inv-adjust-form">
                         <?= csrf_input() ?>
                         <div><label class="form-label small">Material</label>
-                            <select class="form-select form-select-sm" name="material_id" id="inv-adj-material" required>
+                            <select class="form-select form-select-sm erp-select-search" name="material_id" id="inv-adj-material" required data-placeholder="Search material…">
                                 <option value="">Select</option>
                                 <?php foreach ($materials as $m): ?>
                                     <option value="<?= (int)$m['id'] ?>" data-stock="<?= e((string)$m['stock_qty']) ?>">

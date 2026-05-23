@@ -237,15 +237,15 @@ $payrollSettingsApiUrl = route_url('api/payroll-settings');
                 <div class="card-body row g-3">
                     <div class="col-md-4">
                         <label class="form-label">Department category <span class="text-danger">*</span></label>
-                        <select id="create_org_category_id" class="form-select" required></select>
+                        <select id="create_org_category_id" class="form-select" data-dept-cascade="1" required></select>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Department <span class="text-danger">*</span></label>
-                        <select id="create_org_department_id" name="department_id" class="form-select" required></select>
+                        <select id="create_org_department_id" name="department_id" class="form-select" data-dept-cascade="1" required></select>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Designation</label>
-                        <select id="create_org_designation_id" name="designation_id" class="form-select"></select>
+                        <select id="create_org_designation_id" name="designation_id" class="form-select" data-dept-cascade="1"></select>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label">Employee Type</label>

@@ -134,7 +134,7 @@ $baseUrl = 'index.php?page=dispatch/logistics';
                             <input class="form-control form-control-sm" name="license_number" maxlength="60"
                                    value="<?= e((string)($editDriver['license_number'] ?? '')) ?>"></div>
                         <div><label class="form-label">Assigned vehicle</label>
-                            <select class="form-select form-select-sm" name="vehicle_id" id="log-driver-vehicle">
+                            <select class="form-select form-select-sm erp-select-search" name="vehicle_id" id="log-driver-vehicle" data-placeholder="Search vehicle…">
                                 <option value="">— Select vehicle —</option>
                                 <?php foreach ($vehiclesActive as $v): ?>
                                     <option value="<?= (int)$v['id'] ?>"
@@ -145,7 +145,7 @@ $baseUrl = 'index.php?page=dispatch/logistics';
                                 <?php endforeach; ?>
                             </select></div>
                         <div><label class="form-label">Transport company</label>
-                            <select class="form-select form-select-sm" name="transport_company_id" id="log-driver-transport" required>
+                            <select class="form-select form-select-sm erp-select-search" name="transport_company_id" id="log-driver-transport" required data-placeholder="Search transport…">
                                 <option value="">Select transport</option>
                                 <?php foreach ($transportsActive as $t): ?>
                                     <option value="<?= (int)$t['id'] ?>"
@@ -234,7 +234,7 @@ $baseUrl = 'index.php?page=dispatch/logistics';
                             <input class="form-control form-control-sm" name="capacity" maxlength="40"
                                    value="<?= e((string)($editVehicle['capacity'] ?? '')) ?>" placeholder="40 tyres"></div>
                         <div><label class="form-label">Assigned driver</label>
-                            <select class="form-select form-select-sm" name="driver_id">
+                            <select class="form-select form-select-sm erp-select-search" name="driver_id" data-placeholder="Search driver…">
                                 <option value="">— Optional —</option>
                                 <?php foreach ($driversActive as $dr): ?>
                                     <option value="<?= (int)$dr['id'] ?>"
@@ -244,8 +244,8 @@ $baseUrl = 'index.php?page=dispatch/logistics';
                                 <?php endforeach; ?>
                             </select></div>
                         <div><label class="form-label">Transport company</label>
-                            <select class="form-select form-select-sm" name="transport_company_id" required>
-                                <option value="">Select transport</option>
+                            <select class="form-select form-select-sm erp-select-search" name="transport_company_id" required data-placeholder="Search transport…">
+                                <option value="">Search transport…</option>
                                 <?php foreach ($transportsActive as $t): ?>
                                     <option value="<?= (int)$t['id'] ?>"
                                         <?= (int)($editVehicle['transport_company_id'] ?? 0) === (int)$t['id'] ? 'selected' : '' ?>>

@@ -62,7 +62,7 @@ $recent = inv_list_usage($pdo, 30);
                             </select>
                         </div>
                         <div><label class="form-label small">Material</label>
-                            <select class="form-select form-select-sm" name="material_id" required>
+                            <select class="form-select form-select-sm erp-select-search" name="material_id" required data-placeholder="Search material…">
                                 <option value="">Select material</option>
                                 <?php foreach ($materials as $m): ?>
                                     <option value="<?= (int)$m['id'] ?>"><?= e($m['material_name']) ?> (<?= e($m['unit']) ?>)</option>

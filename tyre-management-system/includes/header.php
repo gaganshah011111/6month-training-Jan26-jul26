@@ -18,6 +18,12 @@ $cssVersion = is_file($cssPath) ? (string)filemtime($cssPath) : (string)time();
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+    <?php
+    $erpTsCss = __DIR__ . '/../assets/css/erp-searchable-select.css';
+    if (is_file($erpTsCss)) {
+        echo '<link href="assets/css/erp-searchable-select.css?v=' . e((string)filemtime($erpTsCss)) . '" rel="stylesheet">' . "\n";
+    }
+    ?>
     <link href="assets/css/style.css?v=<?= e($cssVersion) ?>" rel="stylesheet">
     <?php
     $hdrUser = current_user();

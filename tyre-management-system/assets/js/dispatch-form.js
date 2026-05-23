@@ -274,7 +274,6 @@
     var invoicePreview = document.getElementById('dsp-invoice-preview');
     var dispatchCodeEl = document.getElementById('dsp-dispatch-code');
     var btnSave = document.getElementById('dsp-btn-save');
-    var btnDeliver = document.getElementById('dsp-btn-deliver');
     var successBox = document.getElementById('dsp-form-success');
     var pdfActions = document.getElementById('dsp-form-actions-success');
     var formError = document.getElementById('dsp-form-error');
@@ -452,9 +451,6 @@
             || !driver || !vehicle || !transport || !customer || weightInvalid;
         if (btnSave) {
             btnSave.disabled = bad;
-        }
-        if (btnDeliver) {
-            btnDeliver.disabled = bad;
         }
     }
 
@@ -693,13 +689,10 @@
         }
 
         var fd = new FormData(form);
-        fd.set('submit_action', (e.submitter && e.submitter.value) || 'save');
 
         if (btnSave) {
             btnSave.disabled = true;
-        }
-        if (btnDeliver) {
-            btnDeliver.disabled = true;
+            btnSave.textContent = 'Creating…';
         }
 
         fetch(saveApiUrl, {
@@ -721,6 +714,9 @@
                 showFieldError('form', 'Network error.');
             })
             .finally(function () {
+                if (btnSave) {
+                    btnSave.textContent = 'Create dispatch';
+                }
                 updateButtons();
             });
     });

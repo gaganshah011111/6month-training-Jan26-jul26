@@ -30,6 +30,11 @@ $iconMap = [
     'Customers' => 'bi-building',
     'Dispatch Reports' => 'bi-file-earmark-bar-graph',
     'Logistics' => 'bi-truck',
+    'QC Dashboard' => 'bi-speedometer2',
+    'Pending Inspections' => 'bi-hourglass-split',
+    'Defect Tracking' => 'bi-bug',
+    'QC Reports' => 'bi-clipboard-data',
+    'Rework / Scrap' => 'bi-arrow-repeat',
     'Inspection & Defects' => 'bi-shield-check',
     'My Profile' => 'bi-person-circle',
     'Salary' => 'bi-receipt-cutoff',
@@ -51,8 +56,8 @@ $iconMap = [
                 'production/mixing' => 'Mixing Entry',
                 'production/building' => 'Building Entry',
                 'production/curing' => 'Curing Entry',
-                'production/qc' => 'QC Entry',
-                'machines/list' => 'Machines',
+                'production/qc' => 'QC (view pending)',
+                'machines/dashboard' => 'Machines',
                 'reports/production' => 'Reports',
             ],
         ],
@@ -78,7 +83,13 @@ $iconMap = [
             ],
         ],
         'Quality Manager' => [
-            'Quality' => ['quality/dashboard' => 'Dashboard', 'quality/list' => 'Inspection & Defects'],
+            'Quality' => [
+                'quality/dashboard' => 'QC Dashboard',
+                'quality/pending' => 'Pending Inspections',
+                'quality/defects' => 'Defect Tracking',
+                'quality/reports' => 'QC Reports',
+                'quality/rework' => 'Rework / Scrap',
+            ],
         ],
         default => [
             'Employee' => ['employee/dashboard' => 'Dashboard', 'employee/profile' => 'My Profile', 'employee/attendance' => 'Attendance', 'employee/leave' => 'Leave', 'employee/salary' => 'Salary', 'employee/change-password' => 'Change Password'],
@@ -89,7 +100,13 @@ $iconMap = [
         <div class="sidebar-section text-uppercase fw-semibold small mt-2 mb-1"><?= e($section) ?></div>
         <?php foreach ($links as $key => $label): ?>
             <?php $icon = $iconMap[$label] ?? 'bi-circle'; ?>
-            <a class="sidebar-link d-flex align-items-center gap-2 p-2 text-decoration-none rounded mb-1 <?= $page === $key ? 'active-nav' : '' ?>" href="<?= e(route_url($key)) ?>">
+            <?php
+            $isActive = $page === $key;
+            if (!$isActive && str_starts_with($key, 'machines/') && str_starts_with($page, 'machines/')) {
+                $isActive = true;
+            }
+            ?>
+            <a class="sidebar-link d-flex align-items-center gap-2 p-2 text-decoration-none rounded mb-1 <?= $isActive ? 'active-nav' : '' ?>" href="<?= e(route_url($key)) ?>">
                 <i class="bi <?= e($icon) ?>"></i>
                 <span><?= e($label) ?></span>
             </a>

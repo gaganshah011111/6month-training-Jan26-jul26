@@ -25,7 +25,7 @@ ALTER TABLE dispatch ADD COLUMN IF NOT EXISTS gross_weight_kg DECIMAL(12,2) NULL
 ALTER TABLE dispatch ADD COLUMN IF NOT EXISTS tare_weight_kg DECIMAL(12,2) NULL AFTER gross_weight_kg;
 ALTER TABLE dispatch ADD COLUMN IF NOT EXISTS net_weight_kg DECIMAL(12,2) NULL AFTER tare_weight_kg;
 ALTER TABLE dispatch ADD COLUMN IF NOT EXISTS remarks VARCHAR(500) NULL AFTER net_weight_kg;
-ALTER TABLE dispatch ADD COLUMN IF NOT EXISTS status ENUM('Pending','Dispatched','Delivered') NOT NULL DEFAULT 'Pending' AFTER remarks;
+ALTER TABLE dispatch ADD COLUMN IF NOT EXISTS status ENUM('Pending','Dispatched','Delivered') NOT NULL DEFAULT 'Delivered' AFTER remarks;
 ALTER TABLE dispatch ADD COLUMN IF NOT EXISTS stock_deducted TINYINT(1) NOT NULL DEFAULT 0 AFTER status;
 ALTER TABLE dispatch ADD COLUMN IF NOT EXISTS driver_id INT NULL AFTER driver_name;
 ALTER TABLE dispatch ADD COLUMN IF NOT EXISTS transport_company_id INT NULL AFTER transport_company;

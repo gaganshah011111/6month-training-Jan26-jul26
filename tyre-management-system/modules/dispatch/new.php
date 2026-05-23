@@ -18,13 +18,9 @@ $today = date('Y-m-d');
 $customers = dispatch_list_customers($pdo);
 $logisticsBundle = logistics_dispatch_bundle($pdo);
 $fgStock = dispatch_fg_stock_by_type($pdo);
-$pending = array_slice(dispatch_list($pdo, '', '', '', DISPATCH_STATUS_PENDING), 0, 8);
+$recentDispatches = array_slice(dispatch_list($pdo, '', '', '', DISPATCH_STATUS_DELIVERED), 0, 8);
 $preview = dispatch_form_preview($pdo);
 $dash = dispatch_dashboard($pdo);
-$todayDispatchCount = (int)$pdo->query(
-    "SELECT COUNT(*) FROM dispatch WHERE dispatch_date = CURDATE()"
-)->fetchColumn();
-
 $customerOptions = array_map(static fn($c) => [
     'value' => (string)(int)$c['id'],
     'label' => (string)$c['customer_name'],
@@ -223,14 +219,10 @@ $totalStock = array_sum($fgStock);
                     <header class="dsp-entry-card__head">
                         <span class="dsp-entry-card__kicker">Final step</span>
                         <h2 class="dsp-entry-card__title"><i class="bi bi-check2-circle dsp-entry-card__ico"></i> Final actions</h2>
-                        <p class="dsp-entry-card__sub">Confirm and submit dispatch</p>
                     </header>
                     <div class="dsp-entry-card__body dsp-entry-actions">
-                        <p class="dsp-entry-actions__ready">Ready to create dispatch and reduce stock</p>
-                        <div class="dsp-entry-actions__btns">
-                            <button type="submit" name="submit_action" value="save" class="btn dsp-btn-save" id="dsp-btn-save" disabled>Save dispatch</button>
-                            <button type="submit" name="submit_action" value="deliver" class="btn dsp-btn-deliver" id="dsp-btn-deliver" disabled>Mark delivered</button>
-                        </div>
+                        <p class="dsp-entry-actions__hint">Stock and delivery update automatically.</p>
+                        <button type="submit" class="btn dsp-btn-save" id="dsp-btn-save" disabled>Create dispatch</button>
                     </div>
                 </section>
             </form>
@@ -268,28 +260,28 @@ $totalStock = array_sum($fgStock);
                 </div>
             </section>
 
-            <section class="dsp-entry-widget dsp-entry-widget--pending">
+            <section class="dsp-entry-widget dsp-entry-widget--recent">
                 <header class="dsp-entry-widget__head">
-                    <i class="bi bi-hourglass-split dsp-entry-widget__ico"></i>
+                    <i class="bi bi-clock-history dsp-entry-widget__ico"></i>
                     <div>
-                        <h3 class="dsp-entry-widget__title">Pending dispatch</h3>
-                        <p class="dsp-entry-widget__sub"><?= e((string)$dash['pending_count']) ?> awaiting shipment</p>
+                        <h3 class="dsp-entry-widget__title">Recent dispatch</h3>
+                        <p class="dsp-entry-widget__sub">Latest delivered orders</p>
                     </div>
                 </header>
-                <?php if ($pending === []): ?>
-                    <p class="dsp-entry-empty">No pending orders</p>
+                <?php if ($recentDispatches === []): ?>
+                    <p class="dsp-entry-empty">No dispatches yet</p>
                 <?php else: ?>
                     <div class="dsp-entry-table-wrap">
-                        <table class="dsp-entry-table dsp-entry-table--pending">
+                        <table class="dsp-entry-table dsp-entry-table--recent">
                             <thead>
                                 <tr><th>Ref</th><th>Customer</th><th class="text-end">Qty</th></tr>
                             </thead>
                             <tbody>
-                            <?php foreach ($pending as $p): ?>
+                            <?php foreach ($recentDispatches as $p): ?>
                                 <tr>
                                     <td>
-                                        <span class="dsp-entry-ref"><?= e((string)($p['order_no'] ?? $p['dispatch_code'])) ?></span>
-                                        <span class="dsp-entry-tag dsp-entry-tag--warn">Pending</span>
+                                        <span class="dsp-entry-ref"><?= e((string)($p['dispatch_code'] ?? $p['order_no'])) ?></span>
+                                        <span class="dsp-entry-tag dsp-entry-tag--ok">Delivered</span>
                                     </td>
                                     <td>
                                         <span class="d-block"><?= e((string)$p['customer_name']) ?></span>
@@ -313,9 +305,9 @@ $totalStock = array_sum($fgStock);
                     </div>
                 </header>
                 <ul class="dsp-entry-summary">
-                    <li><span class="dsp-entry-summary__label">Dispatches today</span><span class="dsp-entry-summary__val"><?= e((string)$todayDispatchCount) ?></span></li>
+                    <li><span class="dsp-entry-summary__label">Dispatches today</span><span class="dsp-entry-summary__val"><?= e((string)$dash['dispatches_today']) ?></span></li>
                     <li><span class="dsp-entry-summary__label">Tyres dispatched today</span><span class="dsp-entry-summary__val"><?= e(dispatch_format_qty((int)$dash['today_qty'])) ?></span></li>
-                    <li><span class="dsp-entry-summary__label">Vehicles out</span><span class="dsp-entry-summary__val"><?= e((string)$dash['vehicles_out']) ?></span></li>
+                    <li><span class="dsp-entry-summary__label">Vehicles used today</span><span class="dsp-entry-summary__val"><?= e((string)$dash['vehicles_today']) ?></span></li>
                     <li><span class="dsp-entry-summary__label">Total FG stock</span><span class="dsp-entry-summary__val"><?= e(dispatch_format_qty($totalStock)) ?></span></li>
                 </ul>
             </section>

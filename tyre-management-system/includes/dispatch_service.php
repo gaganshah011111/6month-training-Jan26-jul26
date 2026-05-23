@@ -3,14 +3,17 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/production_service.php';
 
-const DISPATCH_STATUS_PENDING = 'Pending';
-const DISPATCH_STATUS_DISPATCHED = 'Dispatched';
+/** All new dispatches are saved as Delivered (stock deducted on create). */
 const DISPATCH_STATUS_DELIVERED = 'Delivered';
 
+/** Legacy statuses (existing rows only). */
+const DISPATCH_STATUS_PENDING = 'Pending';
+const DISPATCH_STATUS_DISPATCHED = 'Dispatched';
+
 const DISPATCH_STATUSES = [
+    DISPATCH_STATUS_DELIVERED,
     DISPATCH_STATUS_PENDING,
     DISPATCH_STATUS_DISPATCHED,
-    DISPATCH_STATUS_DELIVERED,
 ];
 
 function dispatch_format_qty(int $qty): string
@@ -164,9 +167,11 @@ function dispatch_format_weight(?float $kg): string
 /** Finished goods stock by tyre type (from inventory table). */
 function dispatch_fg_stock_by_type(PDO $pdo): array
 {
+    require_once __DIR__ . '/qc_service.php';
     $rows = $pdo->query(
         "SELECT product_name AS tyre_type, SUM(qty) AS total_qty
-         FROM inventory GROUP BY product_name HAVING total_qty > 0 ORDER BY product_name"
+         FROM inventory WHERE " . qc_dispatch_stock_sql() . "
+         GROUP BY product_name HAVING total_qty > 0 ORDER BY product_name"
     )->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
     $all = [];
@@ -182,7 +187,10 @@ function dispatch_fg_stock_by_type(PDO $pdo): array
 
 function dispatch_fg_available(PDO $pdo, string $tyreType): int
 {
-    $st = $pdo->prepare('SELECT COALESCE(SUM(qty),0) FROM inventory WHERE LOWER(product_name) = LOWER(:t)');
+    require_once __DIR__ . '/qc_service.php';
+    $st = $pdo->prepare(
+        'SELECT COALESCE(SUM(qty),0) FROM inventory WHERE LOWER(product_name) = LOWER(:t) AND ' . qc_dispatch_stock_sql()
+    );
     $st->execute(['t' => trim($tyreType)]);
 
     return (int)$st->fetchColumn();
@@ -195,8 +203,10 @@ function dispatch_reduce_fg_stock(PDO $pdo, string $tyreType, int $qty): void
         throw new InvalidArgumentException('Dispatch quantity must be at least 1.');
     }
     $remaining = $qty;
+    require_once __DIR__ . '/qc_service.php';
     $st = $pdo->prepare(
-        'SELECT id, qty FROM inventory WHERE LOWER(product_name) = LOWER(:t) AND qty > 0 ORDER BY id ASC FOR UPDATE'
+        'SELECT id, qty FROM inventory WHERE LOWER(product_name) = LOWER(:t) AND qty > 0 AND '
+        . qc_dispatch_stock_sql() . ' ORDER BY id ASC FOR UPDATE'
     );
     $st->execute(['t' => trim($tyreType)]);
     $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -306,7 +316,7 @@ function dispatch_resolve_customer(PDO $pdo, array $data): array
     return ['id' => null, 'name' => $customerName];
 }
 
-function dispatch_save(PDO $pdo, array $data, string $targetStatus): int
+function dispatch_save(PDO $pdo, array $data): int
 {
     $tyreType = trim((string)($data['tyre_type'] ?? ''));
     $qty = (int)($data['qty'] ?? 0);
@@ -318,9 +328,6 @@ function dispatch_save(PDO $pdo, array $data, string $targetStatus): int
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
         throw new InvalidArgumentException('Valid dispatch date is required.');
     }
-    if (!in_array($targetStatus, DISPATCH_STATUSES, true)) {
-        throw new InvalidArgumentException('Invalid dispatch status.');
-    }
 
     require_once __DIR__ . '/logistics_service.php';
     $customer = dispatch_resolve_customer($pdo, $data);
@@ -331,17 +338,12 @@ function dispatch_save(PDO $pdo, array $data, string $targetStatus): int
     $preview = dispatch_consume_form_preview($pdo);
     $invoice = (string)$preview['invoice_no'];
     $dispatchCode = (string)$preview['dispatch_code'];
-    $deductStock = in_array($targetStatus, [DISPATCH_STATUS_DISPATCHED, DISPATCH_STATUS_DELIVERED], true);
 
-    if ($deductStock) {
-        dispatch_validate_stock_qty($pdo, $tyreType, $qty);
-    }
+    dispatch_validate_stock_qty($pdo, $tyreType, $qty);
 
     $pdo->beginTransaction();
     try {
-        if ($deductStock) {
-            dispatch_reduce_fg_stock($pdo, $tyreType, $qty);
-        }
+        dispatch_reduce_fg_stock($pdo, $tyreType, $qty);
 
         $code = $dispatchCode;
         $orderNo = dispatch_generate_order_no($pdo);
@@ -386,18 +388,16 @@ function dispatch_save(PDO $pdo, array $data, string $targetStatus): int
             'tw' => $weights['tare'],
             'nw' => $weights['net'],
             'rm' => trim((string)($data['remarks'] ?? '')) ?: null,
-            'st' => $targetStatus,
-            'ded' => $deductStock ? 1 : 0,
+            'st' => DISPATCH_STATUS_DELIVERED,
+            'ded' => 1,
         ]);
 
         $id = (int)$pdo->lastInsertId();
         try {
-            $legacy = match ($targetStatus) {
-                DISPATCH_STATUS_DELIVERED => 'Delivered',
-                DISPATCH_STATUS_PENDING => 'Created',
-                default => 'In Transit',
-            };
-            $pdo->prepare('UPDATE dispatch SET dispatch_status = :ds WHERE id = :id')->execute(['ds' => $legacy, 'id' => $id]);
+            $pdo->prepare('UPDATE dispatch SET dispatch_status = :ds WHERE id = :id')->execute([
+                'ds' => 'Delivered',
+                'id' => $id,
+            ]);
         } catch (Throwable) {
         }
         $pdo->commit();
@@ -411,102 +411,33 @@ function dispatch_save(PDO $pdo, array $data, string $targetStatus): int
     }
 }
 
-function dispatch_mark_delivered(PDO $pdo, int $id): void
-{
-    $st = $pdo->prepare('SELECT * FROM dispatch WHERE id = :id LIMIT 1 FOR UPDATE');
-    $st->execute(['id' => $id]);
-    $row = $st->fetch(PDO::FETCH_ASSOC);
-    if (!$row) {
-        throw new InvalidArgumentException('Dispatch not found.');
-    }
-    if (($row['status'] ?? '') === DISPATCH_STATUS_DELIVERED) {
-        return;
-    }
-
-    $pdo->beginTransaction();
-    try {
-        if ((int)($row['stock_deducted'] ?? 0) === 0) {
-            dispatch_reduce_fg_stock($pdo, (string)$row['tyre_type'], (int)$row['qty']);
-            $pdo->prepare('UPDATE dispatch SET stock_deducted = 1 WHERE id = :id')->execute(['id' => $id]);
-        }
-        $pdo->prepare('UPDATE dispatch SET status = :st WHERE id = :id')->execute([
-            'st' => DISPATCH_STATUS_DELIVERED,
-            'id' => $id,
-        ]);
-        $pdo->commit();
-    } catch (Throwable $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-        throw $e;
-    }
-}
-
-function dispatch_mark_dispatched(PDO $pdo, int $id): void
-{
-    $st = $pdo->prepare('SELECT * FROM dispatch WHERE id = :id LIMIT 1 FOR UPDATE');
-    $st->execute(['id' => $id]);
-    $row = $st->fetch(PDO::FETCH_ASSOC);
-    if (!$row) {
-        throw new InvalidArgumentException('Dispatch not found.');
-    }
-    if (($row['status'] ?? '') !== DISPATCH_STATUS_PENDING) {
-        throw new InvalidArgumentException('Only pending orders can be dispatched.');
-    }
-
-    $pdo->beginTransaction();
-    try {
-        dispatch_reduce_fg_stock($pdo, (string)$row['tyre_type'], (int)$row['qty']);
-        $pdo->prepare('UPDATE dispatch SET status = :st, stock_deducted = 1 WHERE id = :id')->execute([
-            'st' => DISPATCH_STATUS_DISPATCHED,
-            'id' => $id,
-        ]);
-        $pdo->commit();
-    } catch (Throwable $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-        throw $e;
-    }
-}
-
 function dispatch_dashboard(PDO $pdo): array
 {
     $today = date('Y-m-d');
 
     $todayQty = (int)$pdo->query(
-        "SELECT COALESCE(SUM(qty),0) FROM dispatch WHERE dispatch_date = CURDATE() AND status != 'Pending'"
+        "SELECT COALESCE(SUM(qty),0) FROM dispatch WHERE dispatch_date = CURDATE() AND status = 'Delivered'"
     )->fetchColumn();
 
-    $pendingCount = (int)$pdo->query(
-        "SELECT COUNT(*) FROM dispatch WHERE status = 'Pending'"
+    $dispatchesToday = (int)$pdo->query(
+        "SELECT COUNT(*) FROM dispatch WHERE dispatch_date = CURDATE() AND status = 'Delivered'"
     )->fetchColumn();
 
-    $deliveredToday = (int)$pdo->query(
-        "SELECT COUNT(*) FROM dispatch WHERE status = 'Delivered' AND dispatch_date = CURDATE()"
+    $vehiclesToday = (int)$pdo->query(
+        "SELECT COUNT(DISTINCT COALESCE(NULLIF(vehicle_no,''), CONCAT('id-', vehicle_id)))
+         FROM dispatch WHERE dispatch_date = CURDATE() AND status = 'Delivered'"
     )->fetchColumn();
-
-    $vehiclesOut = (int)$pdo->query(
-        "SELECT COUNT(DISTINCT vehicle_no) FROM dispatch WHERE status = 'Dispatched' AND vehicle_no IS NOT NULL AND vehicle_no != ''"
-    )->fetchColumn();
-
-    $pendingRows = $pdo->query(
-        "SELECT id, dispatch_code, order_no, customer_name, tyre_type, qty, dispatch_date, status
-         FROM dispatch WHERE status = 'Pending' ORDER BY dispatch_date ASC, id DESC LIMIT 15"
-    )->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
     $recentRows = $pdo->query(
         "SELECT dispatch_code, invoice_no, customer_name, vehicle_no, qty, driver_name, status, dispatch_date
-         FROM dispatch WHERE status IN ('Dispatched','Delivered')
+         FROM dispatch WHERE status = 'Delivered'
          ORDER BY id DESC LIMIT 15"
     )->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
     return [
         'today_qty' => $todayQty,
-        'pending_count' => $pendingCount,
-        'delivered_today' => $deliveredToday,
-        'vehicles_out' => $vehiclesOut,
-        'pending_rows' => $pendingRows,
+        'dispatches_today' => $dispatchesToday,
+        'vehicles_today' => $vehiclesToday,
         'recent_rows' => $recentRows,
         'fg_stock' => dispatch_fg_stock_by_type($pdo),
     ];
@@ -620,15 +551,11 @@ function dispatch_report(PDO $pdo, string $from, string $to, string $customer, s
 
     $totalQty = 0;
     $deliveredQty = 0;
-    $pendingQty = 0;
     foreach ($rows as $r) {
         $q = (int)$r['qty'];
         $totalQty += $q;
         if (($r['status'] ?? '') === DISPATCH_STATUS_DELIVERED) {
             $deliveredQty += $q;
-        }
-        if (($r['status'] ?? '') === DISPATCH_STATUS_PENDING) {
-            $pendingQty += $q;
         }
     }
 
@@ -637,7 +564,6 @@ function dispatch_report(PDO $pdo, string $from, string $to, string $customer, s
             'total_dispatch' => count($rows),
             'total_qty' => $totalQty,
             'delivered_qty' => $deliveredQty,
-            'pending_qty' => $pendingQty,
         ],
         'rows' => $rows,
     ];
@@ -648,7 +574,8 @@ function dispatch_status_badge(string $status): string
     return match ($status) {
         DISPATCH_STATUS_DELIVERED => 'delivered',
         DISPATCH_STATUS_DISPATCHED => 'dispatched',
-        default => 'pending',
+        DISPATCH_STATUS_PENDING => 'pending',
+        default => 'delivered',
     };
 }
 

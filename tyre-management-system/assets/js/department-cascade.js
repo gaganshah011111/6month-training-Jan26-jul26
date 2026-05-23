@@ -28,6 +28,27 @@
         });
     }
 
+    /** Tom Select config — dropdown on body so HR cards/modals do not clip the list. */
+    function tomCascadeConfig(placeholder) {
+        return {
+            valueField: 'value',
+            labelField: 'text',
+            searchField: ['text'],
+            maxOptions: 500,
+            maxItems: 1,
+            placeholder: placeholder,
+            allowEmptyOption: true,
+            create: false,
+            persist: false,
+            closeAfterSelect: true,
+            plugins: ['dropdown_input'],
+            dropdownParent: 'body',
+            dropdownClass: 'ts-dropdown ts-dropdown--dept-cascade',
+            maxHeight: 280,
+            hideSelected: false,
+        };
+    }
+
     /**
      * @param {object} opts
      * @param {string} opts.categorySelectId
@@ -55,30 +76,9 @@
             desEl.tomselect.destroy();
         }
 
-        var tsDep = new TomSelect(depEl, {
-            valueField: 'value',
-            labelField: 'text',
-            searchField: ['text'],
-            maxOptions: 500,
-            placeholder: 'Select department…',
-            allowEmptyOption: true,
-        });
-        var tsDes = new TomSelect(desEl, {
-            valueField: 'value',
-            labelField: 'text',
-            searchField: ['text'],
-            maxOptions: 500,
-            placeholder: 'Select designation (optional)…',
-            allowEmptyOption: true,
-        });
-        var tsCat = new TomSelect(catEl, {
-            valueField: 'value',
-            labelField: 'text',
-            searchField: ['text'],
-            maxOptions: 200,
-            placeholder: 'Select category…',
-            allowEmptyOption: true,
-        });
+        var tsDep = new TomSelect(depEl, tomCascadeConfig('Select department…'));
+        var tsDes = new TomSelect(desEl, tomCascadeConfig('Select designation (optional)…'));
+        var tsCat = new TomSelect(catEl, tomCascadeConfig('Select category…'));
 
         function loadDepartments(categoryId, preselectDeptId) {
             tsDep.clearOptions();

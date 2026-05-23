@@ -1,0 +1,97 @@
+/* Tom Select — ERP theme alignment (Bootstrap 5 forms) */
+.ts-wrapper.form-select,
+.ts-wrapper.single {
+  min-height: 0;
+}
+
+.ts-wrapper.erp-ts--sm .ts-control {
+  min-height: calc(1.5em + 0.5rem + 2px);
+  padding: 0.25rem 2rem 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  border-radius: 0.25rem;
+  border: 1px solid #ced4da;
+  background-color: #fff;
+  box-shadow: none;
+}
+
+.ts-wrapper:not(.erp-ts--sm) .ts-control {
+  min-height: calc(1.5em + 0.75rem + 2px);
+  padding: 0.375rem 2.25rem 0.375rem 0.75rem;
+  font-size: 1rem;
+  border: 1px solid #ced4da;
+  border-radius: 0.375rem;
+  background-color: #fff;
+}
+
+.ts-wrapper.focus .ts-control {
+  border-color: #86b7fe;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+}
+
+.ts-wrapper .ts-control input {
+  font-size: inherit;
+}
+
+.ts-wrapper .ts-dropdown,
+body > .ts-dropdown,
+.ts-dropdown.ts-dropdown--dept-cascade {
+  border: 1px solid #dee2e6;
+  border-radius: 0.375rem;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
+  z-index: 2000;
+}
+
+/* Body-mounted lists (HR org cascade, searchable fields) — scrollable, not clipped by cards */
+body > .ts-dropdown .ts-dropdown-content,
+.ts-dropdown.ts-dropdown--dept-cascade .ts-dropdown-content {
+  max-height: min(260px, 45vh);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+body > .ts-dropdown .dropdown-input,
+.ts-dropdown.ts-dropdown--dept-cascade .dropdown-input {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #fff;
+}
+
+.ts-wrapper .ts-dropdown .dropdown-input {
+  border: none;
+  border-bottom: 1px solid #e9ecef;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.875rem;
+}
+
+.ts-wrapper .ts-dropdown .option {
+  padding: 0.4rem 0.65rem;
+  font-size: 0.875rem;
+}
+
+.ts-wrapper .ts-dropdown .active {
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+.erp-ts-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  line-height: 1.25;
+}
+
+.erp-ts-option__label {
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.erp-ts-option__sub {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.ts-wrapper.disabled .ts-control {
+  background-color: #e9ecef;
+  opacity: 1;
+}

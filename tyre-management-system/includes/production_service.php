@@ -1,17 +1,16 @@
 <?php
 declare(strict_types=1);
 
-/** Machine shop-floor statuses (master data only — no production qty here). */
-const MACHINE_STATUS_RUNNING = 'Running';
-const MACHINE_STATUS_IDLE = 'Idle';
-const MACHINE_STATUS_MAINTENANCE = 'Maintenance';
-const MACHINE_STATUS_BREAKDOWN = 'Breakdown';
+/** @deprecated Use MACHINE_STATUS_ACTIVE — kept for legacy references */
+const MACHINE_STATUS_RUNNING = 'Active';
+const MACHINE_STATUS_MAINTENANCE = 'Under Repair';
+const MACHINE_STATUS_BREAKDOWN = 'Under Repair';
 
 const MACHINE_STATUSES = [
-    MACHINE_STATUS_RUNNING,
-    MACHINE_STATUS_IDLE,
-    MACHINE_STATUS_MAINTENANCE,
-    MACHINE_STATUS_BREAKDOWN,
+    'Active',
+    'Idle',
+    'Under Repair',
+    'Scrap / Deactivated',
 ];
 
 const PRODUCTION_SHIFTS = ['Morning', 'Evening', 'Night'];
@@ -29,94 +28,28 @@ const TYRE_TYPES = [
 /** Statuses that allow new production entries on a machine. */
 function production_machine_can_run(?string $status): bool
 {
-    return $status === MACHINE_STATUS_RUNNING;
+    return mach_status_can_produce($status);
 }
 
 /** Map legacy machine status values after DB migration. */
 function production_normalize_machine_status(string $status): string
 {
-    return match (trim($status)) {
-        'Active' => MACHINE_STATUS_RUNNING,
-        'Inactive' => MACHINE_STATUS_IDLE,
-        'Under Maintenance' => MACHINE_STATUS_MAINTENANCE,
-        default => $status,
-    };
+    return mach_normalize_status($status);
 }
 
 /** @return list<array<string, mixed>> */
-function production_list_machines(PDO $pdo): array
+function production_list_machines(PDO $pdo, bool $includeInactive = false): array
 {
-    $rows = $pdo->query(
-        'SELECT id, machine_code, machine_name, department, machine_type, shift_capacity, status, last_maintenance_date, notes, created_at
-         FROM machines ORDER BY machine_name ASC'
-    )->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    require_once __DIR__ . '/machine_service.php';
 
-    foreach ($rows as &$r) {
-        $r['status'] = production_normalize_machine_status((string)($r['status'] ?? ''));
-    }
-    unset($r);
-
-    return $rows;
+    return mach_list_machines($pdo, ['include_inactive' => $includeInactive]);
 }
 
 function production_save_machine(PDO $pdo, array $data, ?int $id = null): int
 {
-    $code = trim((string)($data['machine_code'] ?? ''));
-    $name = trim((string)($data['machine_name'] ?? ''));
-    $type = trim((string)($data['machine_type'] ?? ''));
-    $department = trim((string)($data['department'] ?? ''));
-    $status = production_normalize_machine_status((string)($data['status'] ?? MACHINE_STATUS_IDLE));
-    $capacity = max(0, (int)($data['shift_capacity'] ?? 0));
-    $maint = trim((string)($data['last_maintenance_date'] ?? ''));
-    $notes = trim((string)($data['notes'] ?? ''));
+    require_once __DIR__ . '/machine_service.php';
 
-    if ($code === '' || $name === '') {
-        throw new InvalidArgumentException('Machine code and name are required.');
-    }
-    if (!in_array($status, MACHINE_STATUSES, true)) {
-        throw new InvalidArgumentException('Invalid machine status.');
-    }
-
-    $maintDate = $maint !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $maint) ? $maint : null;
-
-    $deptVal = $department !== '' ? $department : null;
-
-    if ($id !== null && $id > 0) {
-        $st = $pdo->prepare(
-            'UPDATE machines SET machine_code = :c, machine_name = :n, department = :dep, machine_type = :t, shift_capacity = :cap,
-             status = :s, last_maintenance_date = :d, notes = :notes WHERE id = :id'
-        );
-        $st->execute([
-            'c' => $code,
-            'n' => $name,
-            'dep' => $deptVal,
-            't' => $type !== '' ? $type : null,
-            'cap' => $capacity,
-            's' => $status,
-            'd' => $maintDate,
-            'notes' => $notes !== '' ? $notes : null,
-            'id' => $id,
-        ]);
-
-        return $id;
-    }
-
-    $st = $pdo->prepare(
-        'INSERT INTO machines (machine_code, machine_name, department, machine_type, shift_capacity, status, last_maintenance_date, notes)
-         VALUES (:c, :n, :dep, :t, :cap, :s, :d, :notes)'
-    );
-    $st->execute([
-        'c' => $code,
-        'n' => $name,
-        'dep' => $deptVal,
-        't' => $type !== '' ? $type : null,
-        'cap' => $capacity,
-        's' => $status,
-        'd' => $maintDate,
-        'notes' => $notes !== '' ? $notes : null,
-    ]);
-
-    return (int)$pdo->lastInsertId();
+    return mach_save_machine($pdo, $data, $id);
 }
 
 /**
@@ -307,10 +240,10 @@ function production_dashboard_stats(PDO $pdo): array
     $running = 0;
     $down = 0;
     foreach (production_list_machines($pdo) as $m) {
-        $s = (string)($m['status'] ?? '');
-        if ($s === MACHINE_STATUS_RUNNING) {
+        $s = production_normalize_machine_status((string)($m['status'] ?? ''));
+        if ($s === 'Active') {
             $running++;
-        } elseif (in_array($s, [MACHINE_STATUS_MAINTENANCE, MACHINE_STATUS_BREAKDOWN], true)) {
+        } elseif ($s === 'Under Repair') {
             $down++;
         }
     }
@@ -345,13 +278,14 @@ function production_entry_status_badge(string $status): array
 
 function production_machine_status_badge(string $status): array
 {
-    $status = production_normalize_machine_status($status);
+    require_once __DIR__ . '/machine_service.php';
+    $b = mach_status_badge($status);
 
-    return match ($status) {
-        MACHINE_STATUS_RUNNING => ['class' => 'prod-badge prod-badge--run', 'label' => 'Running'],
-        MACHINE_STATUS_IDLE => ['class' => 'prod-badge prod-badge--idle', 'label' => 'Idle'],
-        MACHINE_STATUS_MAINTENANCE => ['class' => 'prod-badge prod-badge--maint', 'label' => 'Maintenance'],
-        MACHINE_STATUS_BREAKDOWN => ['class' => 'prod-badge prod-badge--down', 'label' => 'Breakdown'],
-        default => ['class' => 'prod-badge', 'label' => $status],
+    return match (mach_normalize_status($status)) {
+        'Active' => ['class' => 'prod-badge prod-badge--run', 'label' => $b['label']],
+        'Idle' => ['class' => 'prod-badge prod-badge--idle', 'label' => $b['label']],
+        'Under Repair' => ['class' => 'prod-badge prod-badge--maint', 'label' => $b['label']],
+        'Scrap / Deactivated' => ['class' => 'prod-badge prod-badge--down', 'label' => $b['label']],
+        default => ['class' => 'prod-badge', 'label' => $b['label']],
     };
 }

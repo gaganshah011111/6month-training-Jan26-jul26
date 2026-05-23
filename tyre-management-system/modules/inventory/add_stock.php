@@ -48,8 +48,8 @@ $recent = inv_list_inward($pdo, 30);
                     <form method="post" class="vstack gap-2" id="inv-add-stock-form">
                         <?= csrf_input() ?>
                         <div><label class="form-label small">Material</label>
-                            <select class="form-select form-select-sm" name="material_id" id="inv-material-select" required>
-                                <option value="">Select material</option>
+                            <select class="form-select form-select-sm erp-select-search" name="material_id" id="inv-material-select" required data-placeholder="Search material…">
+                                <option value="">Search material…</option>
                                 <?php foreach ($materials as $m): ?>
                                     <?php
                                     $first = inv_material_inward_count($pdo, (int)$m['id']) === 0;
@@ -59,7 +59,8 @@ $recent = inv_list_inward($pdo, 30);
                                         data-first="<?= $first ? '1' : '0' ?>"
                                         data-needs-limits="<?= $needsLimits ? '1' : '0' ?>"
                                         data-min="<?= e((string)($m['reorder_level'] ?? '0')) ?>"
-                                        data-max="<?= e((string)($m['max_stock_level'] ?? '0')) ?>">
+                                        data-max="<?= e((string)($m['max_stock_level'] ?? '0')) ?>"
+                                        data-sub="<?= e((string)($m['material_code'] ?? $m['unit'] ?? '')) ?>">
                                         <?= e($m['material_name']) ?> (<?= e($m['unit']) ?>)
                                     </option>
                                 <?php endforeach; ?>

@@ -90,10 +90,10 @@ function inv_material_by_name(PDO $pdo, string $name): ?array
     }
     $st = $pdo->prepare(
         "SELECT * FROM raw_materials WHERE status = 'Active'
-         AND (LOWER(material_name) = :n OR LOWER(material_code) = :n)
+         AND (LOWER(material_name) = :n OR LOWER(material_code) = :nc)
          LIMIT 1"
     );
-    $st->execute(['n' => $key]);
+    $st->execute(['n' => $key, 'nc' => $key]);
 
     return $st->fetch(PDO::FETCH_ASSOC) ?: null;
 }
@@ -529,9 +529,28 @@ function inv_dashboard(PDO $pdo): array
         $totalUsed += (float)$row['total_used'];
     }
 
+    $fgDispatch = 0;
+    $fgRework = 0;
+    $fgScrap = 0;
+    if (inv_table_exists($pdo, 'inventory')) {
+        require_once __DIR__ . '/qc_service.php';
+        $fgDispatch = (int)$pdo->query(
+            'SELECT COALESCE(SUM(qty),0) FROM inventory WHERE ' . qc_dispatch_stock_sql() . ' AND qty > 0'
+        )->fetchColumn();
+        $fgRework = (int)$pdo->query(
+            "SELECT COALESCE(SUM(qty),0) FROM inventory WHERE stock_category = 'rework' AND qty > 0"
+        )->fetchColumn();
+        $fgScrap = (int)$pdo->query(
+            "SELECT COALESCE(SUM(qty),0) FROM inventory WHERE stock_category = 'scrap' AND qty > 0"
+        )->fetchColumn();
+    }
+
     return [
         'total_materials' => $totalMaterials,
         'total_stock' => $totalStock,
+        'fg_dispatch_ready' => $fgDispatch,
+        'fg_rework' => $fgRework,
+        'fg_scrap' => $fgScrap,
         'total_added' => $totalAdded,
         'total_used' => $totalUsed,
         'total_remaining' => $totalStock,

@@ -69,7 +69,7 @@ if (isset($_GET['edit'])) {
                             </select>
                         </div>
                         <div><label class="form-label small">Supplier</label>
-                            <select class="form-select form-select-sm" name="supplier_id">
+                            <select class="form-select form-select-sm erp-select-search" name="supplier_id" data-placeholder="Search supplier…">
                                 <option value="">—</option>
                                 <?php foreach ($suppliers as $s): ?>
                                     <option value="<?= (int)$s['id'] ?>" <?= (int)($edit['supplier_id'] ?? 0) === (int)$s['id'] ? 'selected' : '' ?>><?= e($s['name']) ?></option>

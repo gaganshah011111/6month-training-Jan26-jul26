@@ -62,7 +62,7 @@ $jsVer = is_file($jsPath) ? (int)filemtime($jsPath) : time();
         </div>
         <div class="hr-reports__field">
             <label for="hr_dept">Department</label>
-            <select name="department_id" id="hr_dept" class="form-select form-select-sm">
+            <select name="department_id" id="hr_dept" class="form-select form-select-sm erp-select-search" data-placeholder="All departments…">
                 <option value="">All departments</option>
                 <?php foreach ($departments as $d): ?>
                     <option value="<?= (int)$d['id'] ?>" <?= $filters['department_id'] === (int)$d['id'] ? 'selected' : '' ?>><?= e((string)$d['department_name']) ?></option>

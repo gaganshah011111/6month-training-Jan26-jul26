@@ -17,26 +17,6 @@ $to = (string)($_GET['to'] ?? '');
 $status = (string)($_GET['status'] ?? '');
 $export = (string)($_GET['export'] ?? '');
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    verify_csrf();
-    $action = (string)($_POST['action'] ?? '');
-    $id = (int)($_POST['id'] ?? 0);
-    try {
-        if ($action === 'dispatch' && $id > 0) {
-            dispatch_mark_dispatched($pdo, $id);
-            set_flash('success', 'Order dispatched. Inventory stock reduced.');
-        } elseif ($action === 'deliver' && $id > 0) {
-            dispatch_mark_delivered($pdo, $id);
-            set_flash('success', 'Marked as delivered.');
-        } else {
-            throw new InvalidArgumentException('Invalid action.');
-        }
-    } catch (Throwable $e) {
-        set_flash('danger', $e->getMessage());
-    }
-    redirect('dispatch/history');
-}
-
 $rows = dispatch_list($pdo, $search, $from, $to, $status);
 
 if ($export === 'csv') {
@@ -77,7 +57,7 @@ $baseQs = 'page=dispatch/history&q=' . rawurlencode($search)
     <header class="dsp-page__head">
         <div>
             <h1 class="dsp-page__title">Dispatch History</h1>
-            <p class="dsp-page__sub">All shipments with search, filters, and export.</p>
+            <p class="dsp-page__sub">Delivered dispatches — search, filter, and export.</p>
         </div>
         <nav class="dsp-nav-quick">
             <a href="<?= e(route_url('dispatch/new')) ?>">New dispatch</a>
@@ -124,7 +104,7 @@ $baseQs = 'page=dispatch/history&q=' . rawurlencode($search)
             <thead>
                 <tr>
                     <th>Dispatch ID</th><th>Invoice</th><th>Customer</th><th>Tyre type</th>
-                    <th class="text-end">Qty</th><th>Vehicle</th><th>Driver</th><th>Transport</th><th>Date</th><th>Status</th><th></th>
+                    <th class="text-end">Qty</th><th>Vehicle</th><th>Driver</th><th>Dispatch date</th><th>Status</th><th></th>
                 </tr>
             </thead>
             <tbody>
@@ -137,30 +117,15 @@ $baseQs = 'page=dispatch/history&q=' . rawurlencode($search)
                     <td class="text-end"><?= e(dispatch_format_qty((int)$r['qty'])) ?></td>
                     <td><?= e((string)($r['vehicle_no'] ?? '—')) ?></td>
                     <td><?= e((string)($r['driver_name'] ?? '—')) ?><?php if (!empty($r['driver_id']) && empty($r['registered_driver_name'])): ?><span class="text-muted small"> (unregistered)</span><?php endif; ?></td>
-                    <td><?= e((string)($r['transport_company'] ?? '—')) ?></td>
                     <td><?= e((string)$r['dispatch_date']) ?></td>
                     <td><span class="dsp-badge dsp-badge--<?= e(dispatch_status_badge((string)$r['status'])) ?>"><?= e((string)$r['status']) ?></span></td>
                     <td class="text-nowrap">
-                        <a href="<?= e(dispatch_slip_url((int)$r['id'])) ?>" target="_blank" class="btn btn-link btn-sm p-0">PDF</a>
-                        <?php if (($r['status'] ?? '') === DISPATCH_STATUS_PENDING): ?>
-                            <form method="post" class="d-inline"><?= csrf_input() ?>
-                                <input type="hidden" name="action" value="dispatch">
-                                <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
-                                <button type="submit" class="btn btn-link btn-sm p-0">Ship</button>
-                            </form>
-                        <?php endif; ?>
-                        <?php if (in_array($r['status'] ?? '', [DISPATCH_STATUS_PENDING, DISPATCH_STATUS_DISPATCHED], true)): ?>
-                            <form method="post" class="d-inline"><?= csrf_input() ?>
-                                <input type="hidden" name="action" value="deliver">
-                                <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
-                                <button type="submit" class="btn btn-link btn-sm p-0">Deliver</button>
-                            </form>
-                        <?php endif; ?>
+                        <a href="<?= e(dispatch_slip_url((int)$r['id'])) ?>" target="_blank" class="btn btn-link btn-sm p-0">Invoice PDF</a>
                     </td>
                 </tr>
             <?php endforeach; ?>
             <?php if ($rows === []): ?>
-                <tr><td colspan="11" class="dsp-empty">No dispatch records match your filters.</td></tr>
+                <tr><td colspan="10" class="dsp-empty">No dispatch records match your filters.</td></tr>
             <?php endif; ?>
             </tbody>
         </table>

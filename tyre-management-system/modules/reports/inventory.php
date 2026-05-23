@@ -109,7 +109,7 @@ $baseQs = 'page=reports/inventory&from=' . rawurlencode($from) . '&to=' . rawurl
         <div class="col-auto"><label class="form-label small">From</label><input type="date" class="form-control form-control-sm" name="from" value="<?= e($from) ?>"></div>
         <div class="col-auto"><label class="form-label small">To</label><input type="date" class="form-control form-control-sm" name="to" value="<?= e($to) ?>"></div>
         <div class="col-auto"><label class="form-label small">Material</label>
-            <select class="form-select form-select-sm" name="material_id">
+            <select class="form-select form-select-sm erp-select-search" name="material_id" data-placeholder="Search material…">
                 <option value="0">All</option>
                 <?php foreach ($materials as $m): ?>
                     <option value="<?= (int)$m['id'] ?>" <?= $materialId === (int)$m['id'] ? 'selected' : '' ?>><?= e($m['material_name']) ?></option>
@@ -117,7 +117,7 @@ $baseQs = 'page=reports/inventory&from=' . rawurlencode($from) . '&to=' . rawurl
             </select>
         </div>
         <div class="col-auto"><label class="form-label small">Supplier</label>
-            <select class="form-select form-select-sm" name="supplier_id">
+            <select class="form-select form-select-sm erp-select-search" name="supplier_id" data-placeholder="Search supplier…">
                 <option value="0">All</option>
                 <?php foreach ($suppliers as $s): ?>
                     <option value="<?= (int)$s['id'] ?>" <?= $supplierId === (int)$s['id'] ? 'selected' : '' ?>><?= e($s['name']) ?></option>

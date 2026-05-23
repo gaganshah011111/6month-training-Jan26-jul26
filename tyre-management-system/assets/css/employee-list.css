@@ -1,0 +1,357 @@
+/* HR Employee directory — advanced filters & listing */
+
+/* Scroll viewport — must scroll vertically inside card (no Bootstrap table-responsive clash) */
+.emp-table-viewport,
+.employee-directory-card .emp-table-viewport {
+    display: block;
+    width: 100%;
+    overflow-x: auto !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;
+    overscroll-behavior: contain;
+}
+.emp-table-viewport::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+.emp-table-viewport::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+.emp-table-viewport::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+.emp-table-scroll-hint-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.68rem;
+    color: #64748b;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+}
+.emp-table-scroll-hint-bar i {
+    color: #b91c1c;
+}
+
+.emp-table-viewport--wide {
+    max-height: min(calc(var(--emp-visible-rows, 8) * 2.65rem + 2.5rem), 62vh, 32rem);
+}
+
+/* Wide enterprise table — horizontal scroll, fixed column widths */
+.employee-list-table--wide {
+    table-layout: fixed;
+    width: max-content;
+    min-width: 100%;
+    margin-bottom: 0;
+    font-size: 0.76rem;
+}
+.employee-list-table--wide .emp-th,
+.employee-list-table--wide td {
+    padding: 0.32rem 0.5rem;
+    vertical-align: middle;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.employee-list-table--wide .emp-th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: var(--erp-navy-mid, #1e293b) !important;
+    color: #f8fafc !important;
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.employee-list-table--wide .emp-th-employee { min-width: 10.5rem; width: 10.5rem; }
+.employee-list-table--wide .emp-th-code { min-width: 4.5rem; width: 4.5rem; }
+.employee-list-table--wide .emp-th-cat { min-width: 7rem; width: 7rem; }
+.employee-list-table--wide .emp-th-dept { min-width: 9rem; width: 9rem; }
+.employee-list-table--wide .emp-th-desig { min-width: 7.5rem; width: 7.5rem; }
+.employee-list-table--wide .emp-th-shift { min-width: 5.5rem; width: 5.5rem; }
+.employee-list-table--wide .emp-th-type { min-width: 4.5rem; width: 4.5rem; }
+.employee-list-table--wide .emp-th-stype { min-width: 5.5rem; width: 5.5rem; }
+.employee-list-table--wide .emp-th-salary { min-width: 6.5rem; width: 6.5rem; }
+.employee-list-table--wide .emp-th-phone { min-width: 6.5rem; width: 6.5rem; }
+.employee-list-table--wide .emp-th-status { min-width: 4.5rem; width: 4.5rem; }
+.employee-list-table--wide .emp-th-joined { min-width: 5.5rem; width: 5.5rem; }
+.employee-list-table--wide .emp-th-aadhaar { min-width: 6.5rem; width: 6.5rem; }
+.employee-list-table--wide .emp-th-machine { min-width: 8rem; width: 8rem; }
+.employee-list-table--wide .emp-th-att { min-width: 3.5rem; width: 3.5rem; }
+.employee-list-table--wide .emp-th-ot { min-width: 3.5rem; width: 3.5rem; }
+.employee-list-table--wide .emp-th-actions { min-width: 3.25rem; width: 3.25rem; }
+
+.employee-list-table--wide .emp-td-employee { min-width: 10.5rem; max-width: 10.5rem; }
+.employee-list-table--wide .emp-td-code { min-width: 4.5rem; max-width: 4.5rem; font-family: ui-monospace, monospace; font-size: 0.7rem; color: #64748b; }
+.employee-list-table--wide .emp-td-cat,
+.employee-list-table--wide .emp-td-dept,
+.employee-list-table--wide .emp-td-desig,
+.employee-list-table--wide .emp-td-machine { max-width: 9rem; }
+.employee-list-table--wide .employee-name {
+    font-weight: 600;
+    font-size: 0.78rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
+}
+.emp-cell-truncate {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.emp-cell-truncate--muted { color: #64748b; }
+.employee-list-table--wide .emp-gross-value { font-weight: 700; color: #0f172a; }
+.emp-row-clickable { cursor: pointer; }
+.emp-row-clickable:hover td { background: #fef8f8 !important; }
+
+@media (max-width: 768px) {
+    .emp-table-viewport .employee-list-table--wide thead { display: table-header-group !important; }
+    .emp-table-viewport .employee-list-table--wide tr { display: table-row !important; }
+    .emp-table-viewport .employee-list-table--wide td { display: table-cell !important; }
+    .emp-table-viewport .employee-list-table--wide td::before { display: none !important; }
+}
+.emp-list-filters {
+    background: #fff;
+    border: 1px solid var(--erp-border, #e2e8f0);
+    border-radius: 10px;
+    padding: 0.65rem 0.75rem;
+    margin-bottom: 0.75rem;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+.emp-list-filters__grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 0.45rem 0.55rem;
+    align-items: end;
+}
+.emp-list-filters__field {
+    grid-column: span 3;
+    min-width: 0;
+}
+.emp-list-filters__field--search { grid-column: span 4; }
+.emp-list-filters__field--dates { grid-column: span 2; }
+.emp-list-filters__label {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    margin-bottom: 0.2rem;
+}
+.emp-list-filters__field .form-control,
+.emp-list-filters__field .form-select {
+    min-height: 30px;
+    font-size: 0.78rem;
+    border-radius: 6px;
+}
+.emp-list-filters__actions {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    align-items: center;
+    padding-top: 0.35rem;
+    border-top: 1px solid #f1f5f9;
+    margin-top: 0.15rem;
+}
+.emp-list-filters__actions .btn {
+    font-size: 0.72rem;
+    padding: 0.28rem 0.6rem;
+    font-weight: 600;
+    border-radius: 6px;
+}
+.emp-list-filters__actions .btn-primary {
+    background: #b91c1c;
+    border-color: #b91c1c;
+}
+.emp-list-filters__actions .btn-primary:hover {
+    background: #991b1b;
+    border-color: #991b1b;
+}
+.emp-list-filters__hint {
+    font-size: 0.68rem;
+    color: #94a3b8;
+    margin-left: auto;
+}
+.employee-directory-card__meta--filter {
+    font-size: 0.68rem;
+    color: #64748b;
+    margin-top: 0.15rem;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.employee-list-table thead th a {
+    color: inherit;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+}
+.employee-list-table thead th a:hover {
+    color: #fff;
+    text-decoration: underline;
+}
+.employee-list-table .emp-col-shift,
+.employee-list-table .emp-col-joined {
+    white-space: nowrap;
+    font-size: 0.75rem;
+}
+.employee-list-table .emp-col-joined {
+    color: #64748b;
+}
+.emp-table-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+.emp-table-toolbar .form-select-sm {
+    min-height: 28px;
+    font-size: 0.72rem;
+    width: auto;
+    min-width: 4.25rem;
+}
+@media (max-width: 1200px) {
+    .emp-list-filters__field,
+    .emp-list-filters__field--search { grid-column: span 4; }
+    .emp-list-filters__field--dates { grid-column: span 3; }
+}
+@media (max-width: 768px) {
+    .emp-list-filters__field,
+    .emp-list-filters__field--search,
+    .emp-list-filters__field--dates { grid-column: span 6; }
+    .emp-list-filters__hint { margin-left: 0; width: 100%; }
+}
+
+/* Salary increment history block */
+.emp-increment-card {
+    margin-top: 1rem;
+}
+.emp-inc-toolbar .form-control-sm,
+.emp-inc-toolbar .btn-sm {
+    font-size: 0.72rem;
+}
+.emp-increment-scroll {
+    max-height: min(
+        calc(var(--emp-visible-rows, 6) * 3.15rem + 2.4rem),
+        42vh,
+        24rem
+    );
+}
+.emp-increment-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--erp-navy-mid, #1e293b) !important;
+    color: #f8fafc !important;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+}
+
+/* Employee full record — right slide drawer */
+.offcanvas.emp-record-drawer {
+    width: min(520px, 96vw);
+    z-index: 1060;
+    border-left: 1px solid #e2e8f0;
+    box-shadow: -8px 0 32px rgba(15, 23, 42, 0.12);
+}
+.emp-record-drawer .offcanvas-header {
+    border-bottom: 1px solid #e2e8f0;
+    padding: 0.75rem 1rem;
+    background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+}
+.emp-record-drawer .offcanvas-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+.emp-record-drawer .offcanvas-body {
+    padding: 1rem;
+    background: #fff;
+}
+.emp-row-clickable {
+    cursor: pointer;
+}
+.employee-avatar--lg {
+    width: 2.75rem;
+    height: 2.75rem;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+.emp-drawer__hero {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+}
+.emp-drawer__name {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+.emp-drawer__meta {
+    font-size: 0.78rem;
+    color: #64748b;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+}
+.emp-drawer-section {
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+.emp-drawer-section:last-child {
+    border-bottom: 0;
+    margin-bottom: 0;
+}
+.emp-drawer-section__title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #94a3b8;
+    margin-bottom: 0.45rem;
+}
+.emp-drawer-dl {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.35rem 0.75rem;
+    margin: 0;
+    font-size: 0.78rem;
+}
+.emp-drawer-dl > div {
+    min-width: 0;
+}
+.emp-drawer-dl--full {
+    grid-column: 1 / -1;
+}
+.emp-drawer-dl dt {
+    color: #94a3b8;
+    font-weight: 500;
+    margin: 0;
+}
+.emp-drawer-dl dd {
+    margin: 0;
+    color: #1e293b;
+    word-break: break-word;
+}
+.emp-drawer-inc-table {
+    font-size: 0.72rem;
+}
+.emp-drawer-inc-table th {
+    background: #f8fafc;
+    font-size: 0.65rem;
+}

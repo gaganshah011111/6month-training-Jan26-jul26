@@ -98,9 +98,10 @@ $listUrl = route_url('leave/list');
             <div class="leave-apply-row">
                 <div class="leave-field leave-field--emp">
                     <label class="leave-field__label">Employee</label>
-                    <select class="form-select form-select-sm" name="employee_id" required>
+                    <select class="form-select form-select-sm erp-select-search" name="employee_id" required data-placeholder="Search employee…">
+                        <option value="">Search employee…</option>
                         <?php foreach ($emps as $emp): ?>
-                            <option value="<?= (int)$emp['id'] ?>"><?= e((string)$emp['full_name']) ?></option>
+                            <option value="<?= (int)$emp['id'] ?>" data-sub="<?= e((string)($emp['employee_code'] ?? '')) ?>"><?= e((string)$emp['full_name']) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -131,7 +132,7 @@ $listUrl = route_url('leave/list');
     <section class="leave-main">
         <form method="get" class="leave-filters">
             <input type="hidden" name="page" value="leave/list">
-            <select name="department_id" class="form-select form-select-sm">
+            <select name="department_id" class="form-select form-select-sm erp-select-search" data-placeholder="All departments…">
                 <option value="">Department</option>
                 <?php foreach ($departments as $d): ?>
                     <option value="<?= (int)$d['id'] ?>" <?= $filterDept === (int)$d['id'] ? 'selected' : '' ?>><?= e((string)$d['department_name']) ?></option>

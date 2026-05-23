@@ -26,8 +26,7 @@ $periodLabel = ($from ?? '') . ' to ' . ($to ?? '');
     <p class="meta">Period: <?= e($periodLabel) ?> · Generated <?= e(date('d M Y H:i')) ?></p>
     <div class="kpis">
         <span><strong>Orders:</strong> <?= e((string)($sum['total_dispatch'] ?? 0)) ?></span>
-        <span><strong>Delivered qty:</strong> <?= e(dispatch_format_qty((int)($sum['delivered_qty'] ?? 0))) ?></span>
-        <span><strong>Pending qty:</strong> <?= e(dispatch_format_qty((int)($sum['pending_qty'] ?? 0))) ?></span>
+        <span><strong>Total qty:</strong> <?= e(dispatch_format_qty((int)($sum['total_qty'] ?? 0))) ?></span>
     </div>
     <table>
         <thead>

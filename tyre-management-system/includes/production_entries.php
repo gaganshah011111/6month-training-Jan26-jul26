@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/production_service.php';
 require_once __DIR__ . '/inventory_service.php';
+require_once __DIR__ . '/department_hierarchy.php';
+
+/** Finished-goods stock category written to inventory on curing output. */
+const PROD_FG_STOCK_CATEGORY = 'dispatch_ready';
 
 const PROD_ENTRY_MIXING = 'Mixing';
 const PROD_ENTRY_BUILDING = 'Building';
@@ -30,7 +34,55 @@ function prod_entry_date_field(string $department): string
     return $department === PROD_ENTRY_QC ? 'entry_date' : 'production_date';
 }
 
-function prod_validate_entry_common(PDO $pdo, array $data, bool $requireMachine): void
+/** Map form field names to internal keys (department-independent daily entry). */
+function prod_normalize_entry_data(array $data, string $department): array
+{
+    $out = $data;
+    $out['production_date'] = trim((string)($out['production_date'] ?? $out['entry_date'] ?? date('Y-m-d')));
+    $out['shift'] = trim((string)($out['shift'] ?? 'Morning'));
+    $out['machine_id'] = (int)($out['machine_id'] ?? 0);
+    $out['operator_id'] = (int)($out['operator_id'] ?? 0);
+    $out['tyre_type'] = trim((string)($out['tyre_type'] ?? ''));
+    $out['remarks'] = trim((string)($out['remarks'] ?? ''));
+
+    if ($department === PROD_ENTRY_MIXING) {
+        $out['produced_qty'] = $out['produced_qty'] ?? $out['output_kg'] ?? 0;
+        $out['rejected_qty'] = $out['rejected_qty'] ?? $out['rejected_kg'] ?? 0;
+    } elseif ($department === PROD_ENTRY_BUILDING) {
+        $out['produced_qty'] = $out['produced_qty'] ?? $out['built_qty'] ?? 0;
+    } elseif ($department === PROD_ENTRY_CURING) {
+        $out['produced_qty'] = $out['produced_qty'] ?? $out['cured_qty'] ?? 0;
+    }
+
+    return $out;
+}
+
+function prod_nullable_int(int $value): ?int
+{
+    return $value > 0 ? $value : null;
+}
+
+function prod_curing_batch_ref(int $entryId, string $dateYmd): string
+{
+    return 'CUR-' . str_replace('-', '', $dateYmd) . '-' . str_pad((string)$entryId, 4, '0', STR_PAD_LEFT);
+}
+
+/**
+ * HR department codes allowed as operators per production entry page.
+ *
+ * @return list<string>
+ */
+function prod_operator_department_codes(string $productionDepartment): array
+{
+    return match ($productionDepartment) {
+        PROD_ENTRY_MIXING => ['DEPT_MIXING'],
+        PROD_ENTRY_BUILDING => ['DEPT_TIRE_BUILD', 'DEPT_COMP_PREP'],
+        PROD_ENTRY_CURING => ['DEPT_CURING'],
+        default => [],
+    };
+}
+
+function prod_validate_entry_common(PDO $pdo, array $data, bool $requireMachine, string $productionDepartment = ''): void
 {
     $date = (string)($data['production_date'] ?? $data['entry_date'] ?? '');
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
@@ -46,54 +98,80 @@ function prod_validate_entry_common(PDO $pdo, array $data, bool $requireMachine)
         throw new InvalidArgumentException('Machine is required.');
     }
     if ($machineId > 0) {
-        $mSt = $pdo->prepare('SELECT status FROM machines WHERE id = :id');
-        $mSt->execute(['id' => $machineId]);
-        $m = $mSt->fetch(PDO::FETCH_ASSOC);
-        if (!$m || !production_machine_can_run(production_normalize_machine_status((string)$m['status']))) {
-            throw new RuntimeException('Machine must be in Running status.');
-        }
+        require_once __DIR__ . '/machine_service.php';
+        mach_validate_for_production($pdo, $machineId, $productionDepartment);
     }
     if ($operatorId > 0) {
-        foreach (prod_entry_operators($pdo, $date) as $op) {
+        if ($productionDepartment === '') {
+            throw new RuntimeException('Production department context is required for operator validation.');
+        }
+        $valid = false;
+        foreach (prod_entry_operators($pdo, $date, $productionDepartment) as $op) {
             if ((int)$op['id'] === $operatorId) {
                 if ((int)($op['is_absent'] ?? 0) === 1) {
                     throw new RuntimeException('Operator is absent today.');
                 }
-
-                return;
+                $valid = true;
+                break;
             }
         }
-        throw new RuntimeException('Invalid production operator.');
+        if (!$valid) {
+            throw new RuntimeException('Selected operator is not assigned to this production department.');
+        }
     }
 }
 
-/** @return list<array<string, mixed>> */
-function prod_entry_operators(PDO $pdo, string $dateYmd): array
+function prod_entry_bind_common(array $data): array
 {
-    $sql = "SELECT e.id, e.full_name, e.employee_code, e.department,
-            CASE WHEN a.status = 'Absent' THEN 1 ELSE 0 END AS is_absent
-        FROM employees e
-        LEFT JOIN attendance a ON a.employee_id = e.id AND a.attendance_date = :d
-        WHERE COALESCE(e.status, 'active') = 'active'
-        ORDER BY e.full_name ASC";
-    $st = $pdo->prepare($sql);
-    $st->execute(['d' => $dateYmd]);
-    $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
-    $prod = [];
-    foreach ($rows as $r) {
-        $dept = strtolower((string)($r['department'] ?? ''));
-        if (str_contains($dept, 'production') || str_contains($dept, 'plant') || str_contains($dept, 'manufacturing')) {
-            $prod[] = $r;
-        }
+    return [
+        'd' => (string)$data['production_date'],
+        'sh' => in_array($data['shift'] ?? '', PRODUCTION_SHIFTS, true) ? $data['shift'] : 'Morning',
+        'mid' => (int)$data['machine_id'],
+        'oid' => prod_nullable_int((int)($data['operator_id'] ?? 0)),
+        'tt' => trim((string)($data['tyre_type'] ?? '')),
+        'rm' => trim((string)($data['remarks'] ?? '')) !== '' ? trim((string)$data['remarks']) : null,
+    ];
+}
+
+/**
+ * Operators for a production entry page — strict filter by HR department master.
+ *
+ * @return list<array<string, mixed>>
+ */
+function prod_entry_operators(PDO $pdo, string $dateYmd, string $productionDepartment): array
+{
+    $codes = prod_operator_department_codes($productionDepartment);
+    if ($codes === []) {
+        return [];
     }
 
-    return $prod !== [] ? $prod : $rows;
+    if (!dh_table_exists($pdo, 'departments') || !dh_column_exists($pdo, 'employees', 'department_id')) {
+        return [];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($codes), '?'));
+    $sql = "SELECT DISTINCT e.id, e.full_name, e.employee_code, d.department_name AS department,
+            CASE WHEN a.status = 'Absent' THEN 1 ELSE 0 END AS is_absent
+        FROM employees e
+        INNER JOIN departments d ON d.id = e.department_id AND LOWER(COALESCE(d.status, 'active')) = 'active'
+        LEFT JOIN attendance a ON a.employee_id = e.id AND a.attendance_date = ?
+        WHERE LOWER(COALESCE(e.status, 'active')) = 'active'
+          AND e.department_id IS NOT NULL
+          AND d.department_code IN ({$placeholders})
+        ORDER BY e.full_name ASC, e.employee_code ASC";
+
+    $params = array_merge([$dateYmd], $codes);
+    $st = $pdo->prepare($sql);
+    $st->execute($params);
+
+    return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 
 function prod_save_mixing_entry(PDO $pdo, array $data): int
 {
-    prod_validate_entry_common($pdo, $data, true);
-    $tyre = trim((string)($data['tyre_type'] ?? ''));
+    $data = prod_normalize_entry_data($data, PROD_ENTRY_MIXING);
+    prod_validate_entry_common($pdo, $data, true, PROD_ENTRY_MIXING);
+    $tyre = trim((string)$data['tyre_type']);
     if ($tyre === '') {
         throw new InvalidArgumentException('Tyre type is required.');
     }
@@ -101,22 +179,19 @@ function prod_save_mixing_entry(PDO $pdo, array $data): int
     if ($produced <= 0) {
         throw new InvalidArgumentException('Compound produced (kg) is required.');
     }
+    $rejected = max(0, (float)($data['rejected_qty'] ?? 0));
 
     $pdo->beginTransaction();
     try {
+        $bind = prod_entry_bind_common($data);
         $st = $pdo->prepare(
             'INSERT INTO mixing_entries (production_date, shift, machine_id, operator_id, tyre_type, produced_qty, rejected_qty, remarks)
              VALUES (:d, :sh, :mid, :oid, :tt, :pq, :rq, :rm)'
         );
-        $st->execute([
-            'd' => $data['production_date'],
-            'sh' => $data['shift'] ?? 'Morning',
-            'mid' => (int)$data['machine_id'],
-            'oid' => (int)($data['operator_id'] ?? 0) ?: null,
+        $st->execute($bind + [
             'tt' => $tyre,
             'pq' => $produced,
-            'rq' => max(0, (float)($data['rejected_qty'] ?? 0)),
-            'rm' => trim((string)($data['remarks'] ?? '')) ?: null,
+            'rq' => $rejected,
         ]);
         $entryId = (int)$pdo->lastInsertId();
         inv_apply_production_usage($pdo, 'mixing', $entryId, $produced, (string)$data['production_date']);
@@ -133,8 +208,9 @@ function prod_save_mixing_entry(PDO $pdo, array $data): int
 
 function prod_save_building_entry(PDO $pdo, array $data): int
 {
-    prod_validate_entry_common($pdo, $data, true);
-    $tyre = trim((string)($data['tyre_type'] ?? ''));
+    $data = prod_normalize_entry_data($data, PROD_ENTRY_BUILDING);
+    prod_validate_entry_common($pdo, $data, true, PROD_ENTRY_BUILDING);
+    $tyre = trim((string)$data['tyre_type']);
     if ($tyre === '') {
         throw new InvalidArgumentException('Tyre type is required.');
     }
@@ -142,22 +218,19 @@ function prod_save_building_entry(PDO $pdo, array $data): int
     if ($produced < 1) {
         throw new InvalidArgumentException('Green tyres built is required.');
     }
+    $rejected = max(0, (int)($data['rejected_qty'] ?? 0));
 
     $pdo->beginTransaction();
     try {
+        $bind = prod_entry_bind_common($data);
         $st = $pdo->prepare(
             'INSERT INTO building_entries (production_date, shift, machine_id, operator_id, tyre_type, produced_qty, rejected_qty, remarks)
              VALUES (:d, :sh, :mid, :oid, :tt, :pq, :rq, :rm)'
         );
-        $st->execute([
-            'd' => $data['production_date'],
-            'sh' => $data['shift'] ?? 'Morning',
-            'mid' => (int)$data['machine_id'],
-            'oid' => (int)($data['operator_id'] ?? 0) ?: null,
+        $st->execute($bind + [
             'tt' => $tyre,
             'pq' => $produced,
-            'rq' => max(0, (int)($data['rejected_qty'] ?? 0)),
-            'rm' => trim((string)($data['remarks'] ?? '')) ?: null,
+            'rq' => $rejected,
         ]);
         $entryId = (int)$pdo->lastInsertId();
         inv_apply_production_usage($pdo, 'building', $entryId, (float)$produced, (string)$data['production_date']);
@@ -174,31 +247,42 @@ function prod_save_building_entry(PDO $pdo, array $data): int
 
 function prod_save_curing_entry(PDO $pdo, array $data): int
 {
-    prod_validate_entry_common($pdo, $data, true);
+    $data = prod_normalize_entry_data($data, PROD_ENTRY_CURING);
+    prod_validate_entry_common($pdo, $data, true, PROD_ENTRY_CURING);
+    $tyre = trim((string)$data['tyre_type']) ?: 'Tyre';
     $produced = max(0, (int)($data['produced_qty'] ?? 0));
     if ($produced < 1) {
         throw new InvalidArgumentException('Cured quantity is required.');
     }
+    $rejected = max(0, (int)($data['rejected_qty'] ?? 0));
+    $downtime = max(0, (int)($data['downtime_minutes'] ?? 0));
+    $fgQty = max(0, $produced - $rejected);
 
     $pdo->beginTransaction();
     try {
+        $bind = prod_entry_bind_common($data);
         $st = $pdo->prepare(
             'INSERT INTO curing_entries (production_date, shift, machine_id, operator_id, tyre_type, produced_qty, rejected_qty, downtime_minutes, remarks)
              VALUES (:d, :sh, :mid, :oid, :tt, :pq, :rq, :dt, :rm)'
         );
-        $st->execute([
-            'd' => $data['production_date'],
-            'sh' => $data['shift'] ?? 'Morning',
-            'mid' => (int)$data['machine_id'],
-            'oid' => (int)($data['operator_id'] ?? 0) ?: null,
-            'tt' => trim((string)($data['tyre_type'] ?? 'Tyre')) ?: 'Tyre',
+        $st->execute($bind + [
+            'tt' => $tyre,
             'pq' => $produced,
-            'rq' => max(0, (int)($data['rejected_qty'] ?? 0)),
-            'dt' => max(0, (int)($data['downtime_minutes'] ?? 0)),
-            'rm' => trim((string)($data['remarks'] ?? '')) ?: null,
+            'rq' => $rejected,
+            'dt' => $downtime,
         ]);
         $entryId = (int)$pdo->lastInsertId();
+        $batchRef = prod_curing_batch_ref($entryId, (string)$data['production_date']);
+        try {
+            $pdo->prepare('UPDATE curing_entries SET batch_code = :c WHERE id = :id')
+                ->execute(['c' => $batchRef, 'id' => $entryId]);
+        } catch (Throwable) {
+            // batch_code column optional on older schemas
+        }
         inv_apply_production_usage($pdo, 'curing', $entryId, (float)$produced, (string)$data['production_date']);
+        if ($fgQty > 0) {
+            prod_entry_add_inventory($pdo, $tyre, 'FG-' . $batchRef, $fgQty);
+        }
         $pdo->commit();
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
@@ -247,15 +331,15 @@ function prod_save_qc_entry(PDO $pdo, array $data): int
         ]);
         $id = (int)$pdo->lastInsertId();
 
-        if ($passed > 0) {
-            prod_entry_add_inventory($pdo, $tyre, 'QC-' . date('Ymd') . '-' . $id, $passed);
-        }
+        // Legacy daily QC log only — finished goods require curing batch inspection (quality/inspect).
 
         $pdo->commit();
 
         return $id;
     } catch (Throwable $e) {
-        $pdo->rollBack();
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         throw $e;
     }
 }
@@ -309,10 +393,10 @@ function prod_entry_dashboard(PDO $pdo): array
     $alerts = [];
     foreach (production_list_machines($pdo) as $m) {
         $s = production_normalize_machine_status((string)($m['status'] ?? ''));
-        if ($s === MACHINE_STATUS_RUNNING) {
+        if ($s === 'Active' || $s === MACHINE_STATUS_RUNNING) {
             $running++;
         }
-        if (in_array($s, [MACHINE_STATUS_MAINTENANCE, MACHINE_STATUS_BREAKDOWN], true)) {
+        if (in_array($s, ['Under Repair', MACHINE_STATUS_MAINTENANCE, MACHINE_STATUS_BREAKDOWN], true)) {
             $maint++;
             $alerts[] = $m['machine_code'] . ' — ' . $s;
         }
@@ -366,10 +450,31 @@ function prod_entry_add_inventory(PDO $pdo, string $productName, string $batchRe
     $exists->execute(['b' => $batchRef]);
     $row = $exists->fetch(PDO::FETCH_ASSOC);
     if ($row) {
-        $pdo->prepare('UPDATE inventory SET qty = qty + :q WHERE id = :id')->execute(['q' => $qty, 'id' => (int)$row['id']]);
+        try {
+            $pdo->prepare('UPDATE inventory SET qty = qty + :q, stock_category = :sc WHERE id = :id')
+                ->execute(['q' => $qty, 'sc' => PROD_FG_STOCK_CATEGORY, 'id' => (int)$row['id']]);
+        } catch (Throwable) {
+            $pdo->prepare('UPDATE inventory SET qty = qty + :q WHERE id = :id')
+                ->execute(['q' => $qty, 'id' => (int)$row['id']]);
+        }
     } else {
-        $pdo->prepare('INSERT INTO inventory (product_name, batch_ref, qty, reorder_level, warehouse_location) VALUES (:n,:b,:q,50,:w)')
-            ->execute(['n' => $productName, 'b' => $batchRef, 'q' => $qty, 'w' => 'FG-A1']);
+        try {
+            $pdo->prepare(
+                'INSERT INTO inventory (product_name, batch_ref, qty, reorder_level, warehouse_location, stock_category)
+                 VALUES (:n, :b, :q, 50, :w, :sc)'
+            )->execute([
+                'n' => $productName,
+                'b' => $batchRef,
+                'q' => $qty,
+                'w' => 'FG-A1',
+                'sc' => PROD_FG_STOCK_CATEGORY,
+            ]);
+        } catch (Throwable) {
+            $pdo->prepare(
+                'INSERT INTO inventory (product_name, batch_ref, qty, reorder_level, warehouse_location)
+                 VALUES (:n, :b, :q, 50, :w)'
+            )->execute(['n' => $productName, 'b' => $batchRef, 'q' => $qty, 'w' => 'FG-A1']);
+        }
     }
 }
 
@@ -378,13 +483,21 @@ function prod_entry_add_inventory(PDO $pdo, string $productName, string $batchRe
  *
  * @return array{rows: list<array>, summary: array<string, float|int>}
  */
-function prod_entry_report(PDO $pdo, string $from, string $to, string $department, string $shift, int $machineId): array
-{
+function prod_entry_report(
+    PDO $pdo,
+    string $from,
+    string $to,
+    string $department,
+    string $shift,
+    int $machineId,
+    int $operatorId = 0,
+    string $machineStatus = ''
+): array {
     $parts = [];
     $depts = $department === 'all' ? prod_entry_departments() : [$department];
 
     foreach ($depts as $dept) {
-        $parts = array_merge($parts, prod_entry_report_department($pdo, $dept, $from, $to, $shift, $machineId));
+        $parts = array_merge($parts, prod_entry_report_department($pdo, $dept, $from, $to, $shift, $machineId, $operatorId, $machineStatus));
     }
 
     usort($parts, static fn($a, $b) => strcmp((string)$b['entry_date'], (string)$a['entry_date']));
@@ -407,12 +520,9 @@ function prod_entry_report(PDO $pdo, string $from, string $to, string $departmen
     $dtSt->execute(['f' => $from, 't' => $to]);
     $downtime = (int)$dtSt->fetchColumn();
 
-    $running = 0;
-    foreach (production_list_machines($pdo) as $m) {
-        if (($m['status'] ?? '') === MACHINE_STATUS_RUNNING) {
-            $running++;
-        }
-    }
+    require_once __DIR__ . '/machine_service.php';
+    $dash = mach_dashboard($pdo);
+    $running = (int)($dash['counts']['active'] ?? 0);
 
     return [
         'rows' => $parts,
@@ -433,7 +543,9 @@ function prod_entry_report_department(
     string $from,
     string $to,
     string $shift,
-    int $machineId
+    int $machineId,
+    int $operatorId = 0,
+    string $machineStatus = ''
 ): array {
     if ($department === PROD_ENTRY_QC) {
         $sql = 'SELECT e.entry_date, e.shift, e.tyre_type, e.passed_qty, e.failed_qty, e.inspector_name AS operator_name, NULL AS machine_code
@@ -462,12 +574,21 @@ function prod_entry_report_department(
         return $out;
     }
 
+    require_once __DIR__ . '/machine_service.php';
+    mach_ensure_schema($pdo);
+
     $table = prod_entry_table($department);
     $sql = "SELECT e.production_date AS entry_date, e.shift, e.tyre_type, e.produced_qty, e.rejected_qty,
-            m.machine_code, op.full_name AS operator_name
+            e.machine_id, e.operator_id,
+            m.machine_code, m.machine_name, m.department AS machine_department, m.status AS machine_status, m.is_active AS machine_is_active,
+            op.full_name AS operator_name, op.employee_code,
+            asg.full_name AS assigned_operator_name
         FROM {$table} e
         LEFT JOIN machines m ON m.id = e.machine_id
         LEFT JOIN employees op ON op.id = e.operator_id
+        LEFT JOIN machine_operator_assignments moa ON moa.machine_id = m.id AND moa.is_active = 1
+            AND moa.assigned_from <= e.production_date AND (moa.assigned_till IS NULL OR moa.assigned_till >= e.production_date)
+        LEFT JOIN employees asg ON asg.id = moa.employee_id
         WHERE e.production_date >= :f AND e.production_date <= :t";
     $params = ['f' => $from, 't' => $to];
     if ($shift !== '') {
@@ -478,19 +599,34 @@ function prod_entry_report_department(
         $sql .= ' AND e.machine_id = :mid';
         $params['mid'] = $machineId;
     }
+    if ($operatorId > 0) {
+        $sql .= ' AND e.operator_id = :oid';
+        $params['oid'] = $operatorId;
+    }
+    if ($machineStatus !== '') {
+        $sql .= ' AND m.status = :mst';
+        $params['mst'] = mach_normalize_status($machineStatus);
+    }
     $st = $pdo->prepare($sql);
     $st->execute($params);
     $out = [];
     foreach ($st->fetchAll(PDO::FETCH_ASSOC) ?: [] as $r) {
+        $mst = mach_normalize_status((string)($r['machine_status'] ?? ''));
         $out[] = [
             'entry_date' => $r['entry_date'],
             'shift' => $r['shift'],
             'department' => $department,
             'machine' => $r['machine_code'] ?? '—',
+            'machine_name' => $r['machine_name'] ?? '',
+            'machine_department' => $r['machine_department'] ?? '—',
+            'machine_status' => $mst,
+            'machine_active' => (int)($r['machine_is_active'] ?? 1) === 1,
+            'assigned_operator' => $r['assigned_operator_name'] ?? '—',
             'tyre_type' => $r['tyre_type'],
             'produced' => $r['produced_qty'],
             'rejected' => $r['rejected_qty'],
             'operator' => $r['operator_name'] ?? '—',
+            'operator_code' => $r['employee_code'] ?? '',
         ];
     }
 
@@ -500,13 +636,15 @@ function prod_entry_report_department(
 /** @return list<array<string, mixed>> */
 function prod_machines_for_dept(PDO $pdo, string $department): array
 {
-    $all = production_list_machines($pdo);
-    $dept = strtolower($department);
+    require_once __DIR__ . '/machine_service.php';
 
-    return array_values(array_filter($all, static function (array $m) use ($dept): bool {
-        $d = strtolower((string)($m['department'] ?? ''));
-        $t = strtolower((string)($m['machine_type'] ?? ''));
+    return mach_machines_for_production($pdo, $department);
+}
 
-        return ($d !== '' && str_contains($d, $dept)) || ($t !== '' && str_contains($t, $dept));
-    })) ?: $all;
+/** Current operator assignment for a machine (production auto-fill). */
+function prod_assigned_operator_for_machine(PDO $pdo, int $machineId, ?string $dateYmd = null): ?array
+{
+    require_once __DIR__ . '/machine_service.php';
+
+    return mach_active_assignment($pdo, $machineId, $dateYmd);
 }

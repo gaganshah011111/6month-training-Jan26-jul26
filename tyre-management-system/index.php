@@ -71,11 +71,9 @@ $postRedirectPaths = [
     'modules/employees/credential_reveal.php',
     'modules/employee/attendance.php',
     'modules/employee/dashboard.php',
-    'modules/production/mixing.php',
-    'modules/production/building.php',
-    'modules/production/curing.php',
     'modules/production/qc.php',
     'modules/machines/index.php',
+    'modules/machines/assignments.php',
     'modules/dispatch/new.php',
     'modules/dispatch/history.php',
     'modules/dispatch/customers.php',
@@ -90,7 +88,8 @@ $postRedirectPaths = [
     'modules/inventory/materials.php',
     'modules/inventory/suppliers.php',
     'modules/inventory/adjust_stock.php',
-    'modules/quality/index.php',
+    'modules/quality/pending.php',
+    'modules/quality/inspect.php',
     'modules/raw_materials/index.php',
 ];
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($path, $postRedirectPaths, true)) {
@@ -108,6 +107,11 @@ if ($page === 'reports/production' && isset($_GET['export'])) {
     exit;
 }
 
+if ($page === 'machines/inventory' && isset($_GET['export'])) {
+    require __DIR__ . '/modules/machines/inventory.php';
+    exit;
+}
+
 if ($page === 'reports/inventory' && isset($_GET['export'])) {
     require __DIR__ . '/modules/reports/inventory.php';
     exit;
@@ -115,6 +119,11 @@ if ($page === 'reports/inventory' && isset($_GET['export'])) {
 
 if ($page === 'reports/dispatch' && isset($_GET['export'])) {
     require __DIR__ . '/modules/reports/dispatch.php';
+    exit;
+}
+
+if ($page === 'quality/reports' && isset($_GET['export'])) {
+    require __DIR__ . '/modules/quality/reports.php';
     exit;
 }
 
@@ -130,6 +139,11 @@ if ($page === 'employee/export') {
 
 if ($page === 'attendance/list' && isset($_GET['export'])) {
     require __DIR__ . '/modules/hr/attendance/index.php';
+    exit;
+}
+
+if ($page === 'employees/list' && (isset($_GET['export']) || isset($_GET['inc_export']) || isset($_GET['profile_export']))) {
+    require __DIR__ . '/modules/employees/index.php';
     exit;
 }
 

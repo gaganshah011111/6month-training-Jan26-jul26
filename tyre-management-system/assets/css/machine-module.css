@@ -1,3 +1,119 @@
+.mach-page .prod-card--table .prod-card__head {
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.mach-table-scroll-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.7rem;
+  color: #64748b;
+  padding: 0.4rem 0.75rem;
+  background: #fafbfc;
+  border-bottom: 1px solid #eef2f6;
+}
+
+.mach-table-scroll-hint i {
+  color: #94a3b8;
+}
+
+.mach-table-scroll-hint.is-hidden {
+  display: none;
+}
+
+.mach-table-wrap {
+  overflow: auto;
+  max-height: min(480px, 58vh);
+  -webkit-overflow-scrolling: touch;
+}
+
+.mach-table-wrap .prod-table,
+.mach-table-wrap .table {
+  min-width: 720px;
+  margin-bottom: 0;
+}
+
+.mach-table-wrap thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  box-shadow: 0 1px 0 #e2e8f0;
+}
+
+.mach-table-wrap--short {
+  max-height: min(280px, 40vh);
+}
+
+.mach-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+  justify-content: flex-end;
+}
+
+.mach-actions .btn {
+  white-space: nowrap;
+}
+
+.mach-edit-panel--active {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.mach-dept-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.mach-dept-list__item {
+  padding: 0.55rem 0;
+  border-bottom: 1px solid #eef2f6;
+}
+
+.mach-dept-list__item:last-child {
+  border-bottom: none;
+}
+
+.mach-dept-list__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.8125rem;
+}
+
+.mach-dept-list__bar {
+  height: 4px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.mach-dept-list__fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #1a2744, #3b5bdb);
+  border-radius: 999px;
+}
+
+.mach-kpi--active {
+  border-left: 3px solid #22c55e;
+}
+
+.mach-kpi--idle {
+  border-left: 3px solid #94a3b8;
+}
+
+.mach-kpi--repair {
+  border-left: 3px solid #f59e0b;
+}
+
+.mach-kpi--scrap {
+  border-left: 3px solid #ef4444;
+}
+
 .mach-subnav {
   display: flex;
   flex-wrap: wrap;

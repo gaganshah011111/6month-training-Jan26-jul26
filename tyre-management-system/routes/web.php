@@ -34,7 +34,6 @@ return [
     'production/mixing' => 'modules/production/mixing.php',
     'production/building' => 'modules/production/building.php',
     'production/curing' => 'modules/production/curing.php',
-    'production/qc' => 'modules/production/qc.php',
     'production/entry' => 'modules/production/mixing.php',
     'machines/list' => 'modules/machines/index.php',
     'machines/dashboard' => 'modules/machines/dashboard.php',

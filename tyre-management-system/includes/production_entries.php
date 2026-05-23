@@ -374,15 +374,11 @@ function prod_entry_dashboard(PDO $pdo): array
     $curing = (int)$pdo->query(
         'SELECT COALESCE(SUM(produced_qty),0) FROM curing_entries WHERE production_date = CURDATE()'
     )->fetchColumn();
-    $qcPass = (int)$pdo->query(
-        'SELECT COALESCE(SUM(passed_qty),0) FROM qc_entries WHERE entry_date = CURDATE()'
-    )->fetchColumn();
     $rejected = (int)$pdo->query(
         "SELECT
             (SELECT COALESCE(SUM(rejected_qty),0) FROM mixing_entries WHERE production_date = CURDATE()) +
             (SELECT COALESCE(SUM(rejected_qty),0) FROM building_entries WHERE production_date = CURDATE()) +
-            (SELECT COALESCE(SUM(rejected_qty),0) FROM curing_entries WHERE production_date = CURDATE()) +
-            (SELECT COALESCE(SUM(failed_qty),0) FROM qc_entries WHERE entry_date = CURDATE())"
+            (SELECT COALESCE(SUM(rejected_qty),0) FROM curing_entries WHERE production_date = CURDATE())"
     )->fetchColumn();
     $downtime = (int)$pdo->query(
         'SELECT COALESCE(SUM(downtime_minutes),0) FROM curing_entries WHERE production_date = CURDATE()'
@@ -406,13 +402,12 @@ function prod_entry_dashboard(PDO $pdo): array
         'mixing_today' => $mixing,
         'building_today' => $building,
         'curing_today' => $curing,
-        'qc_passed_today' => $qcPass,
         'rejected_today' => $rejected,
         'downtime_today' => $downtime,
         'running_machines' => $running,
         'maint_machines' => $maint,
         'machine_alerts' => $alerts,
-        'recent' => prod_entry_recent_feed($pdo, 15),
+        'recent' => prod_entry_recent_feed($pdo, 10),
     ];
 }
 
@@ -427,10 +422,9 @@ function prod_entry_recent_feed(PDO $pdo, int $limit): array
             FROM building_entries x LEFT JOIN machines m ON m.id=x.machine_id LEFT JOIN employees e ON e.id=x.operator_id'],
         ['Curing', 'SELECT production_date AS dt, shift, tyre_type, produced_qty, rejected_qty, downtime_minutes, m.machine_code, e.full_name AS op
             FROM curing_entries x LEFT JOIN machines m ON m.id=x.machine_id LEFT JOIN employees e ON e.id=x.operator_id'],
-        ['QC', 'SELECT entry_date AS dt, shift, tyre_type, passed_qty AS produced_qty, failed_qty AS rejected_qty, NULL AS machine_code, inspector_name AS op FROM qc_entries'],
     ];
     foreach ($queries as [$dept, $sql]) {
-        $order = $dept === 'QC' ? ' ORDER BY id DESC LIMIT 5' : ' ORDER BY x.id DESC LIMIT 5';
+        $order = ' ORDER BY x.id DESC LIMIT 8';
         foreach ($pdo->query($sql . $order)->fetchAll(PDO::FETCH_ASSOC) ?: [] as $r) {
             $r['department'] = $dept;
             $items[] = $r;

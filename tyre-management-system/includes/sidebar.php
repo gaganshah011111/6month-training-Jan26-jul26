@@ -56,7 +56,6 @@ $iconMap = [
                 'production/mixing' => 'Mixing Entry',
                 'production/building' => 'Building Entry',
                 'production/curing' => 'Curing Entry',
-                'production/qc' => 'QC (view pending)',
                 'machines/dashboard' => 'Machines',
                 'reports/production' => 'Reports',
             ],
@@ -103,6 +102,9 @@ $iconMap = [
             <?php
             $isActive = $page === $key;
             if (!$isActive && str_starts_with($key, 'machines/') && str_starts_with($page, 'machines/')) {
+                $isActive = true;
+            }
+            if (!$isActive && $key === 'quality/pending' && str_starts_with($page, 'quality/')) {
                 $isActive = true;
             }
             ?>

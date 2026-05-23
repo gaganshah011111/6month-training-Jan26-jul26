@@ -31,9 +31,17 @@ function redirect(string $page): void
     exit;
 }
 
-function route_url(string $page): string
+function route_url(string $page, array $query = []): string
 {
-    return 'index.php?page=' . urlencode($page);
+    $params = ['page' => $page];
+    foreach ($query as $key => $value) {
+        if ($value === null || $value === '') {
+            continue;
+        }
+        $params[(string)$key] = $value;
+    }
+
+    return 'index.php?' . http_build_query($params);
 }
 
 function current_user(): ?array
@@ -204,7 +212,6 @@ function page_allowed_roles(): array
         'production/mixing' => ['Production Manager', 'Super Admin', 'Admin'],
         'production/building' => ['Production Manager', 'Super Admin', 'Admin'],
         'production/curing' => ['Production Manager', 'Super Admin', 'Admin'],
-        'production/qc' => ['Production Manager', 'Super Admin', 'Quality Manager', 'Admin'],
         'production/entry' => ['Production Manager', 'Super Admin', 'Admin'],
         'machines/list' => ['Production Manager', 'Super Admin', 'Admin'],
         'machines/dashboard' => ['Production Manager', 'Super Admin', 'Admin'],
@@ -216,7 +223,7 @@ function page_allowed_roles(): array
 
         'quality/dashboard' => ['Quality Manager', 'Super Admin', 'Admin'],
         'quality/list' => ['Quality Manager', 'Super Admin', 'Admin'],
-        'quality/pending' => ['Quality Manager', 'Super Admin', 'Admin', 'Production Manager'],
+        'quality/pending' => ['Quality Manager', 'Super Admin', 'Admin'],
         'quality/inspect' => ['Quality Manager', 'Super Admin', 'Admin'],
         'quality/defects' => ['Quality Manager', 'Super Admin', 'Admin'],
         'quality/reports' => ['Quality Manager', 'Super Admin', 'Admin'],

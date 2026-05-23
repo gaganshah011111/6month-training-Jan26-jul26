@@ -441,6 +441,27 @@ function mach_close_assignments_for_employee(PDO $pdo, int $employeeId, string $
 /**
  * @return list<array<string, mixed>>
  */
+function mach_get_assignment(PDO $pdo, int $id): ?array
+{
+    if ($id < 1) {
+        return null;
+    }
+    mach_ensure_schema($pdo);
+
+    $st = $pdo->prepare(
+        "SELECT a.*, m.machine_code, m.machine_name, m.department AS machine_department, m.status AS machine_status,
+            e.full_name AS operator_name, e.employee_code
+        FROM machine_operator_assignments a
+        INNER JOIN machines m ON m.id = a.machine_id
+        INNER JOIN employees e ON e.id = a.employee_id
+        WHERE a.id = :id LIMIT 1"
+    );
+    $st->execute(['id' => $id]);
+    $row = $st->fetch(PDO::FETCH_ASSOC);
+
+    return $row ?: null;
+}
+
 function mach_list_assignments(PDO $pdo, array $filters = []): array
 {
     mach_ensure_schema($pdo);

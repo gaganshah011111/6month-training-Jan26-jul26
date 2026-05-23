@@ -71,7 +71,6 @@ $postRedirectPaths = [
     'modules/employees/credential_reveal.php',
     'modules/employee/attendance.php',
     'modules/employee/dashboard.php',
-    'modules/production/qc.php',
     'modules/machines/index.php',
     'modules/machines/assignments.php',
     'modules/dispatch/new.php',
@@ -144,6 +143,11 @@ if ($page === 'attendance/list' && isset($_GET['export'])) {
 
 if ($page === 'employees/list' && (isset($_GET['export']) || isset($_GET['inc_export']) || isset($_GET['profile_export']))) {
     require __DIR__ . '/modules/employees/index.php';
+    exit;
+}
+
+if ($page === 'production/qc') {
+    header('Location: ' . route_url('production/dashboard'));
     exit;
 }
 

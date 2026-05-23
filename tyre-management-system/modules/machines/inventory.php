@@ -114,7 +114,8 @@ $exportBase = 'index.php?' . http_build_query($filterQs);
             <h2 class="prod-card__title mb-0">Machine register</h2>
             <span class="small text-muted"><?= e((string)count($rows)) ?> row(s)</span>
         </div>
-        <div class="table-responsive">
+        <div class="mach-table-scroll-hint"><i class="bi bi-arrows-expand"></i> Scroll horizontally to view all columns</div>
+        <div class="mach-table-wrap" tabindex="0" aria-label="Machine inventory table">
             <table class="table table-sm prod-table mb-0">
                 <thead>
                     <tr>
@@ -123,6 +124,7 @@ $exportBase = 'index.php?' . http_build_query($filterQs);
                         <?php if ($hasPeriod): ?>
                             <th class="text-end">Entries</th><th>Last in period</th>
                         <?php endif; ?>
+                        <th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -141,10 +143,15 @@ $exportBase = 'index.php?' . http_build_query($filterQs);
                             <td class="text-end"><?= e((string)($r['period_entries'] ?? 0)) ?></td>
                             <td class="text-nowrap"><?= e((string)($r['last_in_period'] ?? '—')) ?></td>
                         <?php endif; ?>
+                        <td class="text-end">
+                            <div class="mach-actions">
+                                <a class="btn btn-sm btn-outline-primary" href="<?= e(route_url('machines/list', ['edit' => (int)$r['id']])) ?>">Edit</a>
+                            </div>
+                        </td>
                     </tr>
                 <?php endforeach; ?>
                 <?php if (!$rows): ?>
-                    <tr><td colspan="<?= $hasPeriod ? 10 : 8 ?>" class="text-center text-muted py-4">No machines match your filters.</td></tr>
+                    <tr><td colspan="<?= $hasPeriod ? 11 : 9 ?>" class="text-center text-muted py-4">No machines match your filters.</td></tr>
                 <?php endif; ?>
                 </tbody>
             </table>

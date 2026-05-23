@@ -40,13 +40,7 @@ if ($deptFilter !== '' && in_array($deptFilter, MACHINE_PRODUCTION_DEPARTMENTS, 
 $assignments = mach_list_assignments($pdo, $filters);
 $machines = mach_list_machines($pdo);
 $editId = isset($_GET['edit']) && ctype_digit((string)$_GET['edit']) ? (int)$_GET['edit'] : 0;
-$editRow = null;
-foreach ($assignments as $a) {
-    if ((int)$a['id'] === $editId) {
-        $editRow = $a;
-        break;
-    }
-}
+$editRow = $editId > 0 ? mach_get_assignment($pdo, $editId) : null;
 
 $formDept = $editRow['department'] ?? ($deptFilter !== '' ? $deptFilter : 'Mixing');
 $prodDept = match ($formDept) {
@@ -55,6 +49,15 @@ $prodDept = match ($formDept) {
     default => PROD_ENTRY_MIXING,
 };
 $operators = prod_entry_operators($pdo, $today, $prodDept);
+$editOperatorId = $editRow ? (int)$editRow['employee_id'] : 0;
+$operatorIds = array_map(static fn(array $op): int => (int)$op['id'], $operators);
+if ($editRow && $editOperatorId > 0 && !in_array($editOperatorId, $operatorIds, true)) {
+    array_unshift($operators, [
+        'id' => $editOperatorId,
+        'full_name' => (string)$editRow['operator_name'],
+        'employee_code' => (string)($editRow['employee_code'] ?? ''),
+    ]);
+}
 ?>
 
 <div class="prod-page mach-page">
@@ -82,7 +85,7 @@ $operators = prod_entry_operators($pdo, $today, $prodDept);
 
     <div class="row g-3">
         <div class="col-lg-4">
-            <section class="prod-card">
+            <section class="prod-card<?= $editRow ? ' mach-edit-panel--active' : '' ?>" id="machEditPanel" tabindex="-1">
                 <div class="prod-card__head">
                     <h2 class="prod-card__title"><?= $editRow ? 'Edit assignment' : 'New assignment' ?></h2>
                 </div>
@@ -158,7 +161,8 @@ $operators = prod_entry_operators($pdo, $today, $prodDept);
         <div class="col-lg-8">
             <section class="prod-card prod-card--table">
                 <div class="prod-card__head"><h2 class="prod-card__title">Assignments</h2></div>
-                <div class="table-responsive">
+                <div class="mach-table-scroll-hint"><i class="bi bi-arrows-expand"></i> Scroll horizontally to view all columns</div>
+                <div class="mach-table-wrap" tabindex="0" aria-label="Assignments table">
                     <table class="table table-sm prod-table mb-0">
                         <thead>
                             <tr>
@@ -182,7 +186,14 @@ $operators = prod_entry_operators($pdo, $today, $prodDept);
                                     <?php endif; ?>
                                 </td>
                                 <td class="text-end text-nowrap">
-                                    <a class="btn btn-sm btn-outline-primary" href="<?= e(route_url('machines/assignments')) ?>?edit=<?= (int)$a['id'] ?>">Edit</a>
+                                    <div class="mach-actions">
+                                    <?php
+                                    $editQs = ['edit' => (int)$a['id']];
+                                    if ($deptFilter !== '') {
+                                        $editQs['department'] = $deptFilter;
+                                    }
+                                    ?>
+                                    <a class="btn btn-sm btn-outline-primary" href="<?= e(route_url('machines/assignments', $editQs)) ?>">Edit</a>
                                     <?php if ((int)$a['is_active'] === 1): ?>
                                         <form method="post" class="d-inline" onsubmit="return confirm('End this assignment?');">
                                             <?= csrf_input() ?>
@@ -191,6 +202,7 @@ $operators = prod_entry_operators($pdo, $today, $prodDept);
                                             <button type="submit" class="btn btn-sm btn-outline-secondary">End</button>
                                         </form>
                                     <?php endif; ?>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

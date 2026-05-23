@@ -31,17 +31,18 @@ $c = $d['counts'];
 
     <div class="mach-kpis">
         <article class="mach-kpi"><span class="mach-kpi__label">Total machines</span><span class="mach-kpi__value"><?= e((string)$c['total']) ?></span></article>
-        <article class="mach-kpi"><span class="mach-kpi__label">Active</span><span class="mach-kpi__value"><?= e((string)$c['active']) ?></span></article>
-        <article class="mach-kpi"><span class="mach-kpi__label">Idle</span><span class="mach-kpi__value"><?= e((string)$c['idle']) ?></span></article>
-        <article class="mach-kpi"><span class="mach-kpi__label">Under repair</span><span class="mach-kpi__value"><?= e((string)$c['repair']) ?></span></article>
-        <article class="mach-kpi"><span class="mach-kpi__label">Scrap / off</span><span class="mach-kpi__value"><?= e((string)$c['scrap']) ?></span></article>
+        <article class="mach-kpi mach-kpi--active"><span class="mach-kpi__label">Active</span><span class="mach-kpi__value"><?= e((string)$c['active']) ?></span></article>
+        <article class="mach-kpi mach-kpi--idle"><span class="mach-kpi__label">Idle</span><span class="mach-kpi__value"><?= e((string)$c['idle']) ?></span></article>
+        <article class="mach-kpi mach-kpi--repair"><span class="mach-kpi__label">Under repair</span><span class="mach-kpi__value"><?= e((string)$c['repair']) ?></span></article>
+        <article class="mach-kpi mach-kpi--scrap"><span class="mach-kpi__label">Scrap / off</span><span class="mach-kpi__value"><?= e((string)$c['scrap']) ?></span></article>
     </div>
 
     <div class="row g-3">
         <div class="col-lg-7">
             <section class="prod-card prod-card--table">
                 <div class="prod-card__head"><h2 class="prod-card__title">Machine-wise operator</h2></div>
-                <div class="table-responsive">
+                <div class="mach-table-scroll-hint"><i class="bi bi-arrows-expand"></i> Scroll horizontally to view all columns</div>
+                <div class="mach-table-wrap" tabindex="0" aria-label="Machine-wise operator table">
                     <table class="table table-sm prod-table mb-0">
                         <thead>
                             <tr><th>Code</th><th>Name</th><th>Dept</th><th>Operator</th><th>Shift</th><th>Status</th></tr>
@@ -67,19 +68,30 @@ $c = $d['counts'];
             </section>
         </div>
         <div class="col-lg-5">
+            <?php $maxDeptCnt = max(array_values($d['dept_counts'] ?: [1])); ?>
             <section class="prod-card mb-3">
                 <div class="prod-card__head"><h2 class="prod-card__title">Department-wise count</h2></div>
                 <div class="prod-card__body">
-                    <ul class="list-unstyled mb-0 small">
+                    <ul class="mach-dept-list">
                         <?php foreach ($d['dept_counts'] as $dep => $cnt): ?>
-                            <li class="d-flex justify-content-between py-1 border-bottom"><span><?= e($dep) ?></span><strong><?= e((string)$cnt) ?></strong></li>
+                            <?php $pct = $maxDeptCnt > 0 ? round(100 * $cnt / $maxDeptCnt) : 0; ?>
+                            <li class="mach-dept-list__item">
+                                <div class="mach-dept-list__row">
+                                    <span><?= e($dep) ?></span>
+                                    <strong><?= e((string)$cnt) ?></strong>
+                                </div>
+                                <div class="mach-dept-list__bar" aria-hidden="true">
+                                    <span class="mach-dept-list__fill" style="width: <?= e((string)$pct) ?>%"></span>
+                                </div>
+                            </li>
                         <?php endforeach; ?>
                     </ul>
                 </div>
             </section>
             <section class="prod-card prod-card--table">
                 <div class="prod-card__head"><h2 class="prod-card__title">Recently reassigned</h2></div>
-                <div class="table-responsive">
+                <div class="mach-table-scroll-hint"><i class="bi bi-arrows-expand"></i> Scroll horizontally to view all columns</div>
+                <div class="mach-table-wrap mach-table-wrap--short" tabindex="0" aria-label="Recently reassigned table">
                     <table class="table table-sm prod-table mb-0">
                         <thead><tr><th>Machine</th><th>Operator</th><th>From</th></tr></thead>
                         <tbody>
@@ -100,3 +112,4 @@ $c = $d['counts'];
         </div>
     </div>
 </div>
+

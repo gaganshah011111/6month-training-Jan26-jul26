@@ -42,6 +42,19 @@ if (in_array($footerPage, ['production/mixing', 'production/building', 'producti
     $machProdJs = __DIR__ . '/../assets/js/machine-production.js';
     $machProdVer = is_file($machProdJs) ? (string)filemtime($machProdJs) : (string)time();
     echo '<script src="assets/js/machine-production.js?v=' . e($machProdVer) . '"></script>' . "\n";
+    $prodEntryJs = __DIR__ . '/../assets/js/production-entry-table.js';
+    $prodEntryVer = is_file($prodEntryJs) ? (string)filemtime($prodEntryJs) : (string)time();
+    echo '<script src="assets/js/production-entry-table.js?v=' . e($prodEntryVer) . '"></script>' . "\n";
+}
+if ($footerPage === 'reports/production') {
+    $prodRptJs = __DIR__ . '/../assets/js/production-entry-table.js';
+    $prodRptVer = is_file($prodRptJs) ? (string)filemtime($prodRptJs) : (string)time();
+    echo '<script src="assets/js/production-entry-table.js?v=' . e($prodRptVer) . '"></script>' . "\n";
+}
+if (str_starts_with($footerPage, 'machines/')) {
+    $machModJs = __DIR__ . '/../assets/js/machine-module.js';
+    $machModVer = is_file($machModJs) ? (string)filemtime($machModJs) : (string)time();
+    echo '<script src="assets/js/machine-module.js?v=' . e($machModVer) . '"></script>' . "\n";
 }
 if ($footerPage === 'employees/list') {
     $erdJs = __DIR__ . '/../assets/js/employee-record-drawer.js';

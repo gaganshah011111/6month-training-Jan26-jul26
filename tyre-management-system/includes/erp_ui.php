@@ -34,7 +34,6 @@ function erp_ui_extra_stylesheets(): array
         'production/mixing' => ['production-module.css'],
         'production/building' => ['production-module.css'],
         'production/curing' => ['production-module.css'],
-        'production/qc' => ['production-module.css'],
         'quality/dashboard' => ['qc-module.css'],
         'quality/list' => ['qc-module.css'],
         'quality/pending' => ['qc-module.css'],

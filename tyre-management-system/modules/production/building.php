@@ -71,24 +71,20 @@ $rows = prod_list_department_entries($pdo, PROD_ENTRY_BUILDING, 40);
             </section>
         </div>
         <div class="col-lg-8">
-            <section class="prod-card prod-card--table">
-                <div class="prod-card__head"><h2 class="prod-card__title">Recent building entries</h2></div>
-                <div class="table-responsive">
-                    <table class="table table-sm prod-table mb-0">
-                        <thead><tr><th>Date</th><th>Shift</th><th>Tyre</th><th class="text-end">Built</th><th class="text-end">Rej.</th><th>Machine</th><th>Operator</th></tr></thead>
-                        <tbody>
-                        <?php foreach ($rows as $r): ?>
-                            <tr>
-                                <td><?= e($r['production_date']) ?></td><td><?= e($r['shift']) ?></td><td><?= e($r['tyre_type']) ?></td>
-                                <td class="text-end"><?= e((string)$r['produced_qty']) ?></td><td class="text-end"><?= e((string)$r['rejected_qty']) ?></td>
-                                <td><?= e($r['machine_code'] ?? '—') ?></td><td><?= e($r['operator_name'] ?? '—') ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                        <?php if (!$rows): ?><tr><td colspan="7" class="text-center text-muted py-4">No production entries found.</td></tr><?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
+            <?php
+            $recentTitle = 'Recent building entries';
+            $recentRows = $rows;
+            $recentColumns = [
+                ['key' => 'production_date', 'label' => 'Date'],
+                ['key' => 'shift', 'label' => 'Shift'],
+                ['key' => 'tyre_type', 'label' => 'Tyre'],
+                ['key' => 'produced_qty', 'label' => 'Built', 'class' => 'text-end'],
+                ['key' => 'rejected_qty', 'label' => 'Rej.', 'class' => 'text-end'],
+                ['key' => 'machine_code', 'label' => 'Machine'],
+                ['key' => 'operator_name', 'label' => 'Operator'],
+            ];
+            require __DIR__ . '/_recent_entries_table.php';
+            ?>
         </div>
     </div>
 </div>

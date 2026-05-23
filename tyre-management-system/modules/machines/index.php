@@ -49,7 +49,7 @@ $editRow = $editId > 0 ? mach_get_machine($pdo, $editId) : null;
 
     <div class="row g-3">
         <div class="col-lg-4">
-            <section class="prod-card">
+            <section class="prod-card<?= $editRow ? ' mach-edit-panel--active' : '' ?>" id="machEditPanel" tabindex="-1">
                 <div class="prod-card__head">
                     <h2 class="prod-card__title"><?= $editRow ? 'Edit machine' : 'Add machine' ?></h2>
                 </div>
@@ -127,7 +127,8 @@ $editRow = $editId > 0 ? mach_get_machine($pdo, $editId) : null;
         <div class="col-lg-8">
             <section class="prod-card prod-card--table">
                 <div class="prod-card__head"><h2 class="prod-card__title">Machine register</h2></div>
-                <div class="table-responsive">
+                <div class="mach-table-scroll-hint"><i class="bi bi-arrows-expand"></i> Scroll horizontally to view all columns</div>
+                <div class="mach-table-wrap" tabindex="0" aria-label="Machine register table">
                     <table class="table table-hover prod-table mb-0">
                         <thead>
                             <tr>
@@ -148,7 +149,8 @@ $editRow = $editId > 0 ? mach_get_machine($pdo, $editId) : null;
                                     <td><?= e($r['machine_type'] ?? '—') ?></td>
                                     <td><span class="<?= e($mb['class']) ?>"><?= e($mb['label']) ?></span></td>
                                     <td class="text-end text-nowrap">
-                                        <a class="btn btn-sm btn-outline-primary" href="<?= e(route_url('machines/list')) ?>?edit=<?= (int)$r['id'] ?>">Edit</a>
+                                        <div class="mach-actions">
+                                        <a class="btn btn-sm btn-outline-primary" href="<?= e(route_url('machines/list', ['edit' => (int)$r['id']])) ?>">Edit</a>
                                         <?php if ((int)($r['is_active'] ?? 1) === 1): ?>
                                             <form method="post" class="d-inline" onsubmit="return confirm('Deactivate this machine? History will be kept.');">
                                                 <?= csrf_input() ?>
@@ -157,6 +159,7 @@ $editRow = $editId > 0 ? mach_get_machine($pdo, $editId) : null;
                                                 <button type="submit" class="btn btn-sm btn-outline-danger">Deactivate</button>
                                             </form>
                                         <?php endif; ?>
+                                        </div>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>

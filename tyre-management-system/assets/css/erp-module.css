@@ -309,13 +309,21 @@
 :is(.att-panel, .employee-directory-card, .payroll-filter-card, .payroll-table-card),
 .leave-main .table-responsive,
 .hr-reports .hr-report-block .table-responsive,
-.erp-page .table-responsive:not(.employee-directory-scroll):not(.emp-table-viewport),
+.erp-page .table-responsive:not(.employee-directory-scroll):not(.emp-table-viewport):not(.prod-dash-table-wrap):not(.mach-table-wrap):not(.prod-entry-table-wrap):not(.prod-rpt-table-wrap):not(.prod-rpt-table-card),
 .erp-page > .card {
     background: #fff;
     border: 1px solid var(--erp-border);
     border-radius: 8px;
     overflow: hidden;
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.erp-page .prod-entry-table-wrap,
+.erp-page .mach-table-wrap,
+.erp-page .prod-rpt-table-wrap {
+    overflow-x: auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .erp-page .card:not(.kpi-card) {

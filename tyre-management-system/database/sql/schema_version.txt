@@ -1,2 +1,2 @@
-schema_version=016_machine_master_assignments
-updated_at=2026-05-23T18:39:08+05:30
+schema_version=020_dispatch_vehicle_fields
+updated_at=2026-05-24T20:25:35+05:30

@@ -48,6 +48,19 @@ function erp_ui_extra_stylesheets(): array
         'machines/inventory' => ['production-module.css', 'machine-module.css'],
         'machines/history' => ['production-module.css', 'machine-module.css'],
         'reports/production' => ['production-module.css', 'machine-module.css'],
+        'sales/dashboard' => ['sales-module.css'],
+        'sales/customers' => ['sales-module.css'],
+        'sales/customer' => ['sales-module.css'],
+        'sales/orders' => ['sales-module.css'],
+        'sales/order' => ['sales-module.css'],
+        'sales/invoices' => ['sales-module.css'],
+        'sales/invoice' => ['sales-module.css'],
+        'sales/payments' => ['sales-module.css'],
+        'sales/dispatch' => ['sales-module.css'],
+        'sales/dispatch-entry' => ['sales-module.css', 'dispatch-module.css'],
+        'sales/ledger' => ['sales-module.css'],
+        'sales/reports' => ['sales-module.css'],
+        'sales/analytics' => ['sales-module.css'],
         'inventory/dashboard' => ['inventory-module.css'],
         'inventory/list' => ['inventory-module.css'],
         'inventory/materials' => ['inventory-module.css'],
@@ -81,7 +94,7 @@ function erp_ui_enqueue(): void
     $done = true;
 
     $base = __DIR__ . '/../assets/css/';
-    $files = ['erp-module.css'];
+    $files = ['erp-module.css', 'erp-ui-polish.css'];
 
     foreach (erp_ui_extra_stylesheets() as $extra) {
         $files[] = $extra;

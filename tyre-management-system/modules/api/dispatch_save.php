@@ -124,6 +124,10 @@ try {
 
         $field = 'customer_name';
 
+    } elseif (stripos($msg, 'Dispatch Queue') !== false || stripos($msg, 'sales order') !== false || stripos($msg, 'CRM') !== false) {
+
+        $field = 'sales_order_id';
+
     } elseif (stripos($msg, 'weight') !== false || stripos($msg, 'gross') !== false || stripos($msg, 'tare') !== false) {
 
         $field = 'gross_weight_kg';

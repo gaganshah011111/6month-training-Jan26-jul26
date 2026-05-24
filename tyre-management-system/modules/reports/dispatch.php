@@ -118,7 +118,7 @@ $baseQs = 'page=reports/dispatch&from=' . rawurlencode($from) . '&to=' . rawurle
         </div>
     </form>
 
-    <div class="dsp-table-wrap">
+    <div class="dsp-table-wrap dsp-table-scroll">
         <table class="dsp-table">
             <thead>
                 <tr>

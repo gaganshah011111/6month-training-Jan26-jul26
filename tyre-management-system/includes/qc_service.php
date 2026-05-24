@@ -324,6 +324,10 @@ function qc_add_inventory(PDO $pdo, string $productName, string $batchRef, int $
             'sc' => $stockCategory,
         ]);
     }
+    if ($stockCategory === QC_STOCK_DISPATCH && dh_table_exists($pdo, 'sales_orders')) {
+        require_once __DIR__ . '/sales_service.php';
+        sales_on_inventory_changed($pdo, $productName);
+    }
 }
 
 /** @return array<string, mixed> */

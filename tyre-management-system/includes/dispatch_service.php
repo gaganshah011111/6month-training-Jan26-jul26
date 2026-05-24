@@ -16,6 +16,18 @@ const DISPATCH_STATUSES = [
     DISPATCH_STATUS_DISPATCHED,
 ];
 
+/** User-facing stock label on dispatch screens. */
+function dispatch_queue_stock_label(string $stockStatus): string
+{
+    return match (strtoupper(trim($stockStatus))) {
+        'READY' => 'READY TO SHIP',
+        'PARTIAL STOCK' => 'PARTIAL STOCK',
+        'PRODUCTION REQUIRED', 'PRODUCTION' => 'WAITING STOCK',
+        'WAITING STOCK' => 'WAITING STOCK',
+        default => $stockStatus,
+    };
+}
+
 function dispatch_format_qty(int $qty): string
 {
     return number_format($qty, 0, '.', ',');
@@ -227,6 +239,10 @@ function dispatch_reduce_fg_stock(PDO $pdo, string $tyreType, int $qty): void
         $pdo->prepare('UPDATE inventory SET qty = qty - :q WHERE id = :id')->execute(['q' => $take, 'id' => (int)$r['id']]);
         $remaining -= $take;
     }
+    if (dh_table_exists($pdo, 'sales_orders')) {
+        require_once __DIR__ . '/sales_service.php';
+        sales_on_inventory_changed($pdo, trim($tyreType));
+    }
 }
 
 /** @return array{id: int, name: string, vehicle_no: ?string, transport_company_id: ?int, transport_company: ?string} */
@@ -298,36 +314,88 @@ function dispatch_validate_stock_qty(PDO $pdo, string $tyreType, int $qty): void
 
 function dispatch_resolve_customer(PDO $pdo, array $data): array
 {
-    $customerId = (int)($data['customer_id'] ?? 0);
+    $salesCustomerId = (int)($data['sales_customer_id'] ?? 0);
     $customerName = trim((string)($data['customer_name'] ?? ''));
+
+    if ($salesCustomerId > 0 && dh_table_exists($pdo, 'sales_customers')) {
+        require_once __DIR__ . '/sales_service.php';
+        $crm = sales_get_customer($pdo, $salesCustomerId);
+        if ($crm && (string)$crm['status'] === 'Active') {
+            return [
+                'id' => null,
+                'name' => (string)$crm['company_name'],
+                'sales_customer_id' => $salesCustomerId,
+            ];
+        }
+    }
+
+    $customerId = (int)($data['customer_id'] ?? 0);
+    if ($customerId > 0 && dh_table_exists($pdo, 'sales_customers')) {
+        require_once __DIR__ . '/sales_service.php';
+        $crm = sales_get_customer($pdo, $customerId);
+        if ($crm && (string)$crm['status'] === 'Active') {
+            return [
+                'id' => null,
+                'name' => (string)$crm['company_name'],
+                'sales_customer_id' => $customerId,
+            ];
+        }
+    }
 
     if ($customerId > 0) {
         $st = $pdo->prepare('SELECT * FROM dispatch_customers WHERE id = :id AND status = \'Active\' LIMIT 1');
         $st->execute(['id' => $customerId]);
         $row = $st->fetch(PDO::FETCH_ASSOC);
         if ($row) {
-            return ['id' => (int)$row['id'], 'name' => (string)$row['customer_name']];
+            return ['id' => (int)$row['id'], 'name' => (string)$row['customer_name'], 'sales_customer_id' => null];
         }
     }
     if ($customerName === '') {
-        throw new InvalidArgumentException('Customer is required.');
+        throw new InvalidArgumentException('Customer is required. Register customers in Sales & CRM → Customers.');
     }
 
-    return ['id' => null, 'name' => $customerName];
+    return ['id' => null, 'name' => $customerName, 'sales_customer_id' => null];
 }
 
 function dispatch_save(PDO $pdo, array $data): int
 {
-    $tyreType = trim((string)($data['tyre_type'] ?? ''));
+    require_once __DIR__ . '/sales_service.php';
+
+    $salesOrderId = (int)($data['sales_order_id'] ?? 0);
+    $salesOrderItemId = (int)($data['sales_order_item_id'] ?? 0);
+    if ($salesOrderId < 1 || $salesOrderItemId < 1) {
+        throw new InvalidArgumentException('Select CRM sales order before dispatch.');
+    }
+
+    $line = sales_dispatch_prefill($pdo, $salesOrderId, $salesOrderItemId);
+    $tyreType = (string)$line['tyre_type'];
     $qty = (int)($data['qty'] ?? 0);
     $date = (string)($data['dispatch_date'] ?? date('Y-m-d'));
 
-    if ($tyreType === '' || $qty < 1) {
-        throw new InvalidArgumentException('Tyre type and quantity are required.');
+    $postedTyre = trim((string)($data['tyre_type'] ?? ''));
+    if ($postedTyre !== '' && $postedTyre !== $tyreType) {
+        throw new InvalidArgumentException('Tyre type must match the sales order line.');
+    }
+    $postedCustomer = trim((string)($data['customer_name'] ?? ''));
+    if ($postedCustomer !== '' && strcasecmp($postedCustomer, (string)$line['customer_name']) !== 0) {
+        throw new InvalidArgumentException('Customer must match the linked sales order.');
+    }
+
+    if ($qty < 1) {
+        throw new InvalidArgumentException('Quantity is required.');
+    }
+    if ($qty > (int)$line['max_qty']) {
+        throw new InvalidArgumentException(
+            'Dispatch quantity cannot exceed pending available quantity (max ' . (int)$line['max_qty'] . ').'
+        );
     }
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
         throw new InvalidArgumentException('Valid dispatch date is required.');
     }
+
+    $data['tyre_type'] = $tyreType;
+    $data['customer_name'] = (string)$line['customer_name'];
+    $data['sales_customer_id'] = (int)$line['sales_customer_id'];
 
     require_once __DIR__ . '/logistics_service.php';
     $customer = dispatch_resolve_customer($pdo, $data);
@@ -359,19 +427,24 @@ function dispatch_save(PDO $pdo, array $data): int
         }
 
         $vehicleIdVal = $logistics['vehicle_id'] ?? null;
+        $salesCustId = $customer['sales_customer_id'] ?? null;
         $pdo->prepare(
             'INSERT INTO dispatch (
-                dispatch_code, order_no, customer_id, customer_name, tyre_type, invoice_no,
+                dispatch_code, order_no, sales_order_id, sales_order_item_id, sales_customer_id,
+                customer_id, customer_name, tyre_type, invoice_no,
                 vehicle_no, vehicle_id, driver_id, driver_name, transport_company_id, transport_company,
                 dispatch_date, qty, gross_weight_kg, tare_weight_kg, net_weight_kg, remarks,
                 status, stock_deducted, inventory_id
             ) VALUES (
-                :code, :ord, :cid, :cname, :tt, :inv, :veh, :vid, :did, :drv, :tid, :trans, :dt, :qty,
+                :code, :ord, :soid, :soiid, :scid, :cid, :cname, :tt, :inv, :veh, :vid, :did, :drv, :tid, :trans, :dt, :qty,
                 :gw, :tw, :nw, :rm, :st, :ded, NULL
             )'
         )->execute([
             'code' => $code,
             'ord' => $orderNo,
+            'soid' => $salesOrderId > 0 ? $salesOrderId : null,
+            'soiid' => $salesOrderItemId > 0 ? $salesOrderItemId : null,
+            'scid' => $salesCustId,
             'cid' => $customer['id'],
             'cname' => $customer['name'],
             'tt' => $tyreType,
@@ -393,6 +466,9 @@ function dispatch_save(PDO $pdo, array $data): int
         ]);
 
         $id = (int)$pdo->lastInsertId();
+
+        sales_apply_dispatch($pdo, $id, $salesOrderId, $salesOrderItemId, $qty);
+
         try {
             $pdo->prepare('UPDATE dispatch SET dispatch_status = :ds WHERE id = :id')->execute([
                 'ds' => 'Delivered',
@@ -444,7 +520,7 @@ function dispatch_dashboard(PDO $pdo): array
 }
 
 /** @return list<array<string, mixed>> */
-function dispatch_list(PDO $pdo, string $search, string $from, string $to, string $status): array
+function dispatch_list(PDO $pdo, string $search, string $from, string $to, string $status, array $filters = []): array
 {
     $sql = 'SELECT d.*, dr.driver_name AS registered_driver_name, dr.license_number AS driver_license
             FROM dispatch d
@@ -457,6 +533,26 @@ function dispatch_list(PDO $pdo, string $search, string $from, string $to, strin
             OR d.invoice_no LIKE :q OR d.tyre_type LIKE :q OR d.driver_name LIKE :q OR d.vehicle_no LIKE :q
             OR d.transport_company LIKE :q)';
         $params['q'] = '%' . $search . '%';
+    }
+    $customer = trim((string)($filters['customer'] ?? ''));
+    if ($customer !== '') {
+        $sql .= ' AND d.customer_name LIKE :cust';
+        $params['cust'] = '%' . $customer . '%';
+    }
+    $tyreFilter = trim((string)($filters['tyre_type'] ?? ''));
+    if ($tyreFilter !== '') {
+        $sql .= ' AND d.tyre_type = :tt';
+        $params['tt'] = $tyreFilter;
+    }
+    $driverId = (int)($filters['driver_id'] ?? 0);
+    if ($driverId > 0) {
+        $sql .= ' AND d.driver_id = :did';
+        $params['did'] = $driverId;
+    }
+    $vehicleNo = trim((string)($filters['vehicle_no'] ?? ''));
+    if ($vehicleNo !== '') {
+        $sql .= ' AND d.vehicle_no LIKE :vno';
+        $params['vno'] = '%' . $vehicleNo . '%';
     }
     if ($from !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) {
         $sql .= ' AND d.dispatch_date >= :f';
@@ -513,6 +609,21 @@ function dispatch_save_customer(PDO $pdo, array $data, ?int $id = null): int
 
 function dispatch_list_customers(PDO $pdo): array
 {
+    if (dh_table_exists($pdo, 'sales_customers')) {
+        require_once __DIR__ . '/sales_service.php';
+        $rows = sales_customers_for_dispatch($pdo);
+
+        return array_map(static fn(array $c): array => [
+            'id' => (int)$c['id'],
+            'customer_name' => (string)$c['company_name'],
+            'company' => (string)($c['customer_code'] ?? ''),
+            'phone' => (string)($c['phone'] ?? ''),
+            'gst_number' => (string)($c['gst_number'] ?? ''),
+            'status' => (string)$c['status'],
+            'sales_customer_id' => (int)$c['id'],
+        ], $rows);
+    }
+
     return $pdo->query(
         "SELECT * FROM dispatch_customers WHERE status = 'Active' ORDER BY customer_name ASC"
     )->fetchAll(PDO::FETCH_ASSOC) ?: [];

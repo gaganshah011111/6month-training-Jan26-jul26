@@ -8,7 +8,7 @@
     --bg-soft: #f1f3f6;
     --bg-surface: #fafafa;
     --text-main: #1f2937;
-    --text-muted: #6b7280;
+    --text-muted: #64748b;
     --line: #e7ebf0;
     --shadow-soft: 0 8px 24px rgba(15, 23, 42, 0.08);
     --shadow-deep: 0 14px 32px rgba(15, 23, 42, 0.16);
@@ -114,9 +114,10 @@ a:hover { color: var(--brand-red-dark); }
 .sidebar-fixed { position: sticky; top: 56px; max-height: calc(100vh - 56px); overflow-y: auto; }
 .offset-content { min-height: calc(100vh - 56px); }
 .sidebar-section {
-    color: #94a3b8;
+    color: #cbd5e1;
     letter-spacing: 0.06em;
     padding-left: 0.25rem;
+    font-weight: 700;
 }
 .sidebar-link {
     color: #cbd5e1;
@@ -252,15 +253,15 @@ a:hover { color: var(--brand-red-dark); }
 .table-responsive { border-radius: 12px; }
 .table th {
     white-space: nowrap;
-    background: #f6f8fc;
-    color: #334155;
-    font-weight: 600;
-    font-size: 0.82rem;
-    letter-spacing: 0.01em;
+    background: #f1f5f9;
+    color: #475569;
+    font-weight: 700;
+    font-size: 0.6875rem;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
 }
 .table td, .table th { border-color: #edf1f5; }
-.table td { padding-top: 0.78rem; padding-bottom: 0.78rem; }
+.table td { padding-top: 0.5rem; padding-bottom: 0.5rem; font-size: 0.8125rem; }
 .table-hover > tbody > tr:hover > * { background: #f7f9fc; }
 .employee-list-table tbody tr:nth-child(even) td { background: #fcfdff; }
 

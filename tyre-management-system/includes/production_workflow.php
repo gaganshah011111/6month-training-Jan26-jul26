@@ -721,6 +721,10 @@ function production_upsert_finished_inventory(PDO $pdo, string $tyreType, string
         $pdo->prepare('INSERT INTO inventory (product_name, batch_ref, qty, reorder_level, warehouse_location) VALUES (:n,:b,:q,50,:w)')
             ->execute(['n' => $tyreType, 'b' => $batchRef, 'q' => $qty, 'w' => $warehouse]);
     }
+    if (dh_table_exists($pdo, 'sales_orders')) {
+        require_once __DIR__ . '/sales_service.php';
+        sales_on_inventory_changed($pdo, $tyreType);
+    }
 }
 
 /** BOM deduction when Mixing starts. */

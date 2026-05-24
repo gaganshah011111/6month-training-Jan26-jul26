@@ -11,6 +11,7 @@ if (!has_role(['Dispatch Manager', 'Super Admin', 'Admin'])) {
 }
 
 $pdo = Database::connection();
+logistics_ensure_vehicle_columns($pdo);
 $tab = logistics_valid_tab((string)($_GET['tab'] ?? 'drivers'));
 $search = trim((string)($_GET['q'] ?? ''));
 $statusFilter = (string)($_GET['status'] ?? '');
@@ -174,7 +175,7 @@ $baseUrl = 'index.php?page=dispatch/logistics';
             </section>
         </div>
         <div class="col-lg-8">
-            <div class="dsp-table-wrap">
+            <div class="dsp-table-wrap dsp-table-scroll">
                 <table class="dsp-table">
                     <thead>
                         <tr><th>Driver</th><th>Vehicle</th><th>Phone</th><th>License</th><th>Transport</th><th>Status</th><th></th></tr>
@@ -233,6 +234,12 @@ $baseUrl = 'index.php?page=dispatch/logistics';
                         <div><label class="form-label">Capacity</label>
                             <input class="form-control form-control-sm" name="capacity" maxlength="40"
                                    value="<?= e((string)($editVehicle['capacity'] ?? '')) ?>" placeholder="40 tyres"></div>
+                        <div><label class="form-label">Insurance expiry</label>
+                            <input type="date" class="form-control form-control-sm" name="insurance_expiry"
+                                   value="<?= e((string)($editVehicle['insurance_expiry'] ?? '')) ?>"></div>
+                        <div><label class="form-label">RC number</label>
+                            <input class="form-control form-control-sm" name="rc_number" maxlength="60"
+                                   value="<?= e((string)($editVehicle['rc_number'] ?? '')) ?>"></div>
                         <div><label class="form-label">Assigned driver</label>
                             <select class="form-select form-select-sm erp-select-search" name="driver_id" data-placeholder="Search driver…">
                                 <option value="">— Optional —</option>
@@ -269,10 +276,10 @@ $baseUrl = 'index.php?page=dispatch/logistics';
             </section>
         </div>
         <div class="col-lg-8">
-            <div class="dsp-table-wrap">
+            <div class="dsp-table-wrap dsp-table-scroll">
                 <table class="dsp-table">
                     <thead>
-                        <tr><th>Vehicle</th><th>Driver</th><th>Capacity</th><th>Company</th><th>Status</th><th></th></tr>
+                        <tr><th>Vehicle</th><th>Driver</th><th>Capacity</th><th>RC</th><th>Insurance</th><th>Company</th><th>Status</th><th></th></tr>
                     </thead>
                     <tbody>
                     <?php foreach ($vehicles as $v): ?>
@@ -280,6 +287,8 @@ $baseUrl = 'index.php?page=dispatch/logistics';
                             <td><?= e((string)$v['vehicle_number']) ?><?= ($v['vehicle_type'] ?? '') !== '' ? ' <span class="text-muted small">(' . e((string)$v['vehicle_type']) . ')</span>' : '' ?></td>
                             <td><?= e((string)($v['driver_name'] ?? '—')) ?></td>
                             <td><?= e((string)($v['capacity'] ?? '—')) ?></td>
+                            <td><?= e((string)($v['rc_number'] ?? '—')) ?></td>
+                            <td><?= e((string)($v['insurance_expiry'] ?? '—')) ?></td>
                             <td><?= e((string)($v['transport_company_name'] ?? '—')) ?></td>
                             <td><?= e((string)$v['status']) ?></td>
                             <td class="text-nowrap">
@@ -298,7 +307,7 @@ $baseUrl = 'index.php?page=dispatch/logistics';
                         </tr>
                     <?php endforeach; ?>
                     <?php if ($vehicles === []): ?>
-                        <tr><td colspan="6" class="dsp-empty">No vehicles registered.</td></tr>
+                        <tr><td colspan="8" class="dsp-empty">No vehicles registered.</td></tr>
                     <?php endif; ?>
                     </tbody>
                 </table>
@@ -349,7 +358,7 @@ $baseUrl = 'index.php?page=dispatch/logistics';
             </section>
         </div>
         <div class="col-lg-8">
-            <div class="dsp-table-wrap">
+            <div class="dsp-table-wrap dsp-table-scroll">
                 <table class="dsp-table">
                     <thead>
                         <tr><th>Company</th><th>Contact</th><th>Phone</th><th>GST</th><th>Status</th><th></th></tr>

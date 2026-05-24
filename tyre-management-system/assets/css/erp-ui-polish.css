@@ -1,0 +1,319 @@
+/**
+ * Ralson ERP — global UI polish (typography, tables, cards, buttons, badges, forms)
+ * Loaded after erp-module.css on all authenticated pages.
+ */
+:root {
+    --erp-ink: #0f172a;
+    --erp-ink-soft: #1e293b;
+    --erp-label: #475569;
+    --erp-hint: #64748b;
+    --erp-line: #e2e8f0;
+    --erp-line-strong: #cbd5e1;
+    --erp-surface: #ffffff;
+    --erp-surface-muted: #f8fafc;
+    --erp-shadow-card: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+/* —— Typography —— */
+body.app-body {
+    color: var(--erp-ink-soft);
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: var(--erp-ink) !important;
+    font-weight: 700;
+}
+
+.text-muted,
+.small.text-muted,
+.erp-page .text-muted,
+.dsp-page__sub,
+.dsp-section-hint,
+.dsp-entry-hint,
+.so-page-head__sub,
+.so-workflow-hint {
+    color: var(--erp-hint) !important;
+    opacity: 1 !important;
+}
+
+.form-label,
+.dsp-entry-label,
+.so-field-label,
+label.form-label {
+    color: var(--erp-label) !important;
+    font-weight: 600;
+    font-size: 0.75rem;
+}
+
+.erp-section-title,
+.dsp-section__heading,
+.so-section-card__title,
+.so-page-head__title,
+.dsp-page__title,
+.dsp-entry-header__title {
+    color: var(--erp-ink) !important;
+    font-weight: 700 !important;
+}
+
+.dsp-section__heading,
+.so-section-card__title {
+    font-size: 0.9375rem !important;
+    letter-spacing: -0.01em;
+    padding-bottom: 0;
+}
+
+.dsp-empty,
+.so-stock-muted,
+.erp-empty {
+    color: var(--erp-hint) !important;
+    font-size: 0.8125rem;
+}
+
+/* —— Sidebar —— */
+.sidebar-section {
+    color: #cbd5e1 !important;
+    font-weight: 700;
+    font-size: 0.65rem;
+}
+
+.sidebar-link {
+    color: #e2e8f0 !important;
+    font-weight: 500;
+}
+
+.sidebar-link i {
+    color: #94a3b8 !important;
+}
+
+.sidebar-link:hover {
+    color: #fff !important;
+}
+
+.sidebar-link:hover i {
+    color: #f1f5f9 !important;
+}
+
+/* —— Buttons —— */
+.btn {
+    font-weight: 600;
+    font-size: 0.8125rem;
+    border-radius: 6px;
+    padding: 0.35rem 0.75rem;
+    min-height: 32px;
+    line-height: 1.25;
+    box-shadow: none;
+}
+
+.btn-sm {
+    min-height: 28px;
+    padding: 0.2rem 0.55rem;
+    font-size: 0.75rem;
+}
+
+.btn-lg {
+    min-height: 36px;
+    padding: 0.4rem 1rem;
+    font-size: 0.875rem;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--brand-red, #c62828), var(--brand-red-dark, #8e1b1b)) !important;
+    border-color: var(--brand-red-dark, #8e1b1b) !important;
+    box-shadow: 0 1px 2px rgba(142, 27, 27, 0.2) !important;
+}
+
+.btn-primary:hover {
+    box-shadow: 0 2px 6px rgba(142, 27, 27, 0.25) !important;
+}
+
+.btn-outline-secondary {
+    color: var(--erp-label);
+    border-color: var(--erp-line-strong);
+    background: #fff;
+}
+
+/* —— Tables (global) —— */
+.table,
+.dsp-table,
+.dsp-entry-table,
+.dsp-queue-table,
+.sales-table,
+.so-lines-table {
+    --bs-table-color: var(--erp-ink-soft);
+    font-size: 0.8125rem;
+}
+
+.table thead th,
+.dsp-table thead th,
+.dsp-entry-table thead th,
+.dsp-queue-table thead th,
+.sales-table thead th {
+    background: #f1f5f9 !important;
+    color: var(--erp-label) !important;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--erp-line-strong) !important;
+    padding: 0.5rem 0.65rem !important;
+    white-space: nowrap;
+}
+
+.table tbody td,
+.dsp-table tbody td,
+.dsp-entry-table tbody td,
+.dsp-queue-table tbody td {
+    padding: 0.5rem 0.65rem !important;
+    border-color: var(--erp-line) !important;
+    vertical-align: middle;
+}
+
+.table-hover > tbody > tr:hover > *,
+.dsp-queue-row:hover,
+.dsp-table tbody tr:hover {
+    background: #f8fafc !important;
+}
+
+.table-responsive,
+.dsp-table-wrap,
+.dsp-panel__body--scroll,
+.dsp-queue-scroll {
+    border-radius: 6px;
+}
+
+/* Sticky headers in scroll panels */
+.dsp-panel__body--scroll thead th,
+.dsp-queue-scroll thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+/* —— Cards —— */
+.card,
+.dsp-panel,
+.dsp-entry-card,
+.dsp-entry-widget,
+.so-section-card,
+.so-summary-card {
+    box-shadow: var(--erp-shadow-card) !important;
+    border-color: var(--erp-line) !important;
+}
+
+.card::before {
+    opacity: 0.7;
+}
+
+/* —— Standard ERP badges —— */
+.erp-badge,
+.dsp-stock-pill,
+.so-badge {
+    display: inline-block;
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.2rem 0.45rem;
+    border-radius: 4px;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.erp-badge--ready,
+.dsp-stock--ready,
+.so-badge--ready {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.erp-badge--active {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.erp-badge--partial,
+.dsp-stock--partial,
+.so-badge--partial {
+    background: #ffedd5;
+    color: #9a3412;
+}
+
+.erp-badge--waiting,
+.dsp-stock--production,
+.so-badge--production {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.erp-badge--dispatched,
+.so-badge--dispatched {
+    background: #14532d;
+    color: #ecfdf5;
+}
+
+.erp-badge--inactive,
+.so-badge--muted,
+.so-badge--pending {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+/* —— Forms —— */
+.form-control,
+.form-select {
+    border-color: var(--erp-line-strong);
+    font-size: 0.8125rem;
+    min-height: 34px;
+    color: var(--erp-ink-soft);
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--brand-red, #c62828);
+    box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.12);
+}
+
+.form-control::placeholder {
+    color: #94a3b8;
+}
+
+/* —— Section panels with divider —— */
+.dsp-panel__head,
+.so-section-card__head {
+    border-bottom: 1px solid var(--erp-line);
+}
+
+/* —— HR wide tables —— */
+.employee-directory-scroll,
+.erp-page .table-responsive.erp-table-scroll-x {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* —— Reduce card hover lift globally (less playful) —— */
+.module-shell .card:hover,
+.erp-page .card:hover {
+    transform: none;
+}
+
+/* —— Workflow bars —— */
+.so-workflow,
+.dsp-flow {
+    border-color: var(--erp-line);
+}
+
+.so-workflow__step,
+.dsp-flow__step {
+    color: var(--erp-hint);
+    font-weight: 600;
+}
+
+.so-workflow__step.is-current,
+.dsp-flow__step.is-active {
+    color: #fff;
+}
+
+.so-workflow-hint {
+    border-color: var(--erp-line);
+    background: var(--erp-surface-muted);
+}

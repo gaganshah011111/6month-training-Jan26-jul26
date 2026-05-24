@@ -35,6 +35,7 @@ $users = $pdo->query('SELECT id, full_name, email, role, status, created_at FROM
             <option>Production Manager</option>
             <option>Inventory Manager</option>
             <option>Dispatch Manager</option>
+            <option>Sales Manager</option>
             <option>Quality Manager</option>
             <option>Employee</option>
         </select>

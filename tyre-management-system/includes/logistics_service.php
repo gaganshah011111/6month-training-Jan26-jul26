@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/dispatch_service.php';
+require_once __DIR__ . '/department_hierarchy.php';
 
 const LOGISTICS_TABS = ['drivers', 'vehicles', 'transport'];
 
@@ -82,8 +83,41 @@ function logistics_save_transport(PDO $pdo, array $data, ?int $id = null): int
     return dispatch_save_transport($pdo, $data, $id);
 }
 
+function logistics_ensure_vehicle_columns(PDO $pdo): void
+{
+    if (!dh_table_exists($pdo, 'dispatch_vehicles')) {
+        return;
+    }
+    if (!dh_column_exists($pdo, 'dispatch_vehicles', 'insurance_expiry')) {
+        try {
+            $pdo->exec('ALTER TABLE dispatch_vehicles ADD COLUMN insurance_expiry DATE NULL AFTER capacity');
+        } catch (Throwable) {
+        }
+    }
+    if (!dh_column_exists($pdo, 'dispatch_vehicles', 'rc_number')) {
+        try {
+            $pdo->exec('ALTER TABLE dispatch_vehicles ADD COLUMN rc_number VARCHAR(60) NULL AFTER insurance_expiry');
+        } catch (Throwable) {
+        }
+    }
+}
+
+function logistics_parse_insurance_expiry(array $data): ?string
+{
+    $raw = trim((string)($data['insurance_expiry'] ?? ''));
+    if ($raw === '') {
+        return null;
+    }
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw)) {
+        throw new InvalidArgumentException('Insurance expiry must be a valid date (YYYY-MM-DD).');
+    }
+
+    return $raw;
+}
+
 function logistics_save_vehicle(PDO $pdo, array $data, ?int $id = null): int
 {
+    logistics_ensure_vehicle_columns($pdo);
     $number = strtoupper(trim((string)($data['vehicle_number'] ?? '')));
     if ($number === '') {
         throw new InvalidArgumentException('Vehicle number is required.');
@@ -95,6 +129,8 @@ function logistics_save_vehicle(PDO $pdo, array $data, ?int $id = null): int
         'n' => $number,
         'vt' => trim((string)($data['vehicle_type'] ?? '')) ?: null,
         'cap' => trim((string)($data['capacity'] ?? '')) ?: null,
+        'ins' => logistics_parse_insurance_expiry($data),
+        'rc' => trim((string)($data['rc_number'] ?? '')) ?: null,
         'did' => $driverId,
         'tid' => $transport['id'],
         's' => in_array(($data['status'] ?? 'Active'), ['Active', 'Inactive'], true) ? $data['status'] : 'Active',
@@ -103,7 +139,7 @@ function logistics_save_vehicle(PDO $pdo, array $data, ?int $id = null): int
     if ($id) {
         $pdo->prepare(
             'UPDATE dispatch_vehicles SET vehicle_number=:n, vehicle_type=:vt, capacity=:cap,
-             driver_id=:did, transport_company_id=:tid, status=:s WHERE id=:id'
+             insurance_expiry=:ins, rc_number=:rc, driver_id=:did, transport_company_id=:tid, status=:s WHERE id=:id'
         )->execute($params + ['id' => $id]);
         logistics_sync_vehicle_driver($pdo, $id, $driverId);
 
@@ -111,8 +147,8 @@ function logistics_save_vehicle(PDO $pdo, array $data, ?int $id = null): int
     }
 
     $pdo->prepare(
-        'INSERT INTO dispatch_vehicles (vehicle_number, vehicle_type, capacity, driver_id, transport_company_id, status)
-         VALUES (:n,:vt,:cap,:did,:tid,:s)'
+        'INSERT INTO dispatch_vehicles (vehicle_number, vehicle_type, capacity, insurance_expiry, rc_number, driver_id, transport_company_id, status)
+         VALUES (:n,:vt,:cap,:ins,:rc,:did,:tid,:s)'
     )->execute($params);
     $newId = (int)$pdo->lastInsertId();
     logistics_sync_vehicle_driver($pdo, $newId, $driverId);
@@ -293,23 +329,69 @@ function logistics_get_driver(PDO $pdo, int $id): ?array
     return $row ?: null;
 }
 
+/** @return list<array<string, mixed>> */
+function logistics_vehicles_for_driver(PDO $pdo, int $driverId): array
+{
+    if ($driverId < 1) {
+        return [];
+    }
+    $rows = [];
+    $seen = [];
+    $st = $pdo->prepare(
+        "SELECT v.id, v.vehicle_number, v.vehicle_type, v.capacity, v.driver_id, v.transport_company_id,
+                v.status, d.driver_name, t.company_name AS transport_company_name
+         FROM dispatch_vehicles v
+         LEFT JOIN dispatch_drivers d ON d.id = v.driver_id
+         LEFT JOIN dispatch_transport_companies t ON t.id = v.transport_company_id
+         WHERE v.status = 'Active' AND (v.driver_id = :did OR v.id = (SELECT vehicle_id FROM dispatch_drivers WHERE id = :did2 LIMIT 1))
+         ORDER BY v.vehicle_number ASC"
+    );
+    $st->execute(['did' => $driverId, 'did2' => $driverId]);
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) ?: [] as $v) {
+        $id = (int)$v['id'];
+        if (isset($seen[$id])) {
+            continue;
+        }
+        $seen[$id] = true;
+        $rows[] = $v;
+    }
+
+    return $rows;
+}
+
 /** Active logistics records for dispatch form (JSON-friendly). */
 function logistics_dispatch_bundle(PDO $pdo): array
 {
+    $allVehicles = logistics_list_vehicles($pdo);
+    $vehiclesByDriver = [];
+    foreach ($allVehicles as $v) {
+        $did = (int)($v['driver_id'] ?? 0);
+        if ($did > 0) {
+            $vehiclesByDriver[$did][] = (int)$v['id'];
+        }
+    }
+
     $drivers = [];
     foreach (logistics_list_drivers($pdo) as $d) {
+        $driverId = (int)$d['id'];
         $vid = (int)($d['vehicle_id'] ?? 0);
+        $vehicleIds = $vehiclesByDriver[$driverId] ?? [];
+        if ($vid > 0 && !in_array($vid, $vehicleIds, true)) {
+            $vehicleIds[] = $vid;
+        }
+        sort($vehicleIds);
         $drivers[] = [
-            'id' => (int)$d['id'],
+            'id' => $driverId,
             'name' => (string)$d['driver_name'],
             'vehicle_id' => $vid,
+            'vehicle_ids' => $vehicleIds,
             'vehicle_no' => (string)($d['vehicle_number_linked'] ?? $d['vehicle_no'] ?? ''),
             'transport_id' => (int)($d['transport_company_id'] ?? 0),
             'transport' => (string)($d['transport_company'] ?? ''),
         ];
     }
     $vehicles = [];
-    foreach (logistics_list_vehicles($pdo) as $v) {
+    foreach ($allVehicles as $v) {
         $vehicles[] = [
             'id' => (int)$v['id'],
             'number' => (string)$v['vehicle_number'],
@@ -346,10 +428,17 @@ function logistics_resolve_dispatch(PDO $pdo, array $data): array
     }
 
     $driver = dispatch_resolve_driver($pdo, ['driver_id' => $driverId]);
+    $resolvedDriverId = (int)($driver['id'] ?? 0);
 
-    if ($vehicleId < 1 && !empty($driver['id'])) {
-        $dRow = logistics_get_driver($pdo, (int)$driver['id']);
+    if ($vehicleId < 1 && $resolvedDriverId > 0) {
+        $dRow = logistics_get_driver($pdo, $resolvedDriverId);
         $vehicleId = (int)($dRow['vehicle_id'] ?? 0);
+    }
+    if ($vehicleId > 0 && $resolvedDriverId > 0) {
+        $allowedIds = array_map(static fn(array $row): int => (int)$row['id'], logistics_vehicles_for_driver($pdo, $resolvedDriverId));
+        if ($allowedIds !== [] && !in_array($vehicleId, $allowedIds, true)) {
+            throw new InvalidArgumentException('Selected vehicle is not assigned to this driver.');
+        }
     }
     if ($vehicleId > 0) {
         $v = logistics_get_vehicle($pdo, $vehicleId);

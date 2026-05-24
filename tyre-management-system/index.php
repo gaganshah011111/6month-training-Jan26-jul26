@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/sales_auth.php';
 require_once __DIR__ . '/config/app.php';
 
 require_auth();
@@ -29,6 +30,8 @@ if (!$path) {
     exit;
 }
 
+sales_enforce_department_access($page);
+
 if (!can_access_page($page, $user)) {
     $target = role_home_page((string)($user['role'] ?? ''));
     if ($target === $page) {
@@ -48,7 +51,7 @@ if (str_starts_with((string)$page, 'api/')) {
     exit;
 }
 
-if ($page === 'employees/credential-slip' || $page === 'payroll/payslip' || $page === 'dispatch/slip') {
+if ($page === 'employees/credential-slip' || $page === 'payroll/payslip' || $page === 'dispatch/slip' || $page === 'sales/invoice-print') {
     require __DIR__ . '/' . $path;
     exit;
 }
@@ -90,6 +93,9 @@ $postRedirectPaths = [
     'modules/quality/pending.php',
     'modules/quality/inspect.php',
     'modules/raw_materials/index.php',
+    'modules/sales/customers.php',
+    'modules/sales/order.php',
+    'modules/sales/payments.php',
 ];
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($path, $postRedirectPaths, true)) {
     require __DIR__ . '/' . $path;
@@ -156,15 +162,24 @@ if (str_starts_with((string)$page, 'employee/')) {
     header('Pragma: no-cache');
 }
 
+$salesShell = is_sales_department_route($page);
 require __DIR__ . '/includes/header.php';
-require __DIR__ . '/includes/navbar.php';
+if ($salesShell) {
+    require __DIR__ . '/includes/sales_navbar.php';
+} else {
+    require __DIR__ . '/includes/navbar.php';
+}
 $flash = get_flash();
 ?>
-<div class="container-fluid">
+<div class="container-fluid<?= $salesShell ? ' sales-shell' : '' ?>">
     <div class="row">
-        <?php require __DIR__ . '/includes/sidebar.php'; ?>
-        <main class="col-lg-10 col-md-9 p-4 offset-content col-main erp-layout">
-            <div class="<?= e(erp_ui_page_class()) ?> module-shell">
+        <?php if ($salesShell) {
+            require __DIR__ . '/includes/sales_sidebar.php';
+        } else {
+            require __DIR__ . '/includes/sidebar.php';
+        } ?>
+        <main class="col-lg-10 col-md-9 p-4 offset-content col-main erp-layout<?= $salesShell ? ' sales-layout' : '' ?>">
+            <div class="<?= e(erp_ui_page_class()) ?> module-shell<?= $salesShell ? ' sales-module-shell' : '' ?>">
                 <?php if ($flash): ?>
                     <div class="alert alert-<?= e($flash['type']) ?> erp-page__flash alert-dismissible fade show py-2 mb-2" role="alert">
                         <?= e($flash['message']) ?>

@@ -44,7 +44,7 @@ $iconMap = [
 <aside class="col-lg-2 col-md-3 app-sidebar min-vh-100 p-3 sidebar-fixed">
     <?php
     $menu = match ($role) {
-        'Super Admin' => [
+        'Super Admin', 'Admin' => [
             'System' => ['super/dashboard' => 'Super Dashboard', 'users/index' => 'User Management', 'leave/list' => 'Leave', 'hr/payroll-settings' => 'Payroll Settings', 'settings/profile' => 'System Settings', 'reports/hr' => 'Global Reports'],
         ],
         'HR Manager' => [

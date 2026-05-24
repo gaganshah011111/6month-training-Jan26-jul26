@@ -961,6 +961,18 @@ class Database
         if (!self::hasColumn($pdo, 'dispatch', 'vehicle_id')) {
             $pdo->exec('ALTER TABLE dispatch ADD COLUMN vehicle_id INT NULL AFTER vehicle_no');
         }
+        if (!self::hasColumn($pdo, 'dispatch_vehicles', 'insurance_expiry')) {
+            try {
+                $pdo->exec('ALTER TABLE dispatch_vehicles ADD COLUMN insurance_expiry DATE NULL AFTER capacity');
+            } catch (Throwable) {
+            }
+        }
+        if (!self::hasColumn($pdo, 'dispatch_vehicles', 'rc_number')) {
+            try {
+                $pdo->exec('ALTER TABLE dispatch_vehicles ADD COLUMN rc_number VARCHAR(60) NULL AFTER insurance_expiry');
+            } catch (Throwable) {
+            }
+        }
 
         $vehicleCount = (int)$pdo->query('SELECT COUNT(*) FROM dispatch_vehicles')->fetchColumn();
         if ($vehicleCount === 0) {

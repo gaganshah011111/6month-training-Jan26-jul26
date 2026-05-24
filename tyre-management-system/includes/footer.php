@@ -51,6 +51,16 @@ if ($footerPage === 'reports/production') {
     $prodRptVer = is_file($prodRptJs) ? (string)filemtime($prodRptJs) : (string)time();
     echo '<script src="assets/js/production-entry-table.js?v=' . e($prodRptVer) . '"></script>' . "\n";
 }
+if ($footerPage === 'sales/order') {
+    $soJs = __DIR__ . '/../assets/js/sales-order-form.js';
+    $soVer = is_file($soJs) ? (string)filemtime($soJs) : (string)time();
+    echo '<script src="assets/js/sales-order-form.js?v=' . e($soVer) . '"></script>' . "\n";
+}
+if ($footerPage === 'sales/dispatch-entry') {
+    $dspJs = __DIR__ . '/../assets/js/dispatch-form.js';
+    $dspVer = is_file($dspJs) ? (string)filemtime($dspJs) : (string)time();
+    echo '<script src="assets/js/dispatch-form.js?v=' . e($dspVer) . '"></script>' . "\n";
+}
 if (str_starts_with($footerPage, 'machines/')) {
     $machModJs = __DIR__ . '/../assets/js/machine-module.js';
     $machModVer = is_file($machModJs) ? (string)filemtime($machModJs) : (string)time();

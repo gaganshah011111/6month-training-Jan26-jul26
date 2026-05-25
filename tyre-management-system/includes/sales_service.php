@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/production_service.php';
 require_once __DIR__ . '/dispatch_service.php';
+require_once __DIR__ . '/sales_finance.php';
+require_once __DIR__ . '/erp_export.php';
+require_once __DIR__ . '/sales_reports_data.php';
+require_once __DIR__ . '/crm_ui.php';
 
 const SALES_CUSTOMER_TYPES = ['Dealer', 'Distributor', 'Retailer', 'Industrial Buyer'];
 const SALES_CUSTOMER_STATUSES = ['Active', 'Inactive'];
@@ -299,9 +303,11 @@ function sales_list_customers(PDO $pdo, array $filters = []): array
         $sql .= ' AND c.customer_type = :tp';
         $params['tp'] = $filters['type'];
     }
-    if (!empty($filters['q'])) {
-        $sql .= ' AND (c.company_name LIKE :q OR c.customer_code LIKE :q OR c.contact_person LIKE :q OR c.phone LIKE :q OR c.gst_number LIKE :q)';
-        $params['q'] = '%' . $filters['q'] . '%';
+    $searchQ = trim((string)($filters['q'] ?? ''));
+    if ($searchQ !== '') {
+        $sql .= ' AND (c.company_name LIKE :q OR c.customer_code LIKE :q OR c.contact_person LIKE :q
+            OR c.phone LIKE :q OR c.gst_number LIKE :q OR c.email LIKE :q OR c.city LIKE :q OR c.pan_number LIKE :q)';
+        $params['q'] = '%' . $searchQ . '%';
     }
     $sql .= ' ORDER BY c.company_name ASC';
     $st = $pdo->prepare($sql);
@@ -457,6 +463,11 @@ function sales_list_orders(PDO $pdo, array $filters = []): array
     if (!empty($filters['tyre_type'])) {
         $sql .= ' AND EXISTS (SELECT 1 FROM sales_order_items oi WHERE oi.order_id = o.id AND oi.tyre_type = :tt)';
         $params['tt'] = $filters['tyre_type'];
+    }
+    $q = trim((string)($filters['q'] ?? ''));
+    if ($q !== '') {
+        $sql .= ' AND (o.so_number LIKE :q OR c.company_name LIKE :q)';
+        $params['q'] = '%' . $q . '%';
     }
     $dispatchFilter = (string)($filters['dispatch_status'] ?? '');
     if ($dispatchFilter !== '') {
@@ -978,6 +989,11 @@ function sales_list_invoices(PDO $pdo, array $filters = []): array
         $sql .= ' AND i.invoice_date <= :dt';
         $params['dt'] = $filters['to'];
     }
+    $q = trim((string)($filters['q'] ?? ''));
+    if ($q !== '') {
+        $sql .= ' AND (i.invoice_no LIKE :q OR c.company_name LIKE :q OR o.so_number LIKE :q OR i.remarks LIKE :q)';
+        $params['q'] = '%' . $q . '%';
+    }
     $sql .= ' ORDER BY i.invoice_date DESC, i.id DESC';
     $st = $pdo->prepare($sql);
     $st->execute($params);
@@ -1019,15 +1035,41 @@ function sales_refresh_invoice_payment_status(PDO $pdo, int $invoiceId): void
     $paid = (float)$row['amount_paid'];
     $due = (string)($row['due_date'] ?? '');
     $status = 'Pending';
-    if ($paid >= $total - 0.01) {
+    if (sales_is_invoice_fully_paid($total, $paid)) {
         $status = 'Paid';
-    } elseif ($paid > 0) {
+        $pdo->prepare('UPDATE sales_invoices SET amount_paid = total_amount, payment_status = :st WHERE id = :id')
+            ->execute(['st' => $status, 'id' => $invoiceId]);
+
+        return;
+    }
+    if ($paid > sales_payment_tolerance()) {
         $status = 'Partial';
     } elseif ($due !== '' && $due < date('Y-m-d')) {
         $status = 'Overdue';
     }
     $pdo->prepare('UPDATE sales_invoices SET payment_status = :st WHERE id = :id')
         ->execute(['st' => $status, 'id' => $invoiceId]);
+}
+
+/** Snap penny balances (e.g. ₹0.01 left) to Paid after rounding. */
+function sales_reconcile_invoice_balances(PDO $pdo): void
+{
+    if (!dh_table_exists($pdo, 'sales_invoices')) {
+        return;
+    }
+    $rows = $pdo->query('SELECT id, total_amount, amount_paid FROM sales_invoices')->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    foreach ($rows as $row) {
+        $id = (int)$row['id'];
+        $total = (float)$row['total_amount'];
+        $paid = (float)$row['amount_paid'];
+        if (sales_is_invoice_fully_paid($total, $paid)) {
+            $pdo->prepare(
+                "UPDATE sales_invoices SET amount_paid = total_amount, payment_status = 'Paid' WHERE id = :id"
+            )->execute(['id' => $id]);
+        } else {
+            sales_refresh_invoice_payment_status($pdo, $id);
+        }
+    }
 }
 
 function sales_save_payment(PDO $pdo, array $data): int
@@ -1051,9 +1093,21 @@ function sales_save_payment(PDO $pdo, array $data): int
     if (!$inv || (int)$inv['customer_id'] !== $customerId) {
         throw new InvalidArgumentException('Invoice not found for customer.');
     }
-    $pending = (float)$inv['total_amount'] - (float)$inv['amount_paid'];
-    if ($amount > $pending + 0.01) {
-        throw new InvalidArgumentException('Amount exceeds invoice pending balance.');
+    $total = sales_round_money((float)$inv['total_amount']);
+    $paidSoFar = sales_round_money((float)$inv['amount_paid']);
+    $pending = sales_invoice_pending_amount($total, $paidSoFar);
+    if ($pending <= 0) {
+        throw new InvalidArgumentException('This invoice is already fully paid.');
+    }
+    $amount = sales_round_money($amount);
+    if ($amount <= 0) {
+        throw new InvalidArgumentException('Payment amount must be greater than zero.');
+    }
+    if ($amount > $pending + 0.001) {
+        throw new InvalidArgumentException('Amount exceeds invoice pending balance (' . sales_format_money($pending) . ').');
+    }
+    if ($amount >= $pending - 0.001) {
+        $amount = $pending;
     }
 
     $pdo->beginTransaction();

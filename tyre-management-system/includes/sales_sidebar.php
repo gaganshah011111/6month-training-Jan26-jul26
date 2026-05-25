@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/functions.php';
+// Accounts & Finance and Analytics are separate modules — not listed in Sales CRM sidebar.
 
 $page = (string)($_GET['page'] ?? 'sales/dashboard');
 $links = [
@@ -12,7 +13,6 @@ $links = [
     'sales/payments' => ['label' => 'Payments', 'icon' => 'bi-cash-stack'],
     'sales/dispatch' => ['label' => 'Dispatch Tracking', 'icon' => 'bi-truck'],
     'sales/reports' => ['label' => 'CRM Reports', 'icon' => 'bi-clipboard-data'],
-    'sales/analytics' => ['label' => 'Analytics', 'icon' => 'bi-graph-up'],
 ];
 ?>
 <aside class="col-lg-2 col-md-3 app-sidebar min-vh-100 p-3 sidebar-fixed">
@@ -27,9 +27,6 @@ $links = [
             $isActive = true;
         }
         if (!$isActive && $route === 'sales/invoices' && in_array($page, ['sales/invoice', 'sales/invoice-print'], true)) {
-            $isActive = true;
-        }
-        if (!$isActive && $route === 'sales/dispatch' && $page === 'sales/dispatch-entry') {
             $isActive = true;
         }
         ?>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/sales_auth.php';
+require_once __DIR__ . '/includes/accounts_auth.php';
 require_once __DIR__ . '/config/app.php';
 
 require_auth();
@@ -31,6 +32,7 @@ if (!$path) {
 }
 
 sales_enforce_department_access($page);
+accounts_enforce_department_access($page);
 
 if (!can_access_page($page, $user)) {
     $target = role_home_page((string)($user['role'] ?? ''));
@@ -51,8 +53,29 @@ if (str_starts_with((string)$page, 'api/')) {
     exit;
 }
 
-if ($page === 'employees/credential-slip' || $page === 'payroll/payslip' || $page === 'dispatch/slip' || $page === 'sales/invoice-print') {
+if ($page === 'employees/credential-slip' || $page === 'payroll/payslip' || $page === 'dispatch/slip'
+    || $page === 'sales/invoice-print' || $page === 'sales/payment-receipt' || $page === 'sales/order-print') {
     require __DIR__ . '/' . $path;
+    exit;
+}
+
+if ($page === 'sales/dispatch' && isset($_GET['export'])) {
+    require __DIR__ . '/modules/sales/dispatch.php';
+    exit;
+}
+
+if ($page === 'sales/payments' && isset($_GET['export'])) {
+    require __DIR__ . '/modules/sales/payments.php';
+    exit;
+}
+
+if ($page === 'sales/invoices' && isset($_GET['export'])) {
+    require __DIR__ . '/modules/sales/invoices.php';
+    exit;
+}
+
+if ($page === 'sales/reports' && isset($_GET['export'])) {
+    require __DIR__ . '/modules/sales/reports.php';
     exit;
 }
 
@@ -137,6 +160,11 @@ if ($page === 'dispatch/history' && isset($_GET['export'])) {
     exit;
 }
 
+if ($page === 'sales/invoices' && isset($_GET['export'])) {
+    require __DIR__ . '/modules/sales/invoices.php';
+    exit;
+}
+
 if ($page === 'employee/export') {
     require __DIR__ . '/' . $path;
     exit;
@@ -163,23 +191,28 @@ if (str_starts_with((string)$page, 'employee/')) {
 }
 
 $salesShell = is_sales_department_route($page);
+$accountsShell = is_accounts_department_route($page);
 require __DIR__ . '/includes/header.php';
 if ($salesShell) {
     require __DIR__ . '/includes/sales_navbar.php';
+} elseif ($accountsShell) {
+    require __DIR__ . '/includes/navbar.php';
 } else {
     require __DIR__ . '/includes/navbar.php';
 }
 $flash = get_flash();
 ?>
-<div class="container-fluid<?= $salesShell ? ' sales-shell' : '' ?>">
+<div class="container-fluid<?= $salesShell ? ' sales-shell' : ($accountsShell ? ' accounts-shell' : '') ?>">
     <div class="row">
         <?php if ($salesShell) {
             require __DIR__ . '/includes/sales_sidebar.php';
+        } elseif ($accountsShell) {
+            require __DIR__ . '/includes/accounts_sidebar.php';
         } else {
             require __DIR__ . '/includes/sidebar.php';
         } ?>
-        <main class="col-lg-10 col-md-9 p-4 offset-content col-main erp-layout<?= $salesShell ? ' sales-layout' : '' ?>">
-            <div class="<?= e(erp_ui_page_class()) ?> module-shell<?= $salesShell ? ' sales-module-shell' : '' ?>">
+        <main class="col-lg-10 col-md-9 p-4 offset-content col-main erp-layout<?= $salesShell ? ' sales-layout' : ($accountsShell ? ' accounts-layout' : '') ?>">
+            <div class="<?= e(erp_ui_page_class()) ?> module-shell<?= $salesShell ? ' sales-module-shell' : ($accountsShell ? ' accounts-module-shell' : '') ?>">
                 <?php if ($flash): ?>
                     <div class="alert alert-<?= e($flash['type']) ?> erp-page__flash alert-dismissible fade show py-2 mb-2" role="alert">
                         <?= e($flash['message']) ?>

@@ -70,7 +70,6 @@ try {
             <button type="button" class="btn btn-link p-0" onclick="window.print()">Print profile</button>
         </nav>
     </header>
-    <?php require __DIR__ . '/_nav.php'; ?>
     <?php if ($loadError): ?><?= sales_error_alert('Unable to load full customer profile.') ?><?php endif; ?>
 
     <section class="sales-card">

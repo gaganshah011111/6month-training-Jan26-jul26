@@ -10,6 +10,7 @@ require_sales_manager();
 
 $pdo = Database::connection();
 $id = (int)($_GET['id'] ?? 0);
+$preSelectCustomer = (int)($_GET['customer_id'] ?? 0);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
@@ -75,8 +76,12 @@ if ($order && $isView) {
         <?php
         sales_refresh_order_fulfillment($pdo, $id);
         $order = sales_get_order($pdo, $id);
-        $workflowStage = sales_order_workflow_stage($pdo, $order);
-        $orderSb = sales_order_status_badge((string)$order['status']);
+        $workflowTimeline = sales_order_workflow_timeline($pdo, $order);
+        $workflowStage = sales_order_composite_status($pdo, $order);
+        $financial = sales_order_financial_summary($pdo, $order);
+        $customerInsights = sales_customer_insights($pdo, (int)$order['customer_id']);
+        $customerInsights['customer_id'] = (int)$order['customer_id'];
+        $orderSb = $workflowStage;
         $stockSb = sales_order_stock_badge('READY');
         $hasPartial = false;
         $hasProduction = false;
@@ -98,11 +103,13 @@ if ($order && $isView) {
             $stockSb = sales_order_stock_badge('PARTIAL STOCK');
         }
         ?>
+        <?php require __DIR__ . '/_order_timeline.php'; ?>
+
         <div class="so-view-kpis">
-            <article class="so-view-kpi"><span class="so-view-kpi__label">Workflow stage</span><span class="<?= e($workflowStage['class']) ?>"><?= e($workflowStage['label']) ?></span></article>
-            <article class="so-view-kpi"><span class="so-view-kpi__label">ERP status</span><span class="<?= e($orderSb['class']) ?>"><?= e($orderSb['label']) ?></span></article>
+            <article class="so-view-kpi"><span class="so-view-kpi__label">Status</span><span class="<?= e($orderSb['class']) ?>"><?= e($orderSb['label']) ?></span></article>
             <article class="so-view-kpi"><span class="so-view-kpi__label">Stock readiness</span><span class="<?= e($stockSb['class']) ?>"><?= e($stockSb['label']) ?></span></article>
             <article class="so-view-kpi"><span class="so-view-kpi__label">Order total</span><strong><?= e(sales_format_money((float)$order['total_amount'])) ?></strong></article>
+            <article class="so-view-kpi"><span class="so-view-kpi__label">Payment</span><strong><?= e((string)$financial['payment_status']) ?></strong></article>
             <article class="so-view-kpi"><span class="so-view-kpi__label">Customer</span><strong><?= e($order['company_name']) ?></strong></article>
         </div>
 
@@ -114,7 +121,8 @@ if ($order && $isView) {
                         <div class="so-section-card__actions">
                             <?php if (!in_array((string)$order['status'], ['Completed', 'Cancelled'], true)): ?>
                                 <a href="<?= e(route_url('sales/order', ['id' => $id, 'edit' => 1])) ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil me-1"></i> Edit</a>
-                                <a href="<?= e(route_url('sales/dispatch-entry', ['sales_order_id' => $id])) ?>" class="btn btn-sm btn-primary"><i class="bi bi-truck me-1"></i> Dispatch</a>
+                                <a href="<?= e(route_url('sales/dispatch')) ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-truck me-1"></i> Dispatch tracking</a>
+                                <a href="<?= e(route_url('sales/order-print', ['id' => $id])) ?>" class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener">Print / PDF</a>
                                 <?php if ($invId): ?>
                                     <a href="<?= e(route_url('sales/invoice', ['id' => $invId])) ?>" class="btn btn-sm btn-outline-secondary"><i class="bi bi-receipt me-1"></i> Invoice</a>
                                 <?php endif; ?>
@@ -163,6 +171,8 @@ if ($order && $isView) {
                 </section>
             </div>
             <div class="col-lg-4">
+                <?php require __DIR__ . '/_order_financial.php'; ?>
+                <?php require __DIR__ . '/_customer_insights.php'; ?>
                 <aside class="so-summary-card">
                     <h3 class="so-summary-card__title">Order summary</h3>
                     <dl class="so-summary-dl">
@@ -208,7 +218,7 @@ if ($order && $isView) {
                                     <select class="form-select form-select-sm erp-select-search" name="customer_id" id="so-customer" required data-placeholder="Search customer…">
                                         <option value="">Select customer</option>
                                         <?php foreach ($customers as $c): ?>
-                                            <option value="<?= (int)$c['id'] ?>" <?= $order && (int)$order['customer_id'] === (int)$c['id'] ? 'selected' : '' ?>><?= e($c['company_name']) ?></option>
+                                            <option value="<?= (int)$c['id'] ?>" <?= ($order && (int)$order['customer_id'] === (int)$c['id']) || (!$order && $preSelectCustomer === (int)$c['id']) ? 'selected' : '' ?>><?= e($c['company_name']) ?></option>
                                         <?php endforeach; ?>
                                     </select>
                                 </div>

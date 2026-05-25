@@ -17,9 +17,10 @@ function sales_department_routes(): array
         'sales/invoices',
         'sales/invoice',
         'sales/invoice-print',
+        'sales/payment-receipt',
+        'sales/order-print',
         'sales/payments',
         'sales/dispatch',
-        'sales/dispatch-entry',
         'sales/reports',
         'sales/analytics',
         'api/sales-stock',
@@ -35,6 +36,9 @@ function sales_manager_operational_routes(): array
         'api/dispatch-stock',
         'api/dispatch-preview',
         'dispatch/slip',
+        'dispatch/history',
+        'dispatch/list',
+        'dispatch/dashboard',
     ];
 }
 

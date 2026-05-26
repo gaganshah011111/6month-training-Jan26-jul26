@@ -14,7 +14,7 @@ $tabLabel = match ($tabExport) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Inventory Report — <?= e($periodLabel) ?></title>
+    <title>Procurement &amp; Inventory Report — <?= e($periodLabel) ?></title>
     <style>
         @page { size: A4; margin: 14mm; }
         body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #1e293b; margin: 0; padding: 16px; }
@@ -28,7 +28,7 @@ $tabLabel = match ($tabExport) {
     <?php if ($autoPrint): ?><script>window.onload = function () { window.print(); };</script><?php endif; ?>
 </head>
 <body>
-    <h1>Inventory Report — <?= e($tabLabel) ?></h1>
+    <h1>Procurement &amp; Inventory — <?= e($tabLabel) ?></h1>
     <p class="meta">Period: <?= e($periodLabel) ?> · Generated <?= e(date('d M Y H:i')) ?></p>
     <table>
         <?php if ($tabExport === 'history'): ?>

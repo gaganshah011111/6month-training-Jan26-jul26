@@ -54,8 +54,31 @@ if (str_starts_with((string)$page, 'api/')) {
 }
 
 if ($page === 'employees/credential-slip' || $page === 'payroll/payslip' || $page === 'dispatch/slip'
-    || $page === 'sales/invoice-print' || $page === 'sales/payment-receipt' || $page === 'sales/order-print') {
+    || $page === 'sales/invoice-print' || $page === 'sales/payment-receipt' || $page === 'sales/order-print'
+    || $page === 'inventory/purchase-print' || str_starts_with((string)$page, 'inventory/purchase-print')) {
     require __DIR__ . '/' . $path;
+    exit;
+}
+
+// Inventory: redirects, exports, AJAX (no HTML shell)
+if (in_array($page, ['inventory/inward', 'inventory/usage', 'inventory/index'], true)) {
+    require __DIR__ . '/' . $path;
+    exit;
+}
+if ($page === 'inventory/purchase-history' && (isset($_GET['ajax']) || isset($_GET['export']))) {
+    require __DIR__ . '/modules/inventory/purchase_history.php';
+    exit;
+}
+if ($page === 'inventory/purchase-payments' && isset($_GET['export'])) {
+    require __DIR__ . '/modules/inventory/purchase_payments.php';
+    exit;
+}
+if ($page === 'inventory/supplier-ledger' && isset($_GET['export'])) {
+    require __DIR__ . '/modules/inventory/supplier_ledger.php';
+    exit;
+}
+if ($page === 'inventory/materials' && isset($_GET['export'])) {
+    require __DIR__ . '/modules/inventory/materials.php';
     exit;
 }
 
@@ -110,9 +133,10 @@ $postRedirectPaths = [
     'modules/inventory/materials.php',
     'modules/inventory/add_stock.php',
     'modules/inventory/use_stock.php',
-    'modules/inventory/materials.php',
     'modules/inventory/suppliers.php',
     'modules/inventory/adjust_stock.php',
+    'modules/inventory/purchase_history.php',
+    'modules/inventory/purchase_edit.php',
     'modules/quality/pending.php',
     'modules/quality/inspect.php',
     'modules/raw_materials/index.php',

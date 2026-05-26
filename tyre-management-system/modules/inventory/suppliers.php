@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../includes/functions.php';
 require_once __DIR__ . '/../../includes/inventory_service.php';
+require_once __DIR__ . '/../../includes/inv_ui.php';
 
 if (!has_role(['Inventory Manager', 'Super Admin', 'Admin'])) {
     echo 'Access denied';
@@ -39,16 +40,7 @@ if (isset($_GET['edit'])) {
 ?>
 
 <div class="inv-page">
-    <header class="inv-page__head">
-        <div>
-            <h1 class="inv-page__title">Suppliers</h1>
-            <p class="inv-page__sub">Supplier master linked to inward deliveries and raw materials.</p>
-        </div>
-        <nav class="inv-page__links">
-            <a href="<?= e(route_url('inventory/add-stock')) ?>">Add Stock</a>
-            <a href="<?= e(route_url('inventory/dashboard')) ?>">Dashboard</a>
-        </nav>
-    </header>
+<?php inv_page_header('Suppliers', 'Vendor master for purchase inward and supplier ledger.'); ?>
 
     <div class="row g-3">
         <div class="col-lg-4">
@@ -61,6 +53,7 @@ if (isset($_GET['edit'])) {
                         <div><label class="form-label small">Supplier name</label><input class="form-control form-control-sm" name="name" value="<?= e((string)($edit['name'] ?? '')) ?>" required></div>
                         <div><label class="form-label small">Contact person</label><input class="form-control form-control-sm" name="contact_person" value="<?= e((string)($edit['contact_person'] ?? '')) ?>"></div>
                         <div><label class="form-label small">Phone</label><input class="form-control form-control-sm" name="phone" value="<?= e((string)($edit['phone'] ?? '')) ?>"></div>
+                        <div><label class="inv-label">GST number</label><input class="form-control form-control-sm" name="gst_number" value="<?= e((string)($edit['gst_number'] ?? '')) ?>" maxlength="40"><?= inv_hint('GSTIN for tax invoices (optional)') ?></div>
                         <div><label class="form-label small">Email</label><input type="email" class="form-control form-control-sm" name="email" value="<?= e((string)($edit['email'] ?? '')) ?>"></div>
                         <div><label class="form-label small">Supplied materials</label><input class="form-control form-control-sm" name="materials_supplied" placeholder="Rubber, Carbon Black…" value="<?= e((string)($edit['materials_supplied'] ?? '')) ?>"></div>
                         <div><label class="form-label small">Address</label><input class="form-control form-control-sm" name="address" value="<?= e((string)($edit['address'] ?? '')) ?>"></div>
@@ -79,7 +72,7 @@ if (isset($_GET['edit'])) {
         <div class="col-lg-8">
             <section class="inv-card mb-3">
                 <div class="inv-card__head"><h2 class="inv-card__title">Suppliers list</h2></div>
-                <div class="table-responsive">
+                <?php inv_table_scroll_open('min(52vh, 480px)'); ?>
                     <table class="table table-sm inv-table mb-0">
                         <thead><tr><th>Name</th><th>Contact</th><th>Phone</th><th>Materials</th><th>Status</th><th></th></tr></thead>
                         <tbody>
@@ -91,19 +84,19 @@ if (isset($_GET['edit'])) {
                                 <td><?= e((string)($r['materials_supplied'] ?? '—')) ?></td>
                                 <td><?= e((string)($r['status'] ?? 'Active')) ?></td>
                                 <td>
-                                    <a class="small" href="index.php?page=<?= rawurlencode('inventory/suppliers') ?>&view=<?= (int)$r['id'] ?>">Inward</a>
+                                    <a class="small" href="<?= e(route_url('inventory/supplier-ledger', ['supplier_id' => (int)$r['id']])) ?>">Ledger</a>
                                     · <a class="small" href="index.php?page=<?= rawurlencode('inventory/suppliers') ?>&edit=<?= (int)$r['id'] ?>">Edit</a>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
                         </tbody>
                     </table>
-                </div>
+                <?php inv_table_scroll_close(); ?>
             </section>
             <?php if ($viewId > 0): ?>
             <section class="inv-card">
                 <div class="inv-card__head"><h2 class="inv-card__title">Recent inward from supplier</h2></div>
-                <div class="table-responsive">
+                <?php inv_table_scroll_open('min(240px, 32vh)'); ?>
                     <table class="table table-sm inv-table mb-0">
                         <thead><tr><th>Date</th><th>Invoice</th><th>Material</th><th class="text-end">Qty</th></tr></thead>
                         <tbody>
@@ -120,7 +113,7 @@ if (isset($_GET['edit'])) {
                         <?php endif; ?>
                         </tbody>
                     </table>
-                </div>
+                <?php inv_table_scroll_close(); ?>
             </section>
             <?php endif; ?>
         </div>

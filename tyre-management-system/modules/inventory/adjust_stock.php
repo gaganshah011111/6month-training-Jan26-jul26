@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../includes/functions.php';
 require_once __DIR__ . '/../../includes/inventory_service.php';
+require_once __DIR__ . '/../../includes/inv_ui.php';
 
 if (!has_role(['Inventory Manager', 'Super Admin', 'Admin'])) {
     echo 'Access denied';
@@ -35,16 +36,7 @@ if (inv_table_exists($pdo, 'stock_adjustments')) {
 ?>
 
 <div class="inv-page">
-    <header class="inv-page__head">
-        <div>
-            <h1 class="inv-page__title">Adjust Stock</h1>
-            <p class="inv-page__sub">Correct physical count differences — system calculates the adjustment automatically.</p>
-        </div>
-        <nav class="inv-page__links">
-            <a href="<?= e(route_url('inventory/dashboard')) ?>">Dashboard</a>
-            <a href="<?= e(route_url('inventory/use-stock')) ?>">Use Stock</a>
-        </nav>
-    </header>
+<?php inv_page_header('Adjust Stock', 'Correct physical count differences — the system calculates the adjustment automatically.'); ?>
 
     <div class="row g-3">
         <div class="col-lg-4">
@@ -82,7 +74,7 @@ if (inv_table_exists($pdo, 'stock_adjustments')) {
         <div class="col-lg-8">
             <section class="inv-card">
                 <div class="inv-card__head"><h2 class="inv-card__title">Recent adjustments</h2></div>
-                <div class="table-responsive">
+                <?php inv_table_scroll_open('min(52vh, 480px)'); ?>
                     <table class="table table-sm inv-table mb-0">
                         <thead><tr><th>Date</th><th>Material</th><th class="text-end">Was</th><th class="text-end">Now</th><th class="text-end">Diff</th><th>Reason</th><th>By</th></tr></thead>
                         <tbody>
@@ -100,7 +92,7 @@ if (inv_table_exists($pdo, 'stock_adjustments')) {
                         <?php if ($recent === []): ?><tr><td colspan="7" class="text-center text-muted">No adjustments yet.</td></tr><?php endif; ?>
                         </tbody>
                     </table>
-                </div>
+                <?php inv_table_scroll_close(); ?>
             </section>
         </div>
     </div>

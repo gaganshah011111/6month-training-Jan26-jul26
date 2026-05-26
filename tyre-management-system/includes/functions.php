@@ -237,6 +237,12 @@ function page_allowed_roles(): array
         'inventory/list' => ['Inventory Manager', 'Super Admin', 'Admin'],
         'inventory/materials' => ['Inventory Manager', 'Super Admin', 'Admin'],
         'inventory/add-stock' => ['Inventory Manager', 'Super Admin', 'Admin'],
+        'inventory/purchase-inward' => ['Inventory Manager', 'Super Admin', 'Admin'],
+        'inventory/purchase-history' => ['Inventory Manager', 'Super Admin', 'Admin'],
+        'inventory/purchase-print' => ['Inventory Manager', 'Super Admin', 'Admin'],
+        'inventory/purchase-edit' => ['Inventory Manager', 'Super Admin', 'Admin'],
+        'inventory/purchase-payments' => ['Inventory Manager', 'Super Admin', 'Admin'],
+        'inventory/supplier-ledger' => ['Inventory Manager', 'Super Admin', 'Admin'],
         'inventory/use-stock' => ['Inventory Manager', 'Super Admin', 'Admin'],
         'inventory/adjust-stock' => ['Inventory Manager', 'Super Admin', 'Admin'],
         'api/material-history' => ['Inventory Manager', 'Super Admin', 'Admin', 'Production Manager'],
@@ -341,4 +347,28 @@ function erp_dept_label_sql(string $deptAlias = 'd', string $empAlias = 'e'): st
 function erp_desig_label_sql(string $desAlias = 'des', string $empAlias = 'e'): string
 {
     return 'COALESCE(' . erp_collate("{$desAlias}.designation_name") . ', ' . erp_collate("{$empAlias}.designation") . ')';
+}
+
+/** Company display name for PDF/print headers (settings → APP_NAME fallback). */
+function app_company_name(?PDO $pdo = null): string
+{
+    if ($pdo === null && class_exists('Database', false)) {
+        try {
+            $pdo = Database::connection();
+        } catch (Throwable) {
+            $pdo = null;
+        }
+    }
+    if ($pdo instanceof PDO) {
+        try {
+            $st = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'company_name' LIMIT 1");
+            $name = (string)($st->fetchColumn() ?: '');
+            if ($name !== '') {
+                return $name;
+            }
+        } catch (Throwable) {
+        }
+    }
+
+    return defined('APP_NAME') ? (string) APP_NAME : 'Tyre Manufacturing ERP';
 }

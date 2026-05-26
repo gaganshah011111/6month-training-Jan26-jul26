@@ -22,8 +22,8 @@ $iconMap = [
     'Production Entry' => 'bi-clipboard-plus',
     'Machines' => 'bi-cpu',
     'Production Reports' => 'bi-bar-chart',
-    'Inventory' => 'bi-boxes',
-    'Inventory Reports' => 'bi-archive',
+    'Procurement & Inventory' => 'bi-boxes',
+    'Reports' => 'bi-archive',
     'Orders & Dispatch' => 'bi-send',
     'New Dispatch' => 'bi-truck',
     'Dispatch History' => 'bi-clock-history',
@@ -61,13 +61,15 @@ $iconMap = [
             ],
         ],
         'Inventory Manager' => [
-            'Inventory' => [
+            'Procurement & Inventory' => [
                 'inventory/dashboard' => 'Dashboard',
                 'inventory/materials' => 'Materials',
-                'inventory/add-stock' => 'Add Stock',
+                'inventory/add-stock' => 'Purchase Inward',
                 'inventory/use-stock' => 'Use Stock',
                 'inventory/adjust-stock' => 'Adjust Stock',
                 'inventory/suppliers' => 'Suppliers',
+                'inventory/purchase-history' => 'Purchase History',
+                'inventory/purchase-payments' => 'Payment History',
                 'reports/inventory' => 'Reports',
             ],
         ],

@@ -749,6 +749,51 @@ class Database
         if (!self::hasColumn($pdo, 'stock_inward', 'expiry_date')) {
             $pdo->exec('ALTER TABLE stock_inward ADD COLUMN expiry_date DATE NULL AFTER batch_no');
         }
+        if (!self::hasColumn($pdo, 'suppliers', 'gst_number')) {
+            $pdo->exec('ALTER TABLE suppliers ADD COLUMN gst_number VARCHAR(40) NULL AFTER address');
+        }
+        if (!self::hasColumn($pdo, 'raw_materials', 'avg_purchase_rate')) {
+            $pdo->exec('ALTER TABLE raw_materials ADD COLUMN avg_purchase_rate DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER max_stock_level');
+        }
+        $purchaseInwardCols = [
+            'pinv_no' => 'VARCHAR(40) NULL AFTER id',
+            'challan_no' => 'VARCHAR(80) NULL AFTER invoice_no',
+            'gst_percent' => 'DECIMAL(5,2) NOT NULL DEFAULT 0 AFTER rate',
+            'transport_charges' => 'DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER gst_percent',
+            'loading_charges' => 'DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER transport_charges',
+            'other_charges' => 'DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER loading_charges',
+            'discount_amount' => 'DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER other_charges',
+            'subtotal' => 'DECIMAL(14,2) NOT NULL DEFAULT 0 AFTER discount_amount',
+            'gst_amount' => 'DECIMAL(14,2) NOT NULL DEFAULT 0 AFTER subtotal',
+            'total_amount' => 'DECIMAL(14,2) NOT NULL DEFAULT 0 AFTER gst_amount',
+            'paid_amount' => 'DECIMAL(14,2) NOT NULL DEFAULT 0 AFTER total_amount',
+            'payment_status' => "ENUM('Paid','Partial','Unpaid') NOT NULL DEFAULT 'Unpaid' AFTER paid_amount",
+            'payment_mode' => 'VARCHAR(40) NULL AFTER payment_status',
+            'due_date' => 'DATE NULL AFTER payment_mode',
+            'payment_ref' => 'VARCHAR(80) NULL AFTER due_date',
+            'warehouse_location' => 'VARCHAR(120) NULL AFTER payment_ref',
+        ];
+        foreach ($purchaseInwardCols as $col => $def) {
+            if (!self::hasColumn($pdo, 'stock_inward', $col)) {
+                $pdo->exec("ALTER TABLE stock_inward ADD COLUMN {$col} {$def}");
+            }
+        }
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS purchase_payments (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            inward_id INT NOT NULL,
+            payment_date DATE NOT NULL,
+            amount DECIMAL(14,2) NOT NULL DEFAULT 0,
+            payment_mode VARCHAR(40) NULL,
+            payment_ref VARCHAR(80) NULL,
+            notes VARCHAR(500) NULL,
+            recorded_by VARCHAR(150) NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_pp_inward (inward_id),
+            INDEX idx_pp_date (payment_date),
+            CONSTRAINT fk_pp_inward FOREIGN KEY (inward_id) REFERENCES stock_inward(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
         if (!self::hasColumn($pdo, 'stock_usage', 'usage_reason')) {
             $pdo->exec("ALTER TABLE stock_usage ADD COLUMN usage_reason VARCHAR(80) NULL AFTER department");
         }

@@ -185,23 +185,24 @@ function inv_save_material(PDO $pdo, array $data, ?int $id = null): int
         'c' => $code,
         'n' => $name,
         'u' => $unit,
-        'sid' => (int)($data['supplier_id'] ?? 0) ?: null,
         'loc' => trim((string)($data['storage_location'] ?? '')) ?: null,
         'st' => in_array(($data['status'] ?? 'Active'), ['Active', 'Inactive'], true) ? $data['status'] : 'Active',
+        'min' => max(0, (float)($data['minimum_stock'] ?? $data['reorder_level'] ?? 0)),
+        'max' => max(0, (float)($data['maximum_stock'] ?? $data['max_stock_level'] ?? 0)),
     ];
 
     if ($id) {
         $pdo->prepare(
             'UPDATE raw_materials SET material_code=:c, material_name=:n, unit=:u,
-             supplier_id=:sid, storage_location=:loc, status=:st WHERE id=:id'
+             storage_location=:loc, status=:st, reorder_level=:min, max_stock_level=:max WHERE id=:id'
         )->execute($params + ['id' => $id]);
 
         return $id;
     }
 
     $pdo->prepare(
-        'INSERT INTO raw_materials (material_code, material_name, category, unit, stock_qty, reorder_level, max_stock_level, supplier_id, storage_location, status)
-         VALUES (:c,:n,\'General\',:u,0,0,0,:sid,:loc,:st)'
+        'INSERT INTO raw_materials (material_code, material_name, category, unit, stock_qty, reorder_level, max_stock_level, storage_location, status)
+         VALUES (:c,:n,\'General\',:u,0,:min,:max,:loc,:st)'
     )->execute($params);
     $newId = (int)$pdo->lastInsertId();
     inv_log_activity($pdo, 'adjustment', $newId, 0, 'Material registered: ' . $name);
@@ -265,10 +266,7 @@ function inv_apply_material_limits(PDO $pdo, int $materialId, array $data, bool 
 function inv_list_materials_master(PDO $pdo): array
 {
     return $pdo->query(
-        'SELECT rm.*, s.name AS supplier_name
-         FROM raw_materials rm
-         LEFT JOIN suppliers s ON s.id = rm.supplier_id
-         ORDER BY rm.material_name ASC'
+        'SELECT rm.* FROM raw_materials rm ORDER BY rm.material_name ASC'
     )->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 
@@ -298,11 +296,15 @@ function inv_list_materials(PDO $pdo): array
 /** Add stock entry (warehouse receipt). */
 function inv_save_add_stock(PDO $pdo, array $data): int
 {
-    return inv_save_inward($pdo, $data);
+    return inv_purchase_save($pdo, $data);
 }
 
 function inv_save_inward(PDO $pdo, array $data): int
 {
+    if ((int)($data['supplier_id'] ?? 0) > 0) {
+        return inv_purchase_save($pdo, $data);
+    }
+
     $date = (string)($data['inward_date'] ?? '');
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
         throw new InvalidArgumentException('Valid inward date is required.');
@@ -325,7 +327,9 @@ function inv_save_inward(PDO $pdo, array $data): int
     $batchNo = trim((string)($data['batch_no'] ?? '')) ?: null;
     $expiry = (string)($data['expiry_date'] ?? '');
     $expiryDate = preg_match('/^\d{4}-\d{2}-\d{2}$/', $expiry) ? $expiry : null;
+    $rate = max(0, (float)($data['rate'] ?? $data['purchase_rate'] ?? 0));
 
+    inv_purchase_ensure_schema($pdo);
     $pdo->prepare(
         'INSERT INTO stock_inward (inward_date, supplier_id, invoice_no, material_id, batch_no, expiry_date, quantity, rate, received_by, remarks)
          VALUES (:d,:sid,:inv,:mid,:bn,:ex,:q,:rate,:rb,:rm)'
@@ -337,7 +341,7 @@ function inv_save_inward(PDO $pdo, array $data): int
         'bn' => $batchNo,
         'ex' => $expiryDate,
         'q' => $qty,
-        'rate' => 0,
+        'rate' => $rate,
         'rb' => inv_current_user_name(),
         'rm' => trim((string)($data['remarks'] ?? '')) ?: null,
     ]);
@@ -350,6 +354,9 @@ function inv_save_inward(PDO $pdo, array $data): int
         'inward',
         $material['material_name'] . ' stock added +' . $qty . ' ' . $unit
     );
+    if ($rate > 0) {
+        inv_purchase_update_avg_rate($pdo, $materialId, $qty, $rate);
+    }
 
     inv_apply_material_limits($pdo, $materialId, $data, $isFirstInward);
 
@@ -566,6 +573,7 @@ function inv_dashboard(PDO $pdo): array
         'recent_used' => $recentUsed,
         'dept_today' => inv_today_dept_summary($pdo),
         'expiring' => inv_expiring_batches($pdo, 45),
+        'purchase' => inv_purchase_dashboard_data($pdo),
     ];
 }
 
@@ -596,27 +604,29 @@ function inv_save_supplier(PDO $pdo, array $data, ?int $id = null): int
     if ($name === '') {
         throw new InvalidArgumentException('Supplier name is required.');
     }
+    inv_purchase_ensure_schema($pdo);
     $params = [
         'n' => $name,
         'c' => trim((string)($data['contact_person'] ?? '')) ?: null,
         'p' => trim((string)($data['phone'] ?? '')) ?: null,
         'e' => trim((string)($data['email'] ?? '')) ?: null,
         'a' => trim((string)($data['address'] ?? '')) ?: null,
+        'g' => trim((string)($data['gst_number'] ?? '')) ?: null,
         'ms' => trim((string)($data['materials_supplied'] ?? '')) ?: null,
         'st' => in_array(($data['status'] ?? 'Active'), ['Active', 'Inactive'], true) ? $data['status'] : 'Active',
     ];
 
     if ($id) {
         $pdo->prepare(
-            'UPDATE suppliers SET name=:n, contact_person=:c, phone=:p, email=:e, address=:a, materials_supplied=:ms, status=:st WHERE id=:id'
+            'UPDATE suppliers SET name=:n, contact_person=:c, phone=:p, email=:e, address=:a, gst_number=:g, materials_supplied=:ms, status=:st WHERE id=:id'
         )->execute($params + ['id' => $id]);
 
         return $id;
     }
 
     $pdo->prepare(
-        'INSERT INTO suppliers (name, contact_person, phone, email, address, materials_supplied, status)
-         VALUES (:n,:c,:p,:e,:a,:ms,:st)'
+        'INSERT INTO suppliers (name, contact_person, phone, email, address, gst_number, materials_supplied, status)
+         VALUES (:n,:c,:p,:e,:a,:g,:ms,:st)'
     )->execute($params);
 
     return (int)$pdo->lastInsertId();
@@ -630,7 +640,7 @@ function inv_list_suppliers(PDO $pdo): array
 function inv_supplier_recent_inward(PDO $pdo, int $supplierId, int $limit = 10): array
 {
     $st = $pdo->prepare(
-        "SELECT i.inward_date, i.invoice_no, i.quantity, rm.material_name
+        "SELECT i.inward_date, i.pinv_no, i.invoice_no, i.quantity, i.total_amount, i.payment_status, rm.material_name
          FROM stock_inward i
          JOIN raw_materials rm ON rm.id = i.material_id
          WHERE i.supplier_id = :sid
@@ -724,3 +734,5 @@ function inv_report(PDO $pdo, string $from, string $to, int $materialId, int $su
         'supplier_stock' => $supplierStock,
     ];
 }
+
+require_once __DIR__ . '/inventory_purchase.php';

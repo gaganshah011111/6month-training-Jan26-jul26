@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../includes/functions.php';
 require_once __DIR__ . '/../../includes/inventory_service.php';
+require_once __DIR__ . '/../../includes/inv_ui.php';
 
 if (!has_role(['Inventory Manager', 'Super Admin', 'Admin'])) {
     echo 'Access denied';
@@ -17,39 +18,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $editId = (int)($_POST['id'] ?? 0);
         inv_save_material($pdo, $_POST, $editId > 0 ? $editId : null);
-        set_flash('success', $editId > 0 ? 'Material updated.' : 'Material created. Use Add Stock to receive quantity and set alert levels.');
+        set_flash('success', $editId > 0 ? 'Material updated.' : 'Material created. Record purchases via Purchase Inward.');
     } catch (Throwable $e) {
         set_flash('danger', $e->getMessage());
     }
     redirect('inventory/materials');
 }
 
-$suppliers = inv_list_suppliers($pdo);
 $search = trim((string)($_GET['q'] ?? ''));
 $filter = (string)($_GET['filter'] ?? 'all');
+$export = (string)($_GET['export'] ?? '');
 $rows = inv_search_materials_master($pdo, $search, $filter);
+$baseQs = 'page=inventory/materials&q=' . rawurlencode($search) . '&filter=' . rawurlencode($filter);
+
+if ($export === 'csv') {
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="materials.csv"');
+    $out = fopen('php://output', 'w');
+    fputcsv($out, ['Code', 'Material', 'Unit', 'Storage', 'Min stock', 'Current stock', 'Status']);
+    foreach ($rows as $r) {
+        fputcsv($out, [
+            $r['material_code'],
+            $r['material_name'],
+            $r['unit'],
+            $r['storage_location'] ?? '',
+            $r['reorder_level'],
+            $r['stock_qty'],
+            $r['status'] ?? 'Active',
+        ]);
+    }
+    fclose($out);
+    exit;
+}
 $edit = null;
 if (isset($_GET['edit'])) {
-    foreach ($rows as $r) {
-        if ((int)$r['id'] === (int)$_GET['edit']) {
-            $edit = $r;
-            break;
-        }
-    }
+    $edit = inv_get_material_row($pdo, (int)$_GET['edit']);
 }
 ?>
 
 <div class="inv-page">
-    <header class="inv-page__head">
-        <div>
-            <h1 class="inv-page__title">Materials</h1>
-            <p class="inv-page__sub">Material identity only — code, name, unit, supplier. Stock limits are set when you add stock.</p>
-        </div>
-        <nav class="inv-page__links">
-            <a href="<?= e(route_url('inventory/add-stock')) ?>">Add Stock</a>
-            <a href="<?= e(route_url('inventory/dashboard')) ?>">Dashboard</a>
-        </nav>
-    </header>
+<?php inv_page_header(
+    'Materials',
+    'Material master — identity and stock alert levels. Purchases use Purchase Inward.',
+    '<a class="btn btn-primary btn-sm" href="' . e(route_url('inventory/add-stock')) . '">Purchase Inward</a>'
+); ?>
 
     <div class="row g-3">
         <div class="col-lg-3">
@@ -68,15 +80,9 @@ if (isset($_GET['edit'])) {
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div><label class="form-label small">Supplier</label>
-                            <select class="form-select form-select-sm erp-select-search" name="supplier_id" data-placeholder="Search supplier…">
-                                <option value="">—</option>
-                                <?php foreach ($suppliers as $s): ?>
-                                    <option value="<?= (int)$s['id'] ?>" <?= (int)($edit['supplier_id'] ?? 0) === (int)$s['id'] ? 'selected' : '' ?>><?= e($s['name']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div><label class="form-label small">Storage location <span class="text-muted">(optional)</span></label><input class="form-control form-control-sm" name="storage_location" value="<?= e((string)($edit['storage_location'] ?? '')) ?>" placeholder="e.g. Store-A1"></div>
+                        <div><label class="form-label small">Storage location</label><input class="form-control form-control-sm" name="storage_location" value="<?= e((string)($edit['storage_location'] ?? '')) ?>" placeholder="e.g. Store-A1"></div>
+                        <div><label class="form-label small">Minimum stock level</label><input type="number" step="0.01" min="0" class="form-control form-control-sm" name="minimum_stock" value="<?= e((string)($edit['reorder_level'] ?? '0')) ?>"></div>
+                        <div><label class="form-label small">Maximum stock level</label><input type="number" step="0.01" min="0" class="form-control form-control-sm" name="maximum_stock" value="<?= e((string)($edit['max_stock_level'] ?? '0')) ?>"></div>
                         <div><label class="form-label small">Status</label>
                             <select class="form-select form-select-sm" name="status">
                                 <option value="Active" <?= ($edit['status'] ?? 'Active') === 'Active' ? 'selected' : '' ?>>Active</option>
@@ -91,36 +97,51 @@ if (isset($_GET['edit'])) {
         </div>
         <div class="col-lg-9">
             <section class="inv-card">
-                <div class="inv-card__head d-flex flex-wrap justify-content-between align-items-center gap-2">
-                    <h2 class="inv-card__title mb-0">Material master list</h2>
-                    <form method="get" class="d-flex flex-wrap gap-1 align-items-center">
+                <div class="inv-card__head inv-table-panel__head">
+                    <h2 class="inv-card__title mb-0">Material list</h2>
+                    <form method="get" class="d-flex flex-wrap gap-1 align-items-end">
                         <input type="hidden" name="page" value="inventory/materials">
-                        <input type="search" class="form-control form-control-sm" name="q" value="<?= e($search) ?>" placeholder="Search name, code, supplier" style="width:180px">
-                        <select class="form-select form-select-sm" name="filter" style="width:120px">
+                        <div><label class="inv-label d-block">Search</label><input type="search" class="form-control form-control-sm" name="q" value="<?= e($search) ?>" placeholder="Code, name…" style="width:160px"></div>
+                        <div><label class="inv-label d-block">Filter</label>
+                        <select class="form-select form-select-sm" name="filter" style="width:110px">
                             <option value="all" <?= $filter === 'all' ? 'selected' : '' ?>>All</option>
                             <option value="low" <?= $filter === 'low' ? 'selected' : '' ?>>Low stock</option>
-                            <option value="out" <?= $filter === 'out' ? 'selected' : '' ?>>Out of stock</option>
-                            <option value="recent" <?= $filter === 'recent' ? 'selected' : '' ?>>Recently used</option>
-                        </select>
-                        <button class="btn btn-sm btn-outline-secondary">Filter</button>
+                            <option value="out" <?= $filter === 'out' ? 'selected' : '' ?>>Out</option>
+                            <option value="recent" <?= $filter === 'recent' ? 'selected' : '' ?>>Recent</option>
+                        </select></div>
+                        <button class="btn btn-sm btn-primary">Apply</button>
                     </form>
                 </div>
-                <div class="table-responsive">
+                <div class="inv-filter-bar border-0 pt-0 pb-2 px-3 mb-0" style="background:transparent;border:none!important">
+                    <div class="inv-filter-bar__row justify-content-end"><?= inv_filter_exports($baseQs, true, false, false) ?></div>
+                </div>
+                <?php inv_table_scroll_open('min(52vh, 480px)'); ?>
                     <table class="table table-sm inv-table mb-0">
                         <thead>
                             <tr>
-                                <th>Code</th><th>Name</th><th>Unit</th><th>Supplier</th><th>Storage</th><th>Status</th><th></th>
+                                <th>Code</th>
+                                <th>Material</th>
+                                <th>Unit</th>
+                                <th>Storage</th>
+                                <th class="text-end">Min stock</th>
+                                <th class="text-end">Current stock</th>
+                                <th>Status</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                         <?php foreach ($rows as $r): ?>
+                            <?php $meta = inv_stock_status_meta((float)$r['stock_qty'], (float)$r['reorder_level']); ?>
                             <tr>
                                 <td><?= e((string)$r['material_code']) ?></td>
                                 <td><?= e((string)$r['material_name']) ?></td>
                                 <td><?= e((string)$r['unit']) ?></td>
-                                <td><?= e((string)($r['supplier_name'] ?? '—')) ?></td>
                                 <td><?= e((string)($r['storage_location'] ?? '—')) ?></td>
-                                <td><?= e((string)($r['status'] ?? 'Active')) ?></td>
+                                <td class="text-end"><?= e(inv_format_qty((float)$r['reorder_level'])) ?></td>
+                                <td class="text-end fw-semibold"><?= e(inv_format_qty((float)$r['stock_qty'], (string)$r['unit'])) ?></td>
+                                <td>
+                                    <span class="badge inv-badge--<?= e($meta['badge']) ?>"><?= e((string)($r['status'] ?? 'Active')) ?></span>
+                                </td>
                                 <td class="text-nowrap">
                                     <button type="button" class="btn btn-link btn-sm p-0 inv-history-btn" data-id="<?= (int)$r['id'] ?>" data-name="<?= e((string)$r['material_name']) ?>">History</button>
                                     · <a class="small" href="index.php?page=<?= rawurlencode('inventory/materials') ?>&edit=<?= (int)$r['id'] ?>">Edit</a>
@@ -128,11 +149,11 @@ if (isset($_GET['edit'])) {
                             </tr>
                         <?php endforeach; ?>
                         <?php if ($rows === []): ?>
-                            <tr><td colspan="7" class="text-center text-muted">No materials yet. Create one, then use Add Stock.</td></tr>
+                            <tr><td colspan="8" class="text-center inv-muted py-3">No materials yet. Create one, then use Purchase Inward.</td></tr>
                         <?php endif; ?>
                         </tbody>
                     </table>
-                </div>
+                <?php inv_table_scroll_close(); ?>
             </section>
         </div>
     </div>

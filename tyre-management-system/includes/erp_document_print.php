@@ -5,6 +5,26 @@ declare(strict_types=1);
  * Shared print/PDF document shell (matches dispatch slip UI).
  */
 
+function erp_doc_company_name(PDO $pdo): string
+{
+    if (function_exists('app_company_name')) {
+        return app_company_name($pdo);
+    }
+    if (function_exists('dispatch_company_name')) {
+        return dispatch_company_name($pdo);
+    }
+    try {
+        $st = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'company_name' LIMIT 1");
+        $name = (string)($st->fetchColumn() ?: '');
+        if ($name !== '') {
+            return $name;
+        }
+    } catch (Throwable) {
+    }
+
+    return defined('APP_NAME') ? (string) APP_NAME : 'Tyre Manufacturing ERP';
+}
+
 function erp_doc_print_styles(): string
 {
     return <<<'CSS'

@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../includes/functions.php';
 require_once __DIR__ . '/../../includes/inventory_service.php';
+require_once __DIR__ . '/../../includes/inv_ui.php';
 
 if (!has_role(['Inventory Manager', 'Super Admin', 'Admin'])) {
     echo 'Access denied';
@@ -29,16 +30,7 @@ $recent = inv_list_usage($pdo, 30);
 ?>
 
 <div class="inv-page">
-    <header class="inv-page__head">
-        <div>
-            <h1 class="inv-page__title">Use Stock</h1>
-            <p class="inv-page__sub">Production consumption only — record material used by department. Production entries also deduct stock automatically.</p>
-        </div>
-        <nav class="inv-page__links">
-            <a href="<?= e(route_url('inventory/dashboard')) ?>">Dashboard</a>
-            <a href="<?= e(route_url('inventory/materials')) ?>">Materials</a>
-        </nav>
-    </header>
+<?php inv_page_header('Use Stock', 'Record production consumption by department. Production module also deducts stock automatically.'); ?>
 
     <div class="row g-3">
         <div class="col-lg-4">
@@ -81,7 +73,7 @@ $recent = inv_list_usage($pdo, 30);
         <div class="col-lg-8">
             <section class="inv-card">
                 <div class="inv-card__head"><h2 class="inv-card__title">Recent usage entries</h2></div>
-                <div class="table-responsive">
+                <?php inv_table_scroll_open('min(52vh, 480px)'); ?>
                     <table class="table table-sm inv-table mb-0">
                         <thead><tr><th>Date</th><th>Department</th><th>Material</th><th class="text-end">Qty</th><th>Remarks</th></tr></thead>
                         <tbody>
@@ -99,7 +91,7 @@ $recent = inv_list_usage($pdo, 30);
                         <?php endif; ?>
                         </tbody>
                     </table>
-                </div>
+                <?php inv_table_scroll_close(); ?>
             </section>
         </div>
     </div>

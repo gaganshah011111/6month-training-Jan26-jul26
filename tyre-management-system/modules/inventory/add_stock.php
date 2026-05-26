@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../includes/functions.php';
 require_once __DIR__ . '/../../includes/inventory_service.php';
+require_once __DIR__ . '/../../includes/inv_ui.php';
 
 if (!has_role(['Inventory Manager', 'Super Admin', 'Admin'])) {
     echo 'Access denied';
@@ -11,13 +12,21 @@ if (!has_role(['Inventory Manager', 'Super Admin', 'Admin'])) {
 }
 
 $pdo = Database::connection();
+inv_purchase_ensure_schema($pdo);
 $today = date('Y-m-d');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
     try {
-        inv_save_add_stock($pdo, $_POST);
-        set_flash('success', 'Stock added successfully.');
+        $id = inv_purchase_save($pdo, $_POST);
+        $row = inv_purchase_get($pdo, $id);
+        $pinv = (string)($row['pinv_no'] ?? 'PINV-' . $id);
+        set_flash('success', $pinv . ' saved. Stock updated.');
+        header('Location: ' . route_url('inventory/purchase-history', [
+            'view' => $id,
+            'print' => '1',
+        ]));
+        exit;
     } catch (Throwable $e) {
         set_flash('danger', $e->getMessage());
     }
@@ -25,143 +34,219 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $materials = array_filter(inv_list_materials_master($pdo), static fn($m) => ($m['status'] ?? 'Active') === 'Active');
-$recent = inv_list_inward($pdo, 30);
+$suppliers = array_filter(inv_list_suppliers($pdo), static fn($s) => ($s['status'] ?? 'Active') === 'Active');
+$recent = inv_purchase_list($pdo, ['limit' => INV_RECENT_PURCHASES_INWARD]);
+$nextPinv = inv_purchase_next_pinv($pdo, $today);
+
+$supplierJson = json_encode(array_map(static function ($s) {
+    return [
+        'id' => (int)$s['id'],
+        'name' => (string)$s['name'],
+        'gst_number' => (string)($s['gst_number'] ?? ''),
+        'contact_person' => (string)($s['contact_person'] ?? ''),
+        'phone' => (string)($s['phone'] ?? ''),
+    ];
+}, $suppliers), JSON_THROW_ON_ERROR);
 ?>
 
-<div class="inv-page">
-    <header class="inv-page__head">
-        <div>
-            <h1 class="inv-page__title">Add Stock</h1>
-            <p class="inv-page__sub">Record inward quantity. On first receipt, set minimum alert and maximum storage limits.</p>
-        </div>
-        <nav class="inv-page__links">
-            <a href="<?= e(route_url('inventory/dashboard')) ?>">Dashboard</a>
-            <a href="<?= e(route_url('inventory/materials')) ?>">Materials</a>
-        </nav>
-    </header>
+<div class="inv-page inv-purchase-page">
+<?php inv_page_header(
+    'Purchase Inward',
+    'Record supplier purchase — stock, ledger, and payments update automatically.',
+    '<a class="btn btn-outline-secondary btn-sm" href="' . e(route_url('inventory/purchase-history')) . '">History</a>'
+); ?>
 
-    <div class="row g-3">
-        <div class="col-lg-4">
-            <section class="inv-card">
-                <div class="inv-card__head"><h2 class="inv-card__title">Inward entry</h2></div>
-                <div class="inv-card__body">
-                    <form method="post" class="vstack gap-2" id="inv-add-stock-form">
-                        <?= csrf_input() ?>
-                        <div><label class="form-label small">Material</label>
-                            <select class="form-select form-select-sm erp-select-search" name="material_id" id="inv-material-select" required data-placeholder="Search material…">
-                                <option value="">Search material…</option>
-                                <?php foreach ($materials as $m): ?>
-                                    <?php
-                                    $first = inv_material_inward_count($pdo, (int)$m['id']) === 0;
-                                    $needsLimits = $first || inv_material_limits_unset($m);
-                                    ?>
-                                    <option value="<?= (int)$m['id'] ?>"
-                                        data-first="<?= $first ? '1' : '0' ?>"
-                                        data-needs-limits="<?= $needsLimits ? '1' : '0' ?>"
-                                        data-min="<?= e((string)($m['reorder_level'] ?? '0')) ?>"
-                                        data-max="<?= e((string)($m['max_stock_level'] ?? '0')) ?>"
-                                        data-sub="<?= e((string)($m['material_code'] ?? $m['unit'] ?? '')) ?>">
-                                        <?= e($m['material_name']) ?> (<?= e($m['unit']) ?>)
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div><label class="form-label small">Quantity</label><input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="quantity" required></div>
-                        <div class="border-top pt-2 mt-1">
-                            <p class="small text-muted mb-1">Batch / lot (optional)</p>
-                            <div><label class="form-label small">Batch number</label><input class="form-control form-control-sm" name="batch_no" maxlength="80"></div>
-                            <div class="mt-1"><label class="form-label small">Expiry date</label><input type="date" class="form-control form-control-sm" name="expiry_date"></div>
-                        </div>
-                        <div><label class="form-label small">Date</label><input type="date" class="form-control form-control-sm" name="inward_date" value="<?= e($today) ?>" required></div>
-                        <div><label class="form-label small">Supplier reference</label><input class="form-control form-control-sm" name="invoice_no" maxlength="80" placeholder="Supplier / invoice no."></div>
-                        <div><label class="form-label small">Remarks</label><textarea class="form-control form-control-sm" name="remarks" rows="2"></textarea></div>
+    <form method="post" id="inv-purchase-form" class="inv-purchase-form">
+        <?= csrf_input() ?>
 
-                        <div id="inv-limits-panel" class="border rounded p-2 bg-light d-none">
-                            <p class="small fw-semibold mb-2" id="inv-limits-title">Stock alert settings</p>
-                            <div id="inv-limits-optional" class="form-check mb-2 d-none">
-                                <input class="form-check-input" type="checkbox" name="update_limits" value="1" id="inv-update-limits">
-                                <label class="form-check-label small" for="inv-update-limits">Update stock alert limits</label>
-                            </div>
-                            <div id="inv-limits-fields">
-                                <div><label class="form-label small">Minimum stock alert</label><input type="number" step="0.01" min="0" class="form-control form-control-sm" name="minimum_stock" id="inv-min-stock" placeholder="Low stock warning level"></div>
-                                <div class="mt-2"><label class="form-label small">Maximum storage limit</label><input type="number" step="0.01" min="0" class="form-control form-control-sm" name="maximum_stock" id="inv-max-stock" placeholder="Optional max capacity"></div>
-                            </div>
-                        </div>
-
-                        <button class="btn btn-success btn-sm">Add stock</button>
-                    </form>
+        <section class="inv-card inv-purchase-section">
+            <div class="inv-card__head"><h2 class="inv-card__title">1. Supplier details</h2></div>
+            <div class="inv-card__body">
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <label class="form-label">Supplier</label>
+                        <select class="form-select form-select-sm erp-select-search" name="supplier_id" id="inv-supplier-select" required data-placeholder="Select supplier…">
+                            <option value="">Select supplier…</option>
+                            <?php foreach ($suppliers as $s): ?>
+                                <option value="<?= (int)$s['id'] ?>"><?= e((string)$s['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-4"><label class="form-label">GST number</label><input class="form-control form-control-sm" name="supplier_gst_display" id="inv-supplier-gst" readonly placeholder="—"></div>
+                    <div class="col-md-4"><label class="form-label">Contact person</label><input class="form-control form-control-sm" id="inv-supplier-contact" readonly placeholder="—"></div>
+                    <div class="col-md-4"><label class="form-label">Phone</label><input class="form-control form-control-sm" id="inv-supplier-phone" readonly placeholder="—"></div>
+                    <div class="col-md-4">
+                        <label class="inv-label">Supplier invoice no.</label>
+                        <input class="form-control form-control-sm" name="supplier_invoice_no" maxlength="80">
+                        <?= inv_hint("Supplier's original bill number") ?>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="inv-label">Challan number</label>
+                        <input class="form-control form-control-sm" name="challan_no" maxlength="80">
+                        <?= inv_hint('Delivery / transport slip number') ?>
+                    </div>
                 </div>
-            </section>
-        </div>
-        <div class="col-lg-8">
-            <section class="inv-card">
-                <div class="inv-card__head"><h2 class="inv-card__title">Recent inward entries</h2></div>
-                <div class="table-responsive">
-                    <table class="table table-sm inv-table mb-0">
-                        <thead><tr><th>Date</th><th>Material</th><th class="text-end">Qty</th><th>Reference</th><th>Remarks</th></tr></thead>
-                        <tbody>
-                        <?php foreach ($recent as $r): ?>
-                            <tr>
-                                <td><?= e((string)$r['inward_date']) ?></td>
-                                <td><?= e((string)$r['material_name']) ?></td>
-                                <td class="text-end text-success">+<?= e(number_format((float)$r['quantity'], 2)) ?> <?= e((string)$r['unit']) ?></td>
-                                <td><?= e((string)($r['invoice_no'] ?? '—')) ?></td>
-                                <td><?= e((string)($r['remarks'] ?? '—')) ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                        <?php if ($recent === []): ?>
-                            <tr><td colspan="5" class="text-center text-muted">No inward entries yet.</td></tr>
-                        <?php endif; ?>
-                        </tbody>
-                    </table>
+            </div>
+        </section>
+
+        <section class="inv-card inv-purchase-section">
+            <div class="inv-card__head"><h2 class="inv-card__title">2. Material details</h2></div>
+            <div class="inv-card__body">
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <label class="form-label">Material</label>
+                        <select class="form-select form-select-sm erp-select-search" name="material_id" id="inv-material-select" required data-placeholder="Search material…">
+                            <option value="">Search material…</option>
+                            <?php foreach ($materials as $m): ?>
+                                <?php
+                                $first = inv_material_inward_count($pdo, (int)$m['id']) === 0;
+                                $needsLimits = $first || inv_material_limits_unset($m);
+                                ?>
+                                <option value="<?= (int)$m['id'] ?>"
+                                    data-unit="<?= e((string)$m['unit']) ?>"
+                                    data-first="<?= $first ? '1' : '0' ?>"
+                                    data-needs-limits="<?= $needsLimits ? '1' : '0' ?>"
+                                    data-min="<?= e((string)($m['reorder_level'] ?? '0')) ?>"
+                                    data-max="<?= e((string)($m['max_stock_level'] ?? '0')) ?>"
+                                    data-loc="<?= e((string)($m['storage_location'] ?? '')) ?>">
+                                    <?= e($m['material_name']) ?> (<?= e($m['unit']) ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-2"><label class="form-label">Quantity</label><input type="number" step="0.01" min="0.01" class="form-control form-control-sm inv-calc" name="quantity" id="inv-qty" required></div>
+                    <div class="col-md-2"><label class="form-label">Unit</label><input class="form-control form-control-sm" id="inv-unit" readonly></div>
+                    <div class="col-md-2">
+                        <label class="inv-label">Batch number</label>
+                        <input class="form-control form-control-sm" name="batch_no" maxlength="80">
+                        <?= inv_hint('Optional lot / shipment ID from supplier') ?>
+                    </div>
+                    <div class="col-md-2"><label class="inv-label">Expiry date</label><input type="date" class="form-control form-control-sm" name="expiry_date"></div>
+                    <div class="col-md-4">
+                        <label class="inv-label">Warehouse / storage</label>
+                        <input class="form-control form-control-sm" name="warehouse_location" id="inv-warehouse" maxlength="120">
+                        <?= inv_hint('Where material is stored in your warehouse') ?>
+                    </div>
+                    <div class="col-md-4"><label class="inv-label">Purchase date</label><input type="date" class="form-control form-control-sm" name="inward_date" value="<?= e($today) ?>" required></div>
+                    <div class="col-md-4">
+                        <label class="inv-label">PINV (auto)</label>
+                        <input class="form-control form-control-sm bg-light" value="<?= e($nextPinv) ?>" readonly disabled>
+                        <?= inv_hint('Auto-generated internal purchase reference') ?>
+                    </div>
                 </div>
-            </section>
+
+                <div id="inv-limits-panel" class="inv-limits-panel d-none mt-2">
+                    <p class="inv-limits-panel__title" id="inv-limits-title">Stock alert settings</p>
+                    <div id="inv-limits-optional" class="form-check mb-2 d-none">
+                        <input class="form-check-input" type="checkbox" name="update_limits" value="1" id="inv-update-limits">
+                        <label class="form-check-label" for="inv-update-limits">Update stock alert limits</label>
+                    </div>
+                    <div class="row g-2" id="inv-limits-fields">
+                        <div class="col-md-3"><label class="form-label">Minimum stock alert</label><input type="number" step="0.01" min="0" class="form-control form-control-sm" name="minimum_stock" id="inv-min-stock"></div>
+                        <div class="col-md-3"><label class="form-label">Maximum storage</label><input type="number" step="0.01" min="0" class="form-control form-control-sm" name="maximum_stock" id="inv-max-stock"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="row g-3">
+            <div class="col-lg-8">
+                <section class="inv-card inv-purchase-section">
+                    <div class="inv-card__head"><h2 class="inv-card__title">3. Purchase pricing</h2></div>
+                    <div class="inv-card__body">
+                        <div class="row g-2">
+                            <div class="col-md-3"><label class="form-label">Rate per unit (₹)</label><input type="number" step="0.01" min="0" class="form-control form-control-sm inv-calc" name="purchase_rate" id="inv-rate" value="0"></div>
+                            <div class="col-md-3"><label class="form-label">GST %</label><input type="number" step="0.01" min="0" max="100" class="form-control form-control-sm inv-calc" name="gst_percent" id="inv-gst-pct" value="0"></div>
+                            <div class="col-md-3"><label class="form-label">Transport</label><input type="number" step="0.01" min="0" class="form-control form-control-sm inv-calc" name="transport_charges" value="0"></div>
+                            <div class="col-md-3"><label class="form-label">Loading / unloading</label><input type="number" step="0.01" min="0" class="form-control form-control-sm inv-calc" name="loading_charges" value="0"></div>
+                            <div class="col-md-3"><label class="form-label">Other charges</label><input type="number" step="0.01" min="0" class="form-control form-control-sm inv-calc" name="other_charges" value="0"></div>
+                            <div class="col-md-3"><label class="form-label">Discount</label><input type="number" step="0.01" min="0" class="form-control form-control-sm inv-calc" name="discount_amount" value="0"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="inv-card inv-purchase-section">
+                    <div class="inv-card__head"><h2 class="inv-card__title">4. Payment details</h2></div>
+                    <div class="inv-card__body">
+                        <div class="row g-2">
+                            <div class="col-md-3">
+                                <label class="form-label">Payment status</label>
+                                <select class="form-select form-select-sm" name="payment_status" id="inv-pay-status">
+                                    <option value="Paid">Paid</option>
+                                    <option value="Partial">Partial</option>
+                                    <option value="Unpaid" selected>Unpaid</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3"><label class="form-label">Paid amount (₹)</label><input type="number" step="0.01" min="0" class="form-control form-control-sm inv-calc" name="paid_amount" id="inv-paid" value="0"></div>
+                            <div class="col-md-3"><label class="form-label">Remaining (₹)</label><input class="form-control form-control-sm" id="inv-remaining" readonly></div>
+                            <div class="col-md-3">
+                                <label class="form-label">Payment mode</label>
+                                <select class="form-select form-select-sm" name="payment_mode">
+                                    <option value="">—</option>
+                                    <option>Cash</option>
+                                    <option>UPI</option>
+                                    <option>Bank</option>
+                                    <option>Credit</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3"><label class="form-label">Due date</label><input type="date" class="form-control form-control-sm" name="due_date"></div>
+                            <div class="col-md-3"><label class="form-label">Transaction reference</label><input class="form-control form-control-sm" name="payment_ref" maxlength="80"></div>
+                            <div class="col-md-6"><label class="form-label">Notes</label><textarea class="form-control form-control-sm" name="notes" rows="2"></textarea></div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="col-lg-4">
+                <section class="inv-card inv-purchase-totals">
+                    <div class="inv-card__head"><h2 class="inv-card__title">Amount summary</h2></div>
+                    <div class="inv-card__body">
+                        <dl class="inv-totals-dl">
+                            <div><dt>Subtotal</dt><dd id="sum-subtotal">₹0.00</dd></div>
+                            <div><dt>GST</dt><dd id="sum-gst">₹0.00</dd></div>
+                            <div><dt>Extra charges</dt><dd id="sum-extra">₹0.00</dd></div>
+                            <div><dt>Discount</dt><dd id="sum-discount">₹0.00</dd></div>
+                            <div class="inv-totals-dl__final"><dt>Final amount</dt><dd id="sum-total">₹0.00</dd></div>
+                        </dl>
+                        <button type="submit" class="btn btn-success w-100 mt-2">Save purchase inward</button>
+                    </div>
+                </section>
+            </div>
         </div>
-    </div>
+    </form>
+
+    <section class="inv-card mt-3">
+        <div class="inv-card__head">
+            <div>
+                <h2 class="inv-card__title mb-0">Recent purchases</h2>
+                <span class="inv-card__note"><?= e(inv_recent_purchases_note(INV_RECENT_PURCHASES_INWARD)) ?></span>
+            </div>
+        </div>
+        <?php inv_table_scroll_open('min(240px, 32vh)'); ?>
+            <table class="table table-sm inv-table mb-0">
+                <thead><tr><th>PINV</th><th>Date</th><th>Supplier</th><th>Material</th><th class="text-end">Total</th><th>Status</th><th></th></tr></thead>
+                <tbody>
+                <?php foreach ($recent as $r): ?>
+                    <?php $pm = inv_purchase_payment_meta((string)($r['payment_status'] ?? 'Unpaid')); ?>
+                    <tr>
+                        <td><?= e((string)$r['pinv_no']) ?></td>
+                        <td><?= e((string)$r['inward_date']) ?></td>
+                        <td><?= e((string)($r['supplier_name'] ?? '—')) ?></td>
+                        <td><?= e((string)$r['material_name']) ?></td>
+                        <td class="text-end">₹<?= e(number_format((float)$r['total_amount'], 2)) ?></td>
+                        <td><span class="badge inv-pay--<?= e($pm['badge']) ?>"><?= e($pm['label']) ?></span></td>
+                        <td><a class="btn btn-outline-secondary btn-sm" href="<?= e(inv_purchase_print_url((int)$r['id'], true)) ?>" target="_blank" rel="noopener">PDF</a></td>
+                    </tr>
+                <?php endforeach; ?>
+                <?php if ($recent === []): ?>
+                    <tr><td colspan="7" class="text-center inv-muted">No purchases yet.</td></tr>
+                <?php endif; ?>
+                </tbody>
+            </table>
+        <?php inv_table_scroll_close(); ?>
+    </section>
 </div>
 <script>
-(function () {
-    const sel = document.getElementById('inv-material-select');
-    const panel = document.getElementById('inv-limits-panel');
-    const title = document.getElementById('inv-limits-title');
-    const optional = document.getElementById('inv-limits-optional');
-    const updateChk = document.getElementById('inv-update-limits');
-    const limitFields = document.getElementById('inv-limits-fields');
-    const minInp = document.getElementById('inv-min-stock');
-    const maxInp = document.getElementById('inv-max-stock');
-    if (!sel) return;
-
-    function syncLimits() {
-        const opt = sel.options[sel.selectedIndex];
-        if (!opt || !opt.value) {
-            panel?.classList.add('d-none');
-            return;
-        }
-        const isFirst = opt.dataset.first === '1';
-        const needsLimits = opt.dataset.needsLimits === '1';
-        panel?.classList.toggle('d-none', !isFirst && !needsLimits);
-        optional?.classList.toggle('d-none', isFirst);
-        if (title) {
-            title.textContent = isFirst ? 'Stock alert settings (first receipt)' : 'Stock alert settings';
-        }
-        if (isFirst) {
-            if (updateChk) updateChk.checked = false;
-            limitFields?.classList.remove('d-none');
-            minInp?.removeAttribute('disabled');
-            maxInp?.removeAttribute('disabled');
-        } else {
-            limitFields?.classList.toggle('d-none', !updateChk?.checked);
-            if (minInp) minInp.value = opt.dataset.min || '0';
-            if (maxInp) maxInp.value = opt.dataset.max || '0';
-        }
-    }
-
-    sel.addEventListener('change', syncLimits);
-    updateChk?.addEventListener('change', function () {
-        limitFields?.classList.toggle('d-none', !this.checked);
-        minInp?.toggleAttribute('disabled', !this.checked);
-        maxInp?.toggleAttribute('disabled', !this.checked);
-    });
-    syncLimits();
-})();
+window.INV_SUPPLIERS = <?= $supplierJson ?>;
 </script>
+<script src="assets/js/inventory-purchase.js" defer></script>

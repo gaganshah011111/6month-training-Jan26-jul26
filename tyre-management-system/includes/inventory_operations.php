@@ -239,11 +239,11 @@ function inv_expiring_batches(PDO $pdo, int $withinDays = 45): array
 /** @return list<array<string, mixed>> */
 function inv_search_materials_master(PDO $pdo, string $search, string $filter): array
 {
-    $sql = 'SELECT rm.*, s.name AS supplier_name FROM raw_materials rm LEFT JOIN suppliers s ON s.id = rm.supplier_id WHERE 1=1';
+    $sql = 'SELECT rm.* FROM raw_materials rm WHERE 1=1';
     $params = [];
 
     if ($search !== '') {
-        $sql .= ' AND (rm.material_name LIKE :q OR rm.material_code LIKE :q OR s.name LIKE :q)';
+        $sql .= ' AND (rm.material_name LIKE :q OR rm.material_code LIKE :q OR rm.storage_location LIKE :q)';
         $params['q'] = '%' . $search . '%';
     }
 

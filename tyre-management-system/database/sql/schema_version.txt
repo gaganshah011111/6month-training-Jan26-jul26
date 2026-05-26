@@ -1,2 +1,2 @@
-schema_version=020_dispatch_vehicle_fields
-updated_at=2026-05-24T20:25:35+05:30
+schema_version=022_purchase_payments
+updated_at=2026-05-26T19:21:20+05:30

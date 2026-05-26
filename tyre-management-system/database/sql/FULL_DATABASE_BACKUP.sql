@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Tyre ERP — FULL DATABASE BACKUP (use this file if MySQL fails or data is lost)
 -- =============================================================================
--- Generated: 2026-05-24T20:25:34+05:30
+-- Generated: 2026-05-26T19:21:20+05:30
 -- Database: tyre_erp
 -- File: database/sql/FULL_DATABASE_BACKUP.sql
 --
@@ -304,7 +304,7 @@ CREATE TABLE `department_categories` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_dept_cat_code` (`category_code`)
-) ENGINE=InnoDB AUTO_INCREMENT=13759 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=15853 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `department_categories` (`id`, `category_name`, `category_code`, `status`, `created_at`) VALUES (1, 'Core Production', 'CORE_PROD', 'active', '2026-05-14 18:28:16');
 INSERT INTO `department_categories` (`id`, `category_name`, `category_code`, `status`, `created_at`) VALUES (2, 'Quality & Safety', 'QUAL_SAFETY', 'active', '2026-05-14 18:28:16');
@@ -328,7 +328,7 @@ CREATE TABLE `departments` (
   UNIQUE KEY `uk_dept_cat_name` (`category_id`,`department_name`),
   KEY `idx_dept_category` (`category_id`),
   CONSTRAINT `fk_dept_category` FOREIGN KEY (`category_id`) REFERENCES `department_categories` (`id`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=45861 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=52841 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `departments` (`id`, `category_id`, `department_name`, `department_short_name`, `department_code`, `status`, `min_staff_required`, `created_at`) VALUES (1, 1, 'Production Planning & Control (PPC)', 'PPC', 'DEPT_PPC', 'active', NULL, '2026-05-14 18:28:16');
 INSERT INTO `departments` (`id`, `category_id`, `department_name`, `department_short_name`, `department_code`, `status`, `min_staff_required`, `created_at`) VALUES (2, 1, 'Raw Materials & Inventory Management', 'Raw Materials', 'DEPT_RAW_MAT', 'active', NULL, '2026-05-14 18:28:16');
@@ -363,7 +363,7 @@ CREATE TABLE `designations` (
   UNIQUE KEY `uk_desig_dept_code` (`department_id`,`designation_code`),
   KEY `idx_desig_department` (`department_id`),
   CONSTRAINT `fk_desig_department` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=146753 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=169089 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `designations` (`id`, `department_id`, `designation_name`, `designation_code`, `status`, `created_at`) VALUES (1, 1, 'PPC Executive', 'DES_PPC_EXEC', 'active', '2026-05-14 18:28:16');
 INSERT INTO `designations` (`id`, `department_id`, `designation_name`, `designation_code`, `status`, `created_at`) VALUES (2, 1, 'PPC Manager', 'DES_PPC_MGR', 'active', '2026-05-14 18:28:16');
@@ -466,7 +466,7 @@ CREATE TABLE `dispatch` (
   KEY `idx_dispatch_date` (`dispatch_date`),
   KEY `idx_dispatch_sales_order` (`sales_order_id`),
   KEY `idx_dispatch_sales_customer` (`sales_customer_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO `dispatch` (`inventory_id`, `id`, `dispatch_code`, `order_no`, `sales_order_id`, `sales_order_item_id`, `sales_customer_id`, `customer_name`, `customer_id`, `tyre_type`, `invoice_no`, `vehicle_no`, `vehicle_id`, `driver_name`, `driver_id`, `transport_company`, `transport_company_id`, `dispatch_date`, `qty`, `gross_weight_kg`, `tare_weight_kg`, `net_weight_kg`, `remarks`, `status`, `stock_deducted`, `dispatch_status`, `tracking_no`, `created_at`) VALUES (NULL, 3, 'DSP-20260523-001', 'ORD-DEMO-10000', NULL, NULL, NULL, 'Metro Tyre Traders [demo]', 54, 'PCR Car', 'INV-20260523-7862', 'DEMO-MH12AB1234', NULL, 'Mohit Singh', 54, 'North Star Transport [demo]', 29, '2026-05-23', 20, '1200.00', '420.00', '780.00', 'Demo dispatch [demo]', 'Delivered', 1, 'Created', NULL, '2026-05-23 19:14:21');
 INSERT INTO `dispatch` (`inventory_id`, `id`, `dispatch_code`, `order_no`, `sales_order_id`, `sales_order_item_id`, `sales_customer_id`, `customer_name`, `customer_id`, `tyre_type`, `invoice_no`, `vehicle_no`, `vehicle_id`, `driver_name`, `driver_id`, `transport_company`, `transport_company_id`, `dispatch_date`, `qty`, `gross_weight_kg`, `tare_weight_kg`, `net_weight_kg`, `remarks`, `status`, `stock_deducted`, `dispatch_status`, `tracking_no`, `created_at`) VALUES (NULL, 4, 'DSP-20260522-002', 'ORD-DEMO-10001', NULL, NULL, NULL, 'Southern Auto Mart [demo]', 55, 'PCR SUV', 'INV-20260522-7863', 'DEMO-GJ01BT5678', NULL, 'Suresh Patel', 55, 'Western Freight Lines [demo]', 31, '2026-05-22', 23, '1240.00', '422.00', '818.00', 'Demo dispatch [demo]', 'Delivered', 1, 'Created', NULL, '2026-05-23 19:14:21');
@@ -480,6 +480,8 @@ INSERT INTO `dispatch` (`inventory_id`, `id`, `dispatch_code`, `order_no`, `sale
 INSERT INTO `dispatch` (`inventory_id`, `id`, `dispatch_code`, `order_no`, `sales_order_id`, `sales_order_item_id`, `sales_customer_id`, `customer_name`, `customer_id`, `tyre_type`, `invoice_no`, `vehicle_no`, `vehicle_id`, `driver_name`, `driver_id`, `transport_company`, `transport_company_id`, `dispatch_date`, `qty`, `gross_weight_kg`, `tare_weight_kg`, `net_weight_kg`, `remarks`, `status`, `stock_deducted`, `dispatch_status`, `tracking_no`, `created_at`) VALUES (NULL, 12, 'DSP-20260514-010', 'ORD-DEMO-10009', NULL, NULL, NULL, 'Rajasthan Wheel Centre [demo]', 63, 'Two Wheeler', 'INV-20260514-7871', 'DEMO-MP09PQ1122', NULL, 'Rohit Sharma', 63, 'Southern Hauliers [demo]', 32, '2026-05-14', 47, '1560.00', '438.00', '1122.00', 'Demo dispatch [demo]', 'Delivered', 1, 'Created', NULL, '2026-05-23 19:14:21');
 INSERT INTO `dispatch` (`inventory_id`, `id`, `dispatch_code`, `order_no`, `sales_order_id`, `sales_order_item_id`, `sales_customer_id`, `customer_name`, `customer_id`, `tyre_type`, `invoice_no`, `vehicle_no`, `vehicle_id`, `driver_name`, `driver_id`, `transport_company`, `transport_company_id`, `dispatch_date`, `qty`, `gross_weight_kg`, `tare_weight_kg`, `net_weight_kg`, `remarks`, `status`, `stock_deducted`, `dispatch_status`, `tracking_no`, `created_at`) VALUES (NULL, 13, 'DSP-20260513-011', 'ORD-DEMO-10010', NULL, NULL, NULL, 'Metro Tyre Traders [demo]', 54, 'PCR Car', 'INV-20260513-7872', 'DEMO-MH12AB1234', NULL, 'Mohit Singh', 54, 'North Star Transport [demo]', 29, '2026-05-13', 50, '1600.00', '440.00', '1160.00', 'Demo dispatch [demo]', 'Delivered', 1, 'Created', NULL, '2026-05-23 19:14:21');
 INSERT INTO `dispatch` (`inventory_id`, `id`, `dispatch_code`, `order_no`, `sales_order_id`, `sales_order_item_id`, `sales_customer_id`, `customer_name`, `customer_id`, `tyre_type`, `invoice_no`, `vehicle_no`, `vehicle_id`, `driver_name`, `driver_id`, `transport_company`, `transport_company_id`, `dispatch_date`, `qty`, `gross_weight_kg`, `tare_weight_kg`, `net_weight_kg`, `remarks`, `status`, `stock_deducted`, `dispatch_status`, `tracking_no`, `created_at`) VALUES (NULL, 14, 'DSP-20260512-012', 'ORD-DEMO-10011', NULL, NULL, NULL, 'Southern Auto Mart [demo]', 55, 'PCR SUV', 'INV-20260512-7873', 'DEMO-GJ01BT5678', NULL, 'Suresh Patel', 55, 'Western Freight Lines [demo]', 31, '2026-05-12', 53, '1640.00', '442.00', '1198.00', 'Demo dispatch [demo]', 'Delivered', 1, 'Created', NULL, '2026-05-23 19:14:21');
+INSERT INTO `dispatch` (`inventory_id`, `id`, `dispatch_code`, `order_no`, `sales_order_id`, `sales_order_item_id`, `sales_customer_id`, `customer_name`, `customer_id`, `tyre_type`, `invoice_no`, `vehicle_no`, `vehicle_id`, `driver_name`, `driver_id`, `transport_company`, `transport_company_id`, `dispatch_date`, `qty`, `gross_weight_kg`, `tare_weight_kg`, `net_weight_kg`, `remarks`, `status`, `stock_deducted`, `dispatch_status`, `tracking_no`, `created_at`) VALUES (NULL, 15, 'DSP-20260525-001', 'ORD-260525-001', 7, 7, 3, 'Bharat Wheels', NULL, 'TBR Truck', 'INV-20260525-7114', 'DEMO-HR26CD4521', 58, 'Ajay Thakur', 57, 'North Star Transport [demo]', 29, '2026-05-25', 300, '500.00', '450.00', '50.00', NULL, 'Delivered', 1, 'Delivered', NULL, '2026-05-25 17:10:05');
+INSERT INTO `dispatch` (`inventory_id`, `id`, `dispatch_code`, `order_no`, `sales_order_id`, `sales_order_item_id`, `sales_customer_id`, `customer_name`, `customer_id`, `tyre_type`, `invoice_no`, `vehicle_no`, `vehicle_id`, `driver_name`, `driver_id`, `transport_company`, `transport_company_id`, `dispatch_date`, `qty`, `gross_weight_kg`, `tare_weight_kg`, `net_weight_kg`, `remarks`, `status`, `stock_deducted`, `dispatch_status`, `tracking_no`, `created_at`) VALUES (NULL, 16, 'DSP-20260525-002', 'ORD-260525-002', 6, 6, 4, 'Punjab Tyres Distributor', NULL, 'PCR SUV', 'INV-20260525-5722', 'DEMO-UP32GH7788', 60, 'Deepak Kumar', 59, 'Southern Hauliers [demo]', 32, '2026-05-25', 1, '780.00', '699.99', '80.01', NULL, 'Delivered', 1, 'Delivered', NULL, '2026-05-25 17:54:43');
 
 DROP TABLE IF EXISTS `dispatch_customers`;
 CREATE TABLE `dispatch_customers` (
@@ -717,10 +719,10 @@ CREATE TABLE `inventory` (
   KEY `idx_inventory_qty` (`qty`)
 ) ENGINE=InnoDB AUTO_INCREMENT=32 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `inventory` (`id`, `product_name`, `batch_ref`, `qty`, `reorder_level`, `warehouse_location`, `stock_category`, `updated_at`) VALUES (1, 'TBR Truck', 'QC-20260522-1', 50, 50, 'FG-A1', NULL, '2026-05-23 19:14:21');
+INSERT INTO `inventory` (`id`, `product_name`, `batch_ref`, `qty`, `reorder_level`, `warehouse_location`, `stock_category`, `updated_at`) VALUES (1, 'TBR Truck', 'QC-20260522-1', 0, 50, 'FG-A1', NULL, '2026-05-25 17:10:05');
 INSERT INTO `inventory` (`id`, `product_name`, `batch_ref`, `qty`, `reorder_level`, `warehouse_location`, `stock_category`, `updated_at`) VALUES (27, 'PCR Car', 'DEMO-FG-PCR-CAR', 315, 50, 'FG-A1', 'dispatch_ready', '2026-05-23 19:14:21');
-INSERT INTO `inventory` (`id`, `product_name`, `batch_ref`, `qty`, `reorder_level`, `warehouse_location`, `stock_category`, `updated_at`) VALUES (28, 'PCR SUV', 'DEMO-FG-PCR-SUV', 266, 50, 'FG-A1', 'dispatch_ready', '2026-05-23 19:14:21');
-INSERT INTO `inventory` (`id`, `product_name`, `batch_ref`, `qty`, `reorder_level`, `warehouse_location`, `stock_category`, `updated_at`) VALUES (29, 'TBR Truck', 'DEMO-FG-TBR-TRUCK', 260, 50, 'FG-A1', 'dispatch_ready', '2026-05-23 19:14:21');
+INSERT INTO `inventory` (`id`, `product_name`, `batch_ref`, `qty`, `reorder_level`, `warehouse_location`, `stock_category`, `updated_at`) VALUES (28, 'PCR SUV', 'DEMO-FG-PCR-SUV', 265, 50, 'FG-A1', 'dispatch_ready', '2026-05-25 17:54:43');
+INSERT INTO `inventory` (`id`, `product_name`, `batch_ref`, `qty`, `reorder_level`, `warehouse_location`, `stock_category`, `updated_at`) VALUES (29, 'TBR Truck', 'DEMO-FG-TBR-TRUCK', 10, 50, 'FG-A1', 'dispatch_ready', '2026-05-25 17:10:05');
 INSERT INTO `inventory` (`id`, `product_name`, `batch_ref`, `qty`, `reorder_level`, `warehouse_location`, `stock_category`, `updated_at`) VALUES (30, 'Farm / OTR', 'DEMO-FG-FARM---OTR', 67, 50, 'FG-A1', 'dispatch_ready', '2026-05-23 19:14:21');
 INSERT INTO `inventory` (`id`, `product_name`, `batch_ref`, `qty`, `reorder_level`, `warehouse_location`, `stock_category`, `updated_at`) VALUES (31, 'Two Wheeler', 'DEMO-FG-TWO-WHEELER', 431, 50, 'FG-A1', 'dispatch_ready', '2026-05-23 19:14:21');
 
@@ -734,7 +736,7 @@ CREATE TABLE `inventory_activity` (
   `message` varchar(500) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_inv_activity_at` (`activity_at`)
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `inventory_activity` (`id`, `activity_at`, `activity_type`, `material_id`, `qty_change`, `message`) VALUES (1, '2026-05-22 18:08:26', 'adjustment', 3, '10000.00', 'New material added: gaga');
 INSERT INTO `inventory_activity` (`id`, `activity_at`, `activity_type`, `material_id`, `qty_change`, `message`) VALUES (2, '2026-05-22 18:08:30', 'adjustment', 4, '10000.00', 'New material added: gaga');
@@ -747,6 +749,7 @@ INSERT INTO `inventory_activity` (`id`, `activity_at`, `activity_type`, `materia
 INSERT INTO `inventory_activity` (`id`, `activity_at`, `activity_type`, `material_id`, `qty_change`, `message`) VALUES (9, '2026-05-23 18:17:19', 'usage', 1, '-270.00', 'Mixing used 270 kg Natural Rubber');
 INSERT INTO `inventory_activity` (`id`, `activity_at`, `activity_type`, `material_id`, `qty_change`, `message`) VALUES (10, '2026-05-23 18:17:19', 'usage', 2, '-150.00', 'Mixing used 150 kg Carbon Black');
 INSERT INTO `inventory_activity` (`id`, `activity_at`, `activity_type`, `material_id`, `qty_change`, `message`) VALUES (11, '2026-05-23 18:17:19', 'usage', 5, '-30.00', 'Mixing used 30 kg Chemicals');
+INSERT INTO `inventory_activity` (`id`, `activity_at`, `activity_type`, `material_id`, `qty_change`, `message`) VALUES (12, '2026-05-26 18:46:59', 'adjustment', 112, '0.00', 'Material registered: chemial hard');
 
 DROP TABLE IF EXISTS `leave_notifications`;
 CREATE TABLE `leave_notifications` (
@@ -1224,6 +1227,23 @@ INSERT INTO `production_stages` (`id`, `order_id`, `stage_name`, `stage_order`, 
 INSERT INTO `production_stages` (`id`, `order_id`, `stage_name`, `stage_order`, `machine_id`, `operator_id`, `shift`, `status`, `produced_qty`, `rejected_qty`, `downtime_minutes`, `started_at`, `ended_at`, `remarks`) VALUES (4, 1, 'QC', 4, NULL, NULL, 'Morning', 'Pending', 0, 0, 0, NULL, NULL, NULL);
 INSERT INTO `production_stages` (`id`, `order_id`, `stage_name`, `stage_order`, `machine_id`, `operator_id`, `shift`, `status`, `produced_qty`, `rejected_qty`, `downtime_minutes`, `started_at`, `ended_at`, `remarks`) VALUES (5, 1, 'Finished', 5, NULL, NULL, 'Morning', 'Pending', 0, 0, 0, NULL, NULL, NULL);
 
+DROP TABLE IF EXISTS `purchase_payments`;
+CREATE TABLE `purchase_payments` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `inward_id` int(11) NOT NULL,
+  `payment_date` date NOT NULL,
+  `amount` decimal(14,2) NOT NULL DEFAULT 0.00,
+  `payment_mode` varchar(40) DEFAULT NULL,
+  `payment_ref` varchar(80) DEFAULT NULL,
+  `notes` varchar(500) DEFAULT NULL,
+  `recorded_by` varchar(150) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_pp_inward` (`inward_id`),
+  KEY `idx_pp_date` (`payment_date`),
+  CONSTRAINT `fk_pp_inward` FOREIGN KEY (`inward_id`) REFERENCES `stock_inward` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 DROP TABLE IF EXISTS `qc_defect_lines`;
 CREATE TABLE `qc_defect_lines` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -1359,6 +1379,7 @@ CREATE TABLE `raw_materials` (
   `stock_qty` decimal(12,2) NOT NULL DEFAULT 0.00,
   `reorder_level` decimal(12,2) NOT NULL DEFAULT 0.00,
   `max_stock_level` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `avg_purchase_rate` decimal(12,2) NOT NULL DEFAULT 0.00,
   `storage_location` varchar(120) NOT NULL DEFAULT 'Main Store',
   `remarks` varchar(500) DEFAULT NULL,
   `status` enum('Active','Inactive') NOT NULL DEFAULT 'Active',
@@ -1368,29 +1389,30 @@ CREATE TABLE `raw_materials` (
   KEY `idx_material_stock` (`stock_qty`),
   KEY `fk_material_supplier` (`supplier_id`),
   CONSTRAINT `fk_material_supplier` FOREIGN KEY (`supplier_id`) REFERENCES `suppliers` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=112 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=113 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (1, 'RM-1', 'Natural Rubber', 'General', 'kg', '4460.00', '1200.00', '0.00', 'Main Store', NULL, 'Active', 1, '2026-05-14 17:43:38');
-INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (2, 'RM-2', 'Carbon Black', 'General', 'kg', '107009787.97', '800.00', '0.00', 'Main Store', NULL, 'Active', 2, '2026-05-14 17:43:38');
-INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (3, '677', 'gaga', 'Rubber', 'kg', '10000.00', '49.93', '0.00', 'Main Store', NULL, 'Active', 2, '2026-05-22 18:08:26');
-INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (4, '677', 'gaga', 'Rubber', 'kg', '10000.00', '49.93', '0.00', 'Main Store', NULL, 'Active', 2, '2026-05-22 18:08:30');
-INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (5, 'RM-CHEM', 'Chemicals', 'Chemicals', 'kg', '740.00', '100.00', '0.00', 'Store-C1', NULL, 'Active', NULL, '2026-05-23 17:19:25');
-INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (6, 'RM-PACK', 'Packaging', 'Packaging', 'piece', '5000.00', '500.00', '0.00', 'Store-D1', NULL, 'Active', NULL, '2026-05-23 17:19:25');
-INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (97, 'RM-001', 'Natural Rubber', 'Rubber', 'kg', '4400.00', '800.00', '12000.00', 'Store-A', NULL, 'Active', 63, '2026-05-23 19:14:20');
-INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (98, 'RM-002', 'Carbon Black', 'Fillers', 'kg', '3335.00', '500.00', '10000.00', 'Store-B', NULL, 'Active', 64, '2026-05-23 19:14:20');
-INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (99, 'RM-003', 'Sulphur', 'Chemicals', 'kg', '920.00', '100.00', '2000.00', 'Store-C', NULL, 'Active', 65, '2026-05-23 19:14:20');
-INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (100, 'RM-004', 'Nylon Cord', 'Reinforcement', 'kg', '2065.00', '300.00', '5000.00', 'Store-D', NULL, 'Active', 66, '2026-05-23 19:14:20');
-INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (101, 'RM-005', 'Steel Wire', 'Reinforcement', 'kg', '2492.00', '400.00', '6000.00', 'Store-A', NULL, 'Active', 67, '2026-05-23 19:14:20');
-INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (102, 'RM-006', 'Fabric Layer', 'Reinforcement', 'm', '1269.00', '150.00', '3000.00', 'Store-B', NULL, 'Active', 68, '2026-05-23 19:14:20');
-INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (103, 'RM-007', 'Synthetic Rubber', 'Rubber', 'kg', '1846.00', '250.00', '5000.00', 'Store-C', NULL, 'Active', 69, '2026-05-23 19:14:20');
-INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (104, 'RM-008', 'Antioxidant MB', 'Chemicals', 'kg', '653.00', '50.00', '1000.00', 'Store-D', NULL, 'Active', 70, '2026-05-23 19:14:20');
-INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (105, 'RM-009', 'Zinc Oxide', 'Chemicals', 'kg', '820.00', '80.00', '1500.00', 'Store-A', NULL, 'Active', 71, '2026-05-23 19:14:20');
-INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (106, 'RM-010', 'Bead Wire', 'Reinforcement', 'kg', '1527.00', '200.00', '4000.00', 'Store-B', NULL, 'Active', 72, '2026-05-23 19:14:20');
-INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (107, 'RM-011', 'Inner Liner Compound', 'Rubber', 'kg', '804.00', '180.00', '3500.00', 'Store-C', NULL, 'Active', 63, '2026-05-23 19:14:20');
-INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (108, 'RM-012', 'Tread Compound', 'Rubber', 'kg', '1196.00', '220.00', '4500.00', 'Store-D', NULL, 'Active', 64, '2026-05-23 19:14:20');
-INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (109, 'RM-013', 'Solvent Oil', 'Chemicals', 'L', '238.00', '60.00', '1200.00', 'Store-A', NULL, 'Active', 65, '2026-05-23 19:14:20');
-INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (110, 'RM-014', 'Packing Carton', 'Packaging', 'piece', '8000.00', '1000.00', '20000.00', 'Store-B', NULL, 'Active', 66, '2026-05-23 19:14:20');
-INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (111, 'RM-015', 'Process Oil', 'Chemicals', 'L', '85.00', '120.00', '2000.00', 'Store-C', NULL, 'Active', 67, '2026-05-23 19:14:20');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `avg_purchase_rate`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (1, 'RM-1', 'Natural Rubber', 'General', 'kg', '4460.00', '1200.00', '0.00', '0.00', 'Main Store', NULL, 'Active', 1, '2026-05-14 17:43:38');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `avg_purchase_rate`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (2, 'RM-2', 'Carbon Black', 'General', 'kg', '107009787.97', '800.00', '0.00', '0.00', 'Main Store', NULL, 'Active', 2, '2026-05-14 17:43:38');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `avg_purchase_rate`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (3, '677', 'gaga', 'Rubber', 'kg', '10000.00', '49.93', '0.00', '0.00', 'Main Store', NULL, 'Active', 2, '2026-05-22 18:08:26');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `avg_purchase_rate`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (4, '677', 'gaga', 'Rubber', 'kg', '10000.00', '49.93', '0.00', '0.00', 'Main Store', NULL, 'Active', 2, '2026-05-22 18:08:30');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `avg_purchase_rate`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (5, 'RM-CHEM', 'Chemicals', 'Chemicals', 'kg', '740.00', '100.00', '0.00', '0.00', 'Store-C1', NULL, 'Active', NULL, '2026-05-23 17:19:25');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `avg_purchase_rate`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (6, 'RM-PACK', 'Packaging', 'Packaging', 'piece', '5000.00', '500.00', '0.00', '0.00', 'Store-D1', NULL, 'Active', NULL, '2026-05-23 17:19:25');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `avg_purchase_rate`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (97, 'RM-001', 'Natural Rubber', 'Rubber', 'kg', '4400.00', '800.00', '12000.00', '0.00', 'Store-A', NULL, 'Active', 63, '2026-05-23 19:14:20');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `avg_purchase_rate`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (98, 'RM-002', 'Carbon Black', 'Fillers', 'kg', '3335.00', '500.00', '10000.00', '0.00', 'Store-B', NULL, 'Active', 64, '2026-05-23 19:14:20');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `avg_purchase_rate`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (99, 'RM-003', 'Sulphur', 'Chemicals', 'kg', '920.00', '100.00', '2000.00', '0.00', 'Store-C', NULL, 'Active', 65, '2026-05-23 19:14:20');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `avg_purchase_rate`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (100, 'RM-004', 'Nylon Cord', 'Reinforcement', 'kg', '2065.00', '300.00', '5000.00', '0.00', 'Store-D', NULL, 'Active', 66, '2026-05-23 19:14:20');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `avg_purchase_rate`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (101, 'RM-005', 'Steel Wire', 'Reinforcement', 'kg', '2492.00', '400.00', '6000.00', '0.00', 'Store-A', NULL, 'Active', 67, '2026-05-23 19:14:20');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `avg_purchase_rate`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (102, 'RM-006', 'Fabric Layer', 'Reinforcement', 'm', '1269.00', '150.00', '3000.00', '0.00', 'Store-B', NULL, 'Active', 68, '2026-05-23 19:14:20');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `avg_purchase_rate`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (103, 'RM-007', 'Synthetic Rubber', 'Rubber', 'kg', '1846.00', '250.00', '5000.00', '0.00', 'Store-C', NULL, 'Active', 69, '2026-05-23 19:14:20');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `avg_purchase_rate`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (104, 'RM-008', 'Antioxidant MB', 'Chemicals', 'kg', '653.00', '50.00', '1000.00', '0.00', 'Store-D', NULL, 'Active', 70, '2026-05-23 19:14:20');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `avg_purchase_rate`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (105, 'RM-009', 'Zinc Oxide', 'Chemicals', 'kg', '820.00', '80.00', '1500.00', '0.00', 'Store-A', NULL, 'Active', 71, '2026-05-23 19:14:20');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `avg_purchase_rate`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (106, 'RM-010', 'Bead Wire', 'Reinforcement', 'kg', '1527.00', '200.00', '4000.00', '0.00', 'Store-B', NULL, 'Active', 72, '2026-05-23 19:14:20');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `avg_purchase_rate`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (107, 'RM-011', 'Inner Liner Compound', 'Rubber', 'kg', '804.00', '180.00', '3500.00', '0.00', 'Store-C', NULL, 'Active', 63, '2026-05-23 19:14:20');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `avg_purchase_rate`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (108, 'RM-012', 'Tread Compound', 'Rubber', 'kg', '1196.00', '220.00', '4500.00', '0.00', 'Store-D', NULL, 'Active', 64, '2026-05-23 19:14:20');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `avg_purchase_rate`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (109, 'RM-013', 'Solvent Oil', 'Chemicals', 'L', '238.00', '60.00', '1200.00', '0.00', 'Store-A', NULL, 'Active', 65, '2026-05-23 19:14:20');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `avg_purchase_rate`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (110, 'RM-014', 'Packing Carton', 'Packaging', 'piece', '8000.00', '1000.00', '20000.00', '0.00', 'Store-B', NULL, 'Active', 66, '2026-05-23 19:14:20');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `avg_purchase_rate`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (111, 'RM-015', 'Process Oil', 'Chemicals', 'L', '85.00', '120.00', '2000.00', '0.00', 'Store-C', NULL, 'Active', 67, '2026-05-23 19:14:20');
+INSERT INTO `raw_materials` (`id`, `material_code`, `material_name`, `category`, `unit`, `stock_qty`, `reorder_level`, `max_stock_level`, `avg_purchase_rate`, `storage_location`, `remarks`, `status`, `supplier_id`, `created_at`) VALUES (112, 'ch34', 'chemial hard', 'General', 'ltr', '0.00', '0.00', '0.00', '0.00', 'jssd', NULL, 'Active', 65, '2026-05-26 18:46:59');
 
 DROP TABLE IF EXISTS `salaries`;
 CREATE TABLE `salaries` (
@@ -1525,7 +1547,10 @@ CREATE TABLE `sales_dispatch_allocations` (
   KEY `fk_sda_item` (`sales_order_item_id`),
   CONSTRAINT `fk_sda_item` FOREIGN KEY (`sales_order_item_id`) REFERENCES `sales_order_items` (`id`),
   CONSTRAINT `fk_sda_order` FOREIGN KEY (`sales_order_id`) REFERENCES `sales_orders` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `sales_dispatch_allocations` (`id`, `sales_order_id`, `sales_order_item_id`, `dispatch_id`, `qty`, `created_at`) VALUES (1, 7, 7, 15, 300, '2026-05-25 17:10:05');
+INSERT INTO `sales_dispatch_allocations` (`id`, `sales_order_id`, `sales_order_item_id`, `dispatch_id`, `qty`, `created_at`) VALUES (2, 6, 6, 16, 1, '2026-05-25 17:54:43');
 
 DROP TABLE IF EXISTS `sales_dispatch_queue`;
 CREATE TABLE `sales_dispatch_queue` (
@@ -1557,14 +1582,13 @@ CREATE TABLE `sales_dispatch_queue` (
   CONSTRAINT `fk_sdq_customer` FOREIGN KEY (`customer_id`) REFERENCES `sales_customers` (`id`),
   CONSTRAINT `fk_sdq_item` FOREIGN KEY (`sales_order_item_id`) REFERENCES `sales_order_items` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_sdq_order` FOREIGN KEY (`sales_order_id`) REFERENCES `sales_orders` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-INSERT INTO `sales_dispatch_queue` (`id`, `sales_order_id`, `sales_order_item_id`, `so_number`, `customer_id`, `company_name`, `tyre_type`, `ordered_qty`, `available_qty`, `pending_qty`, `dispatchable_qty`, `stock_status`, `queue_status`, `dispatch_readiness`, `expected_dispatch_date`, `order_date`, `order_priority`, `created_at`, `updated_at`) VALUES (1, 1, 1, 'SO-20260524-001', 1, 'Metro Tyre Traders', 'PCR Car', 500, 315, 500, 315, 'PARTIAL STOCK', 'Partially Ready', 'Partial — 315 of 500 ready', '2026-06-03', '2026-05-19', 'Urgent', '2026-05-24 19:13:33', '2026-05-24 19:13:33');
-INSERT INTO `sales_dispatch_queue` (`id`, `sales_order_id`, `sales_order_item_id`, `so_number`, `customer_id`, `company_name`, `tyre_type`, `ordered_qty`, `available_qty`, `pending_qty`, `dispatchable_qty`, `stock_status`, `queue_status`, `dispatch_readiness`, `expected_dispatch_date`, `order_date`, `order_priority`, `created_at`, `updated_at`) VALUES (8, 4, 4, 'SO-20260524-004', 3, 'Bharat Wheels', 'Farm / OTR', 80, 67, 80, 67, 'PARTIAL STOCK', 'Partially Ready', 'Partial — 67 of 80 ready', '2026-06-06', '2026-05-22', 'Medium', '2026-05-24 19:27:27', '2026-05-24 19:27:27');
-INSERT INTO `sales_dispatch_queue` (`id`, `sales_order_id`, `sales_order_item_id`, `so_number`, `customer_id`, `company_name`, `tyre_type`, `ordered_qty`, `available_qty`, `pending_qty`, `dispatchable_qty`, `stock_status`, `queue_status`, `dispatch_readiness`, `expected_dispatch_date`, `order_date`, `order_priority`, `created_at`, `updated_at`) VALUES (12, 5, 5, 'SO-20260524-005', 4, 'Punjab Tyres Distributor', 'PCR SUV', 150, 266, 150, 150, 'READY', 'Ready for Dispatch', 'Ready for Dispatch', '2026-06-07', '2026-05-23', 'Medium', '2026-05-24 20:06:12', '2026-05-24 20:06:12');
-INSERT INTO `sales_dispatch_queue` (`id`, `sales_order_id`, `sales_order_item_id`, `so_number`, `customer_id`, `company_name`, `tyre_type`, `ordered_qty`, `available_qty`, `pending_qty`, `dispatchable_qty`, `stock_status`, `queue_status`, `dispatch_readiness`, `expected_dispatch_date`, `order_date`, `order_priority`, `created_at`, `updated_at`) VALUES (16, 6, 6, 'SO-20260524-006', 4, 'Punjab Tyres Distributor', 'PCR SUV', 1, 266, 1, 1, 'READY', 'Ready for Dispatch', 'Ready for Dispatch', NULL, '2026-05-24', 'Medium', '2026-05-24 20:10:53', '2026-05-24 20:10:53');
-INSERT INTO `sales_dispatch_queue` (`id`, `sales_order_id`, `sales_order_item_id`, `so_number`, `customer_id`, `company_name`, `tyre_type`, `ordered_qty`, `available_qty`, `pending_qty`, `dispatchable_qty`, `stock_status`, `queue_status`, `dispatch_readiness`, `expected_dispatch_date`, `order_date`, `order_priority`, `created_at`, `updated_at`) VALUES (19, 3, 3, 'SO-20260524-003', 2, 'Southern Auto Mart', 'Two Wheeler', 300, 431, 300, 300, 'READY', 'Ready for Dispatch', 'Ready for Dispatch', '2026-06-05', '2026-05-21', 'Medium', '2026-05-24 20:16:31', '2026-05-24 20:16:31');
-INSERT INTO `sales_dispatch_queue` (`id`, `sales_order_id`, `sales_order_item_id`, `so_number`, `customer_id`, `company_name`, `tyre_type`, `ordered_qty`, `available_qty`, `pending_qty`, `dispatchable_qty`, `stock_status`, `queue_status`, `dispatch_readiness`, `expected_dispatch_date`, `order_date`, `order_priority`, `created_at`, `updated_at`) VALUES (20, 2, 2, 'SO-20260524-002', 1, 'Metro Tyre Traders', 'TBR Truck', 200, 310, 200, 200, 'READY', 'Ready for Dispatch', 'Ready for Dispatch', '2026-06-04', '2026-05-20', 'Medium', '2026-05-24 20:17:40', '2026-05-24 20:17:40');
+INSERT INTO `sales_dispatch_queue` (`id`, `sales_order_id`, `sales_order_item_id`, `so_number`, `customer_id`, `company_name`, `tyre_type`, `ordered_qty`, `available_qty`, `pending_qty`, `dispatchable_qty`, `stock_status`, `queue_status`, `dispatch_readiness`, `expected_dispatch_date`, `order_date`, `order_priority`, `created_at`, `updated_at`) VALUES (91, 4, 4, 'SO-20260524-004', 3, 'Bharat Wheels', 'Farm / OTR', 80, 67, 80, 67, 'PARTIAL STOCK', 'Partially Ready', 'Partial — 67 of 80 ready', '2026-06-06', '2026-05-22', 'Medium', '2026-05-25 17:44:43', '2026-05-25 17:44:43');
+INSERT INTO `sales_dispatch_queue` (`id`, `sales_order_id`, `sales_order_item_id`, `so_number`, `customer_id`, `company_name`, `tyre_type`, `ordered_qty`, `available_qty`, `pending_qty`, `dispatchable_qty`, `stock_status`, `queue_status`, `dispatch_readiness`, `expected_dispatch_date`, `order_date`, `order_priority`, `created_at`, `updated_at`) VALUES (92, 3, 3, 'SO-20260524-003', 2, 'Southern Auto Mart', 'Two Wheeler', 300, 431, 300, 300, 'READY', 'Ready for Dispatch', 'Ready for Dispatch', '2026-06-05', '2026-05-21', 'Medium', '2026-05-25 17:44:43', '2026-05-25 17:44:43');
+INSERT INTO `sales_dispatch_queue` (`id`, `sales_order_id`, `sales_order_item_id`, `so_number`, `customer_id`, `company_name`, `tyre_type`, `ordered_qty`, `available_qty`, `pending_qty`, `dispatchable_qty`, `stock_status`, `queue_status`, `dispatch_readiness`, `expected_dispatch_date`, `order_date`, `order_priority`, `created_at`, `updated_at`) VALUES (93, 2, 2, 'SO-20260524-002', 1, 'Metro Tyre Traders', 'TBR Truck', 200, 10, 200, 10, 'PARTIAL STOCK', 'Partially Ready', 'Partial — 10 of 200 ready', '2026-06-04', '2026-05-20', 'Medium', '2026-05-25 17:44:43', '2026-05-25 17:44:43');
+INSERT INTO `sales_dispatch_queue` (`id`, `sales_order_id`, `sales_order_item_id`, `so_number`, `customer_id`, `company_name`, `tyre_type`, `ordered_qty`, `available_qty`, `pending_qty`, `dispatchable_qty`, `stock_status`, `queue_status`, `dispatch_readiness`, `expected_dispatch_date`, `order_date`, `order_priority`, `created_at`, `updated_at`) VALUES (94, 1, 1, 'SO-20260524-001', 1, 'Metro Tyre Traders', 'PCR Car', 500, 315, 500, 315, 'PARTIAL STOCK', 'Partially Ready', 'Partial — 315 of 500 ready', '2026-06-03', '2026-05-19', 'Urgent', '2026-05-25 17:44:43', '2026-05-25 17:44:43');
+INSERT INTO `sales_dispatch_queue` (`id`, `sales_order_id`, `sales_order_item_id`, `so_number`, `customer_id`, `company_name`, `tyre_type`, `ordered_qty`, `available_qty`, `pending_qty`, `dispatchable_qty`, `stock_status`, `queue_status`, `dispatch_readiness`, `expected_dispatch_date`, `order_date`, `order_priority`, `created_at`, `updated_at`) VALUES (99, 5, 5, 'SO-20260524-005', 4, 'Punjab Tyres Distributor', 'PCR SUV', 150, 265, 150, 150, 'READY', 'Ready for Dispatch', 'Ready for Dispatch', '2026-06-07', '2026-05-23', 'Medium', '2026-05-25 17:54:43', '2026-05-25 17:54:43');
 
 DROP TABLE IF EXISTS `sales_invoice_items`;
 CREATE TABLE `sales_invoice_items` (
@@ -1581,7 +1605,10 @@ CREATE TABLE `sales_invoice_items` (
   PRIMARY KEY (`id`),
   KEY `idx_sales_ii_inv` (`invoice_id`),
   CONSTRAINT `fk_sales_ii_inv` FOREIGN KEY (`invoice_id`) REFERENCES `sales_invoices` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `sales_invoice_items` (`id`, `invoice_id`, `order_item_id`, `tyre_type`, `qty`, `rate`, `gst_percent`, `line_subtotal`, `line_gst`, `line_total`) VALUES (1, 1, 7, 'TBR Truck', 300, '4.78', '18.00', '1434.00', '258.12', '1692.12');
+INSERT INTO `sales_invoice_items` (`id`, `invoice_id`, `order_item_id`, `tyre_type`, `qty`, `rate`, `gst_percent`, `line_subtotal`, `line_gst`, `line_total`) VALUES (2, 2, 6, 'PCR SUV', 1, '0.00', '18.00', '0.00', '0.00', '0.00');
 
 DROP TABLE IF EXISTS `sales_invoices`;
 CREATE TABLE `sales_invoices` (
@@ -1606,7 +1633,10 @@ CREATE TABLE `sales_invoices` (
   KEY `idx_sales_inv_status` (`payment_status`),
   CONSTRAINT `fk_sales_inv_customer` FOREIGN KEY (`customer_id`) REFERENCES `sales_customers` (`id`),
   CONSTRAINT `fk_sales_inv_order` FOREIGN KEY (`order_id`) REFERENCES `sales_orders` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `sales_invoices` (`id`, `invoice_no`, `customer_id`, `order_id`, `invoice_date`, `due_date`, `subtotal`, `gst_total`, `total_amount`, `amount_paid`, `payment_status`, `remarks`, `created_at`, `updated_at`) VALUES (1, 'INV-20260525-4596', 3, 7, '2026-05-25', '2026-06-24', '1434.00', '258.12', '1692.12', '1692.12', 'Paid', 'Auto from dispatch:15 (DSP-20260525-001)', '2026-05-25 17:10:05', '2026-05-25 18:56:01');
+INSERT INTO `sales_invoices` (`id`, `invoice_no`, `customer_id`, `order_id`, `invoice_date`, `due_date`, `subtotal`, `gst_total`, `total_amount`, `amount_paid`, `payment_status`, `remarks`, `created_at`, `updated_at`) VALUES (2, 'INV-20260525-8667', 4, 6, '2026-05-25', '2026-06-24', '0.00', '0.00', '0.00', '0.00', 'Paid', 'Auto from dispatch:16 (DSP-20260525-002)', '2026-05-25 17:54:43', '2026-05-25 18:56:01');
 
 DROP TABLE IF EXISTS `sales_order_items`;
 CREATE TABLE `sales_order_items` (
@@ -1627,14 +1657,15 @@ CREATE TABLE `sales_order_items` (
   PRIMARY KEY (`id`),
   KEY `idx_sales_oi_order` (`order_id`),
   CONSTRAINT `fk_sales_oi_order` FOREIGN KEY (`order_id`) REFERENCES `sales_orders` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `sales_order_items` (`id`, `order_id`, `line_no`, `tyre_type`, `qty_ordered`, `qty_dispatched`, `rate`, `gst_percent`, `discount_amount`, `line_subtotal`, `line_gst`, `line_total`, `stock_available`, `fulfillment_status`) VALUES (1, 1, 1, 'PCR Car', 500, 0, '3200.00', '18.00', '0.00', '1600000.00', '288000.00', '1888000.00', 315, 'Production Required');
-INSERT INTO `sales_order_items` (`id`, `order_id`, `line_no`, `tyre_type`, `qty_ordered`, `qty_dispatched`, `rate`, `gst_percent`, `discount_amount`, `line_subtotal`, `line_gst`, `line_total`, `stock_available`, `fulfillment_status`) VALUES (2, 2, 1, 'TBR Truck', 200, 0, '8500.00', '18.00', '0.00', '1700000.00', '306000.00', '2006000.00', 310, 'Ready for Dispatch');
+INSERT INTO `sales_order_items` (`id`, `order_id`, `line_no`, `tyre_type`, `qty_ordered`, `qty_dispatched`, `rate`, `gst_percent`, `discount_amount`, `line_subtotal`, `line_gst`, `line_total`, `stock_available`, `fulfillment_status`) VALUES (2, 2, 1, 'TBR Truck', 200, 0, '8500.00', '18.00', '0.00', '1700000.00', '306000.00', '2006000.00', 10, 'Production Required');
 INSERT INTO `sales_order_items` (`id`, `order_id`, `line_no`, `tyre_type`, `qty_ordered`, `qty_dispatched`, `rate`, `gst_percent`, `discount_amount`, `line_subtotal`, `line_gst`, `line_total`, `stock_available`, `fulfillment_status`) VALUES (3, 3, 1, 'Two Wheeler', 300, 0, '1100.00', '18.00', '0.00', '330000.00', '59400.00', '389400.00', 431, 'Ready for Dispatch');
 INSERT INTO `sales_order_items` (`id`, `order_id`, `line_no`, `tyre_type`, `qty_ordered`, `qty_dispatched`, `rate`, `gst_percent`, `discount_amount`, `line_subtotal`, `line_gst`, `line_total`, `stock_available`, `fulfillment_status`) VALUES (4, 4, 1, 'Farm / OTR', 80, 0, '12000.00', '18.00', '0.00', '960000.00', '172800.00', '1132800.00', 67, 'Production Required');
-INSERT INTO `sales_order_items` (`id`, `order_id`, `line_no`, `tyre_type`, `qty_ordered`, `qty_dispatched`, `rate`, `gst_percent`, `discount_amount`, `line_subtotal`, `line_gst`, `line_total`, `stock_available`, `fulfillment_status`) VALUES (5, 5, 1, 'PCR SUV', 150, 0, '3800.00', '18.00', '0.00', '570000.00', '102600.00', '672600.00', 266, 'Ready for Dispatch');
-INSERT INTO `sales_order_items` (`id`, `order_id`, `line_no`, `tyre_type`, `qty_ordered`, `qty_dispatched`, `rate`, `gst_percent`, `discount_amount`, `line_subtotal`, `line_gst`, `line_total`, `stock_available`, `fulfillment_status`) VALUES (6, 6, 1, 'PCR SUV', 1, 0, '0.00', '18.00', '0.00', '0.00', '0.00', '0.00', 266, 'Ready for Dispatch');
+INSERT INTO `sales_order_items` (`id`, `order_id`, `line_no`, `tyre_type`, `qty_ordered`, `qty_dispatched`, `rate`, `gst_percent`, `discount_amount`, `line_subtotal`, `line_gst`, `line_total`, `stock_available`, `fulfillment_status`) VALUES (5, 5, 1, 'PCR SUV', 150, 0, '3800.00', '18.00', '0.00', '570000.00', '102600.00', '672600.00', 265, 'Ready for Dispatch');
+INSERT INTO `sales_order_items` (`id`, `order_id`, `line_no`, `tyre_type`, `qty_ordered`, `qty_dispatched`, `rate`, `gst_percent`, `discount_amount`, `line_subtotal`, `line_gst`, `line_total`, `stock_available`, `fulfillment_status`) VALUES (6, 6, 1, 'PCR SUV', 1, 1, '0.00', '18.00', '0.00', '0.00', '0.00', '0.00', 265, 'Ready for Dispatch');
+INSERT INTO `sales_order_items` (`id`, `order_id`, `line_no`, `tyre_type`, `qty_ordered`, `qty_dispatched`, `rate`, `gst_percent`, `discount_amount`, `line_subtotal`, `line_gst`, `line_total`, `stock_available`, `fulfillment_status`) VALUES (7, 7, 1, 'TBR Truck', 300, 300, '4.78', '18.00', '30.00', '1404.00', '252.72', '1656.72', 10, 'Production Required');
 
 DROP TABLE IF EXISTS `sales_orders`;
 CREATE TABLE `sales_orders` (
@@ -1660,14 +1691,15 @@ CREATE TABLE `sales_orders` (
   KEY `idx_sales_ord_status` (`status`),
   KEY `idx_sales_ord_date` (`order_date`),
   CONSTRAINT `fk_sales_ord_customer` FOREIGN KEY (`customer_id`) REFERENCES `sales_customers` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `sales_orders` (`id`, `so_number`, `customer_id`, `order_date`, `delivery_date`, `priority`, `status`, `payment_terms`, `discount_amount`, `subtotal`, `gst_total`, `total_amount`, `remarks`, `created_by`, `created_at`, `updated_at`) VALUES (1, 'SO-20260524-001', 1, '2026-05-19', '2026-06-03', 'Urgent', 'Ready', 'Net 30 days', '0.00', '1600000.00', '288000.00', '1888000.00', NULL, NULL, '2026-05-24 17:49:58', '2026-05-24 19:13:33');
 INSERT INTO `sales_orders` (`id`, `so_number`, `customer_id`, `order_date`, `delivery_date`, `priority`, `status`, `payment_terms`, `discount_amount`, `subtotal`, `gst_total`, `total_amount`, `remarks`, `created_by`, `created_at`, `updated_at`) VALUES (2, 'SO-20260524-002', 1, '2026-05-20', '2026-06-04', 'Medium', 'Ready', 'Net 30 days', '0.00', '1700000.00', '306000.00', '2006000.00', NULL, NULL, '2026-05-24 17:49:58', '2026-05-24 17:49:58');
 INSERT INTO `sales_orders` (`id`, `so_number`, `customer_id`, `order_date`, `delivery_date`, `priority`, `status`, `payment_terms`, `discount_amount`, `subtotal`, `gst_total`, `total_amount`, `remarks`, `created_by`, `created_at`, `updated_at`) VALUES (3, 'SO-20260524-003', 2, '2026-05-21', '2026-06-05', 'Medium', 'Ready', 'Net 30 days', '0.00', '330000.00', '59400.00', '389400.00', NULL, NULL, '2026-05-24 17:49:58', '2026-05-24 17:49:58');
 INSERT INTO `sales_orders` (`id`, `so_number`, `customer_id`, `order_date`, `delivery_date`, `priority`, `status`, `payment_terms`, `discount_amount`, `subtotal`, `gst_total`, `total_amount`, `remarks`, `created_by`, `created_at`, `updated_at`) VALUES (4, 'SO-20260524-004', 3, '2026-05-22', '2026-06-06', 'Medium', 'Ready', 'Net 30 days', '0.00', '960000.00', '172800.00', '1132800.00', NULL, NULL, '2026-05-24 17:49:58', '2026-05-24 19:13:33');
 INSERT INTO `sales_orders` (`id`, `so_number`, `customer_id`, `order_date`, `delivery_date`, `priority`, `status`, `payment_terms`, `discount_amount`, `subtotal`, `gst_total`, `total_amount`, `remarks`, `created_by`, `created_at`, `updated_at`) VALUES (5, 'SO-20260524-005', 4, '2026-05-23', '2026-06-07', 'Medium', 'Ready', 'Net 30 days', '0.00', '570000.00', '102600.00', '672600.00', NULL, NULL, '2026-05-24 17:49:58', '2026-05-24 17:49:58');
-INSERT INTO `sales_orders` (`id`, `so_number`, `customer_id`, `order_date`, `delivery_date`, `priority`, `status`, `payment_terms`, `discount_amount`, `subtotal`, `gst_total`, `total_amount`, `remarks`, `created_by`, `created_at`, `updated_at`) VALUES (6, 'SO-20260524-006', 4, '2026-05-24', NULL, 'Medium', 'Ready', NULL, '2.00', '0.00', '0.00', '0.00', 'kkkkkkkks', NULL, '2026-05-24 18:38:10', '2026-05-24 18:38:10');
+INSERT INTO `sales_orders` (`id`, `so_number`, `customer_id`, `order_date`, `delivery_date`, `priority`, `status`, `payment_terms`, `discount_amount`, `subtotal`, `gst_total`, `total_amount`, `remarks`, `created_by`, `created_at`, `updated_at`) VALUES (6, 'SO-20260524-006', 4, '2026-05-24', NULL, 'Medium', 'Completed', NULL, '2.00', '0.00', '0.00', '0.00', 'kkkkkkkks', NULL, '2026-05-24 18:38:10', '2026-05-25 17:54:43');
+INSERT INTO `sales_orders` (`id`, `so_number`, `customer_id`, `order_date`, `delivery_date`, `priority`, `status`, `payment_terms`, `discount_amount`, `subtotal`, `gst_total`, `total_amount`, `remarks`, `created_by`, `created_at`, `updated_at`) VALUES (7, 'SO-20260525-001', 3, '2026-05-25', '2026-05-29', 'Medium', 'Completed', '20', '0.00', '1404.00', '252.72', '1656.72', NULL, NULL, '2026-05-25 16:38:14', '2026-05-25 17:10:05');
 
 DROP TABLE IF EXISTS `sales_payments`;
 CREATE TABLE `sales_payments` (
@@ -1685,7 +1717,10 @@ CREATE TABLE `sales_payments` (
   KEY `idx_sales_pay_invoice` (`invoice_id`),
   CONSTRAINT `fk_sales_pay_customer` FOREIGN KEY (`customer_id`) REFERENCES `sales_customers` (`id`),
   CONSTRAINT `fk_sales_pay_invoice` FOREIGN KEY (`invoice_id`) REFERENCES `sales_invoices` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `sales_payments` (`id`, `customer_id`, `invoice_id`, `payment_date`, `amount`, `payment_mode`, `reference_no`, `remarks`, `created_at`) VALUES (1, 3, 1, '2026-05-25', '1692.10', 'UPI', 'upi', NULL, '2026-05-25 17:12:38');
+INSERT INTO `sales_payments` (`id`, `customer_id`, `invoice_id`, `payment_date`, `amount`, `payment_mode`, `reference_no`, `remarks`, `created_at`) VALUES (2, 3, 1, '2026-05-25', '0.01', 'Cash', NULL, NULL, '2026-05-25 17:20:29');
 
 DROP TABLE IF EXISTS `schema_migrations`;
 CREATE TABLE `schema_migrations` (
@@ -1716,6 +1751,8 @@ INSERT INTO `schema_migrations` (`migration`, `batch`, `applied_at`) VALUES ('01
 INSERT INTO `schema_migrations` (`migration`, `batch`, `applied_at`) VALUES ('018_sales_manager_user.sql', 10, '2026-05-24 17:58:30');
 INSERT INTO `schema_migrations` (`migration`, `batch`, `applied_at`) VALUES ('019_crm_dispatch_linkage.sql', 11, '2026-05-24 19:13:32');
 INSERT INTO `schema_migrations` (`migration`, `batch`, `applied_at`) VALUES ('020_dispatch_vehicle_fields.sql', 12, '2026-05-24 20:25:34');
+INSERT INTO `schema_migrations` (`migration`, `batch`, `applied_at`) VALUES ('021_inventory_purchase_inward.sql', 13, '2026-05-26 19:07:59');
+INSERT INTO `schema_migrations` (`migration`, `batch`, `applied_at`) VALUES ('022_purchase_payments.sql', 14, '2026-05-26 19:21:19');
 
 DROP TABLE IF EXISTS `settings`;
 CREATE TABLE `settings` (
@@ -1724,7 +1761,7 @@ CREATE TABLE `settings` (
   `setting_value` text NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `setting_key` (`setting_key`)
-) ENGINE=InnoDB AUTO_INCREMENT=2355 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2704 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `settings` (`id`, `setting_key`, `setting_value`) VALUES (1, 'company_name', 'Ralson India Private Limited');
 INSERT INTO `settings` (`id`, `setting_key`, `setting_value`) VALUES (104, 'employee_gross_backfill_v1', '1');
@@ -1756,14 +1793,30 @@ CREATE TABLE `stock_adjustments` (
 DROP TABLE IF EXISTS `stock_inward`;
 CREATE TABLE `stock_inward` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
+  `pinv_no` varchar(40) DEFAULT NULL,
   `inward_date` date NOT NULL,
   `supplier_id` int(11) DEFAULT NULL,
   `invoice_no` varchar(80) DEFAULT NULL,
+  `challan_no` varchar(80) DEFAULT NULL,
   `material_id` int(11) NOT NULL,
   `batch_no` varchar(80) DEFAULT NULL,
   `expiry_date` date DEFAULT NULL,
   `quantity` decimal(12,2) NOT NULL DEFAULT 0.00,
   `rate` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `gst_percent` decimal(5,2) NOT NULL DEFAULT 0.00,
+  `transport_charges` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `loading_charges` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `other_charges` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `discount_amount` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `subtotal` decimal(14,2) NOT NULL DEFAULT 0.00,
+  `gst_amount` decimal(14,2) NOT NULL DEFAULT 0.00,
+  `total_amount` decimal(14,2) NOT NULL DEFAULT 0.00,
+  `paid_amount` decimal(14,2) NOT NULL DEFAULT 0.00,
+  `payment_status` enum('Paid','Partial','Unpaid') NOT NULL DEFAULT 'Unpaid',
+  `payment_mode` varchar(40) DEFAULT NULL,
+  `due_date` date DEFAULT NULL,
+  `payment_ref` varchar(80) DEFAULT NULL,
+  `warehouse_location` varchar(120) DEFAULT NULL,
   `received_by` varchar(150) DEFAULT NULL,
   `remarks` varchar(500) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -1771,22 +1824,24 @@ CREATE TABLE `stock_inward` (
   KEY `idx_inward_date` (`inward_date`),
   KEY `idx_inward_material` (`material_id`),
   KEY `idx_inward_supplier` (`supplier_id`),
+  KEY `idx_inward_pinv` (`pinv_no`),
+  KEY `idx_inward_payment_status` (`payment_status`),
   CONSTRAINT `fk_inward_material` FOREIGN KEY (`material_id`) REFERENCES `raw_materials` (`id`),
   CONSTRAINT `fk_inward_supplier` FOREIGN KEY (`supplier_id`) REFERENCES `suppliers` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=63 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-INSERT INTO `stock_inward` (`id`, `inward_date`, `supplier_id`, `invoice_no`, `material_id`, `batch_no`, `expiry_date`, `quantity`, `rate`, `received_by`, `remarks`, `created_at`) VALUES (1, '2026-05-22', 1, NULL, 2, NULL, NULL, '7887.97', '0.00', NULL, NULL, '2026-05-22 18:17:43');
-INSERT INTO `stock_inward` (`id`, `inward_date`, `supplier_id`, `invoice_no`, `material_id`, `batch_no`, `expiry_date`, `quantity`, `rate`, `received_by`, `remarks`, `created_at`) VALUES (2, '2026-05-22', 2, NULL, 2, NULL, NULL, '120000000.00', '0.00', NULL, NULL, '2026-05-22 18:18:06');
-INSERT INTO `stock_inward` (`id`, `inward_date`, `supplier_id`, `invoice_no`, `material_id`, `batch_no`, `expiry_date`, `quantity`, `rate`, `received_by`, `remarks`, `created_at`) VALUES (53, '2026-05-03', 1, 'PINV-2026-1000', 97, 'BIN-DEMO-1', NULL, '200.00', '85.00', 'Pooja Mehta', 'Demo inward [demo]', '2026-05-23 19:14:20');
-INSERT INTO `stock_inward` (`id`, `inward_date`, `supplier_id`, `invoice_no`, `material_id`, `batch_no`, `expiry_date`, `quantity`, `rate`, `received_by`, `remarks`, `created_at`) VALUES (54, '2026-05-04', 1, 'PINV-2026-1001', 98, 'BIN-DEMO-2', NULL, '235.00', '86.00', 'Pooja Mehta', 'Demo inward [demo]', '2026-05-23 19:14:20');
-INSERT INTO `stock_inward` (`id`, `inward_date`, `supplier_id`, `invoice_no`, `material_id`, `batch_no`, `expiry_date`, `quantity`, `rate`, `received_by`, `remarks`, `created_at`) VALUES (55, '2026-05-05', 1, 'PINV-2026-1002', 99, 'BIN-DEMO-3', NULL, '270.00', '87.00', 'Pooja Mehta', 'Demo inward [demo]', '2026-05-23 19:14:20');
-INSERT INTO `stock_inward` (`id`, `inward_date`, `supplier_id`, `invoice_no`, `material_id`, `batch_no`, `expiry_date`, `quantity`, `rate`, `received_by`, `remarks`, `created_at`) VALUES (56, '2026-05-06', 1, 'PINV-2026-1003', 100, 'BIN-DEMO-4', NULL, '305.00', '88.00', 'Pooja Mehta', 'Demo inward [demo]', '2026-05-23 19:14:20');
-INSERT INTO `stock_inward` (`id`, `inward_date`, `supplier_id`, `invoice_no`, `material_id`, `batch_no`, `expiry_date`, `quantity`, `rate`, `received_by`, `remarks`, `created_at`) VALUES (57, '2026-05-07', 1, 'PINV-2026-1004', 101, 'BIN-DEMO-5', NULL, '340.00', '89.00', 'Pooja Mehta', 'Demo inward [demo]', '2026-05-23 19:14:20');
-INSERT INTO `stock_inward` (`id`, `inward_date`, `supplier_id`, `invoice_no`, `material_id`, `batch_no`, `expiry_date`, `quantity`, `rate`, `received_by`, `remarks`, `created_at`) VALUES (58, '2026-05-08', 1, 'PINV-2026-1005', 102, 'BIN-DEMO-6', NULL, '375.00', '90.00', 'Pooja Mehta', 'Demo inward [demo]', '2026-05-23 19:14:20');
-INSERT INTO `stock_inward` (`id`, `inward_date`, `supplier_id`, `invoice_no`, `material_id`, `batch_no`, `expiry_date`, `quantity`, `rate`, `received_by`, `remarks`, `created_at`) VALUES (59, '2026-05-09', 1, 'PINV-2026-1006', 103, 'BIN-DEMO-7', NULL, '410.00', '91.00', 'Pooja Mehta', 'Demo inward [demo]', '2026-05-23 19:14:20');
-INSERT INTO `stock_inward` (`id`, `inward_date`, `supplier_id`, `invoice_no`, `material_id`, `batch_no`, `expiry_date`, `quantity`, `rate`, `received_by`, `remarks`, `created_at`) VALUES (60, '2026-05-10', 1, 'PINV-2026-1007', 104, 'BIN-DEMO-8', NULL, '445.00', '92.00', 'Pooja Mehta', 'Demo inward [demo]', '2026-05-23 19:14:20');
-INSERT INTO `stock_inward` (`id`, `inward_date`, `supplier_id`, `invoice_no`, `material_id`, `batch_no`, `expiry_date`, `quantity`, `rate`, `received_by`, `remarks`, `created_at`) VALUES (61, '2026-05-11', 1, 'PINV-2026-1008', 105, 'BIN-DEMO-9', NULL, '480.00', '93.00', 'Pooja Mehta', 'Demo inward [demo]', '2026-05-23 19:14:20');
-INSERT INTO `stock_inward` (`id`, `inward_date`, `supplier_id`, `invoice_no`, `material_id`, `batch_no`, `expiry_date`, `quantity`, `rate`, `received_by`, `remarks`, `created_at`) VALUES (62, '2026-05-12', 1, 'PINV-2026-1009', 106, 'BIN-DEMO-10', NULL, '515.00', '94.00', 'Pooja Mehta', 'Demo inward [demo]', '2026-05-23 19:14:20');
+INSERT INTO `stock_inward` (`id`, `pinv_no`, `inward_date`, `supplier_id`, `invoice_no`, `challan_no`, `material_id`, `batch_no`, `expiry_date`, `quantity`, `rate`, `gst_percent`, `transport_charges`, `loading_charges`, `other_charges`, `discount_amount`, `subtotal`, `gst_amount`, `total_amount`, `paid_amount`, `payment_status`, `payment_mode`, `due_date`, `payment_ref`, `warehouse_location`, `received_by`, `remarks`, `created_at`) VALUES (1, NULL, '2026-05-22', 1, NULL, NULL, 2, NULL, NULL, '7887.97', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', 'Unpaid', NULL, NULL, NULL, NULL, NULL, NULL, '2026-05-22 18:17:43');
+INSERT INTO `stock_inward` (`id`, `pinv_no`, `inward_date`, `supplier_id`, `invoice_no`, `challan_no`, `material_id`, `batch_no`, `expiry_date`, `quantity`, `rate`, `gst_percent`, `transport_charges`, `loading_charges`, `other_charges`, `discount_amount`, `subtotal`, `gst_amount`, `total_amount`, `paid_amount`, `payment_status`, `payment_mode`, `due_date`, `payment_ref`, `warehouse_location`, `received_by`, `remarks`, `created_at`) VALUES (2, NULL, '2026-05-22', 2, NULL, NULL, 2, NULL, NULL, '120000000.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', 'Unpaid', NULL, NULL, NULL, NULL, NULL, NULL, '2026-05-22 18:18:06');
+INSERT INTO `stock_inward` (`id`, `pinv_no`, `inward_date`, `supplier_id`, `invoice_no`, `challan_no`, `material_id`, `batch_no`, `expiry_date`, `quantity`, `rate`, `gst_percent`, `transport_charges`, `loading_charges`, `other_charges`, `discount_amount`, `subtotal`, `gst_amount`, `total_amount`, `paid_amount`, `payment_status`, `payment_mode`, `due_date`, `payment_ref`, `warehouse_location`, `received_by`, `remarks`, `created_at`) VALUES (53, NULL, '2026-05-03', 1, 'PINV-2026-1000', NULL, 97, 'BIN-DEMO-1', NULL, '200.00', '85.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', 'Unpaid', NULL, NULL, NULL, NULL, 'Pooja Mehta', 'Demo inward [demo]', '2026-05-23 19:14:20');
+INSERT INTO `stock_inward` (`id`, `pinv_no`, `inward_date`, `supplier_id`, `invoice_no`, `challan_no`, `material_id`, `batch_no`, `expiry_date`, `quantity`, `rate`, `gst_percent`, `transport_charges`, `loading_charges`, `other_charges`, `discount_amount`, `subtotal`, `gst_amount`, `total_amount`, `paid_amount`, `payment_status`, `payment_mode`, `due_date`, `payment_ref`, `warehouse_location`, `received_by`, `remarks`, `created_at`) VALUES (54, NULL, '2026-05-04', 1, 'PINV-2026-1001', NULL, 98, 'BIN-DEMO-2', NULL, '235.00', '86.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', 'Unpaid', NULL, NULL, NULL, NULL, 'Pooja Mehta', 'Demo inward [demo]', '2026-05-23 19:14:20');
+INSERT INTO `stock_inward` (`id`, `pinv_no`, `inward_date`, `supplier_id`, `invoice_no`, `challan_no`, `material_id`, `batch_no`, `expiry_date`, `quantity`, `rate`, `gst_percent`, `transport_charges`, `loading_charges`, `other_charges`, `discount_amount`, `subtotal`, `gst_amount`, `total_amount`, `paid_amount`, `payment_status`, `payment_mode`, `due_date`, `payment_ref`, `warehouse_location`, `received_by`, `remarks`, `created_at`) VALUES (55, NULL, '2026-05-05', 1, 'PINV-2026-1002', NULL, 99, 'BIN-DEMO-3', NULL, '270.00', '87.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', 'Unpaid', NULL, NULL, NULL, NULL, 'Pooja Mehta', 'Demo inward [demo]', '2026-05-23 19:14:20');
+INSERT INTO `stock_inward` (`id`, `pinv_no`, `inward_date`, `supplier_id`, `invoice_no`, `challan_no`, `material_id`, `batch_no`, `expiry_date`, `quantity`, `rate`, `gst_percent`, `transport_charges`, `loading_charges`, `other_charges`, `discount_amount`, `subtotal`, `gst_amount`, `total_amount`, `paid_amount`, `payment_status`, `payment_mode`, `due_date`, `payment_ref`, `warehouse_location`, `received_by`, `remarks`, `created_at`) VALUES (56, NULL, '2026-05-06', 1, 'PINV-2026-1003', NULL, 100, 'BIN-DEMO-4', NULL, '305.00', '88.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', 'Unpaid', NULL, NULL, NULL, NULL, 'Pooja Mehta', 'Demo inward [demo]', '2026-05-23 19:14:20');
+INSERT INTO `stock_inward` (`id`, `pinv_no`, `inward_date`, `supplier_id`, `invoice_no`, `challan_no`, `material_id`, `batch_no`, `expiry_date`, `quantity`, `rate`, `gst_percent`, `transport_charges`, `loading_charges`, `other_charges`, `discount_amount`, `subtotal`, `gst_amount`, `total_amount`, `paid_amount`, `payment_status`, `payment_mode`, `due_date`, `payment_ref`, `warehouse_location`, `received_by`, `remarks`, `created_at`) VALUES (57, NULL, '2026-05-07', 1, 'PINV-2026-1004', NULL, 101, 'BIN-DEMO-5', NULL, '340.00', '89.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', 'Unpaid', NULL, NULL, NULL, NULL, 'Pooja Mehta', 'Demo inward [demo]', '2026-05-23 19:14:20');
+INSERT INTO `stock_inward` (`id`, `pinv_no`, `inward_date`, `supplier_id`, `invoice_no`, `challan_no`, `material_id`, `batch_no`, `expiry_date`, `quantity`, `rate`, `gst_percent`, `transport_charges`, `loading_charges`, `other_charges`, `discount_amount`, `subtotal`, `gst_amount`, `total_amount`, `paid_amount`, `payment_status`, `payment_mode`, `due_date`, `payment_ref`, `warehouse_location`, `received_by`, `remarks`, `created_at`) VALUES (58, NULL, '2026-05-08', 1, 'PINV-2026-1005', NULL, 102, 'BIN-DEMO-6', NULL, '375.00', '90.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', 'Unpaid', NULL, NULL, NULL, NULL, 'Pooja Mehta', 'Demo inward [demo]', '2026-05-23 19:14:20');
+INSERT INTO `stock_inward` (`id`, `pinv_no`, `inward_date`, `supplier_id`, `invoice_no`, `challan_no`, `material_id`, `batch_no`, `expiry_date`, `quantity`, `rate`, `gst_percent`, `transport_charges`, `loading_charges`, `other_charges`, `discount_amount`, `subtotal`, `gst_amount`, `total_amount`, `paid_amount`, `payment_status`, `payment_mode`, `due_date`, `payment_ref`, `warehouse_location`, `received_by`, `remarks`, `created_at`) VALUES (59, NULL, '2026-05-09', 1, 'PINV-2026-1006', NULL, 103, 'BIN-DEMO-7', NULL, '410.00', '91.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', 'Unpaid', NULL, NULL, NULL, NULL, 'Pooja Mehta', 'Demo inward [demo]', '2026-05-23 19:14:20');
+INSERT INTO `stock_inward` (`id`, `pinv_no`, `inward_date`, `supplier_id`, `invoice_no`, `challan_no`, `material_id`, `batch_no`, `expiry_date`, `quantity`, `rate`, `gst_percent`, `transport_charges`, `loading_charges`, `other_charges`, `discount_amount`, `subtotal`, `gst_amount`, `total_amount`, `paid_amount`, `payment_status`, `payment_mode`, `due_date`, `payment_ref`, `warehouse_location`, `received_by`, `remarks`, `created_at`) VALUES (60, NULL, '2026-05-10', 1, 'PINV-2026-1007', NULL, 104, 'BIN-DEMO-8', NULL, '445.00', '92.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', 'Unpaid', NULL, NULL, NULL, NULL, 'Pooja Mehta', 'Demo inward [demo]', '2026-05-23 19:14:20');
+INSERT INTO `stock_inward` (`id`, `pinv_no`, `inward_date`, `supplier_id`, `invoice_no`, `challan_no`, `material_id`, `batch_no`, `expiry_date`, `quantity`, `rate`, `gst_percent`, `transport_charges`, `loading_charges`, `other_charges`, `discount_amount`, `subtotal`, `gst_amount`, `total_amount`, `paid_amount`, `payment_status`, `payment_mode`, `due_date`, `payment_ref`, `warehouse_location`, `received_by`, `remarks`, `created_at`) VALUES (61, NULL, '2026-05-11', 1, 'PINV-2026-1008', NULL, 105, 'BIN-DEMO-9', NULL, '480.00', '93.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', 'Unpaid', NULL, NULL, NULL, NULL, 'Pooja Mehta', 'Demo inward [demo]', '2026-05-23 19:14:20');
+INSERT INTO `stock_inward` (`id`, `pinv_no`, `inward_date`, `supplier_id`, `invoice_no`, `challan_no`, `material_id`, `batch_no`, `expiry_date`, `quantity`, `rate`, `gst_percent`, `transport_charges`, `loading_charges`, `other_charges`, `discount_amount`, `subtotal`, `gst_amount`, `total_amount`, `paid_amount`, `payment_status`, `payment_mode`, `due_date`, `payment_ref`, `warehouse_location`, `received_by`, `remarks`, `created_at`) VALUES (62, NULL, '2026-05-12', 1, 'PINV-2026-1009', NULL, 106, 'BIN-DEMO-10', NULL, '515.00', '94.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', 'Unpaid', NULL, NULL, NULL, NULL, 'Pooja Mehta', 'Demo inward [demo]', '2026-05-23 19:14:20');
 
 DROP TABLE IF EXISTS `stock_usage`;
 CREATE TABLE `stock_usage` (
@@ -1834,24 +1889,25 @@ CREATE TABLE `suppliers` (
   `phone` varchar(20) DEFAULT NULL,
   `email` varchar(120) DEFAULT NULL,
   `address` varchar(255) DEFAULT NULL,
+  `gst_number` varchar(40) DEFAULT NULL,
   `status` enum('Active','Inactive') NOT NULL DEFAULT 'Active',
   `materials_supplied` varchar(500) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=73 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `status`, `materials_supplied`, `created_at`) VALUES (1, 'Punjab Rubber Corp', 'Harjit Singh', '9811111111', 'harjit@rubber.local', 'Ludhiana', 'Active', NULL, '2026-05-14 17:43:38');
-INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `status`, `materials_supplied`, `created_at`) VALUES (2, 'ChemTech Industries', 'K. Mehta', '9822222222', 'mehta@chem.local', 'Delhi NCR', 'Active', NULL, '2026-05-14 17:43:38');
-INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `status`, `materials_supplied`, `created_at`) VALUES (63, 'Punjab Rubber Corp [demo]', 'Contact 1', '9812300100', 'vendor1@demo.supply', 'Industrial Estate, Plot 10, India', 'Active', 'Rubber, chemicals, reinforcement', '2026-05-23 19:14:20');
-INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `status`, `materials_supplied`, `created_at`) VALUES (64, 'ChemTech Industries [demo]', 'Contact 2', '9812300101', 'vendor2@demo.supply', 'Industrial Estate, Plot 11, India', 'Active', 'Rubber, chemicals, reinforcement', '2026-05-23 19:14:20');
-INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `status`, `materials_supplied`, `created_at`) VALUES (65, 'Bharat Chemicals [demo]', 'Contact 3', '9812300102', 'vendor3@demo.supply', 'Industrial Estate, Plot 12, India', 'Active', 'Rubber, chemicals, reinforcement', '2026-05-23 19:14:20');
-INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `status`, `materials_supplied`, `created_at`) VALUES (66, 'Metro Industrial Supply [demo]', 'Contact 4', '9812300103', 'vendor4@demo.supply', 'Industrial Estate, Plot 13, India', 'Active', 'Rubber, chemicals, reinforcement', '2026-05-23 19:14:20');
-INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `status`, `materials_supplied`, `created_at`) VALUES (67, 'Gujarat Carbon Works [demo]', 'Contact 5', '9812300104', 'vendor5@demo.supply', 'Industrial Estate, Plot 14, India', 'Active', 'Rubber, chemicals, reinforcement', '2026-05-23 19:14:20');
-INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `status`, `materials_supplied`, `created_at`) VALUES (68, 'Southern Cord Suppliers [demo]', 'Contact 6', '9812300105', 'vendor6@demo.supply', 'Industrial Estate, Plot 15, India', 'Active', 'Rubber, chemicals, reinforcement', '2026-05-23 19:14:20');
-INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `status`, `materials_supplied`, `created_at`) VALUES (69, 'Himalaya Elastomers [demo]', 'Contact 7', '9812300106', 'vendor7@demo.supply', 'Industrial Estate, Plot 16, India', 'Active', 'Rubber, chemicals, reinforcement', '2026-05-23 19:14:20');
-INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `status`, `materials_supplied`, `created_at`) VALUES (70, 'Steel Wire India [demo]', 'Contact 8', '9812300107', 'vendor8@demo.supply', 'Industrial Estate, Plot 17, India', 'Active', 'Rubber, chemicals, reinforcement', '2026-05-23 19:14:20');
-INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `status`, `materials_supplied`, `created_at`) VALUES (71, 'PackPro Logistics Materials [demo]', 'Contact 9', '9812300108', 'vendor9@demo.supply', 'Industrial Estate, Plot 18, India', 'Active', 'Rubber, chemicals, reinforcement', '2026-05-23 19:14:20');
-INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `status`, `materials_supplied`, `created_at`) VALUES (72, 'National Tyre Chemicals [demo]', 'Contact 10', '9812300109', 'vendor10@demo.supply', 'Industrial Estate, Plot 19, India', 'Active', 'Rubber, chemicals, reinforcement', '2026-05-23 19:14:20');
+INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `gst_number`, `status`, `materials_supplied`, `created_at`) VALUES (1, 'Punjab Rubber Corp', 'Harjit Singh', '9811111111', 'harjit@rubber.local', 'Ludhiana', NULL, 'Active', NULL, '2026-05-14 17:43:38');
+INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `gst_number`, `status`, `materials_supplied`, `created_at`) VALUES (2, 'ChemTech Industries', 'K. Mehta', '9822222222', 'mehta@chem.local', 'Delhi NCR', NULL, 'Active', NULL, '2026-05-14 17:43:38');
+INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `gst_number`, `status`, `materials_supplied`, `created_at`) VALUES (63, 'Punjab Rubber Corp [demo]', 'Contact 1', '9812300100', 'vendor1@demo.supply', 'Industrial Estate, Plot 10, India', NULL, 'Active', 'Rubber, chemicals, reinforcement', '2026-05-23 19:14:20');
+INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `gst_number`, `status`, `materials_supplied`, `created_at`) VALUES (64, 'ChemTech Industries [demo]', 'Contact 2', '9812300101', 'vendor2@demo.supply', 'Industrial Estate, Plot 11, India', NULL, 'Active', 'Rubber, chemicals, reinforcement', '2026-05-23 19:14:20');
+INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `gst_number`, `status`, `materials_supplied`, `created_at`) VALUES (65, 'Bharat Chemicals [demo]', 'Contact 3', '9812300102', 'vendor3@demo.supply', 'Industrial Estate, Plot 12, India', NULL, 'Active', 'Rubber, chemicals, reinforcement', '2026-05-23 19:14:20');
+INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `gst_number`, `status`, `materials_supplied`, `created_at`) VALUES (66, 'Metro Industrial Supply [demo]', 'Contact 4', '9812300103', 'vendor4@demo.supply', 'Industrial Estate, Plot 13, India', NULL, 'Active', 'Rubber, chemicals, reinforcement', '2026-05-23 19:14:20');
+INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `gst_number`, `status`, `materials_supplied`, `created_at`) VALUES (67, 'Gujarat Carbon Works [demo]', 'Contact 5', '9812300104', 'vendor5@demo.supply', 'Industrial Estate, Plot 14, India', NULL, 'Active', 'Rubber, chemicals, reinforcement', '2026-05-23 19:14:20');
+INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `gst_number`, `status`, `materials_supplied`, `created_at`) VALUES (68, 'Southern Cord Suppliers [demo]', 'Contact 6', '9812300105', 'vendor6@demo.supply', 'Industrial Estate, Plot 15, India', NULL, 'Active', 'Rubber, chemicals, reinforcement', '2026-05-23 19:14:20');
+INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `gst_number`, `status`, `materials_supplied`, `created_at`) VALUES (69, 'Himalaya Elastomers [demo]', 'Contact 7', '9812300106', 'vendor7@demo.supply', 'Industrial Estate, Plot 16, India', NULL, 'Active', 'Rubber, chemicals, reinforcement', '2026-05-23 19:14:20');
+INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `gst_number`, `status`, `materials_supplied`, `created_at`) VALUES (70, 'Steel Wire India [demo]', 'Contact 8', '9812300107', 'vendor8@demo.supply', 'Industrial Estate, Plot 17, India', NULL, 'Active', 'Rubber, chemicals, reinforcement', '2026-05-23 19:14:20');
+INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `gst_number`, `status`, `materials_supplied`, `created_at`) VALUES (71, 'PackPro Logistics Materials [demo]', 'Contact 9', '9812300108', 'vendor9@demo.supply', 'Industrial Estate, Plot 18, India', NULL, 'Active', 'Rubber, chemicals, reinforcement', '2026-05-23 19:14:20');
+INSERT INTO `suppliers` (`id`, `name`, `contact_person`, `phone`, `email`, `address`, `gst_number`, `status`, `materials_supplied`, `created_at`) VALUES (72, 'National Tyre Chemicals [demo]', 'Contact 10', '9812300109', 'vendor10@demo.supply', 'Industrial Estate, Plot 19, India', NULL, 'Active', 'Rubber, chemicals, reinforcement', '2026-05-23 19:14:20');
 
 DROP TABLE IF EXISTS `users`;
 CREATE TABLE `users` (
@@ -1871,17 +1927,17 @@ CREATE TABLE `users` (
   UNIQUE KEY `employee_id` (`employee_id`),
   UNIQUE KEY `username` (`username`),
   KEY `idx_users_role_status` (`role`,`status`)
-) ENGINE=InnoDB AUTO_INCREMENT=16204 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=18635 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (1, NULL, 'Super Admin', 'superadmin@ralson.local', 'superadmin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Super Admin', 'active', 0, '2026-05-24 17:49:46', '2026-05-14 17:43:38');
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (2, NULL, 'HR Manager', 'hr@ralson.local', 'hrmanager', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'HR Manager', 'active', 0, '2026-05-23 19:03:42', '2026-05-14 17:43:38');
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (3, NULL, 'Production Manager', 'production@ralson.local', 'prodmanager', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Production Manager', 'active', 0, '2026-05-24 17:20:57', '2026-05-14 17:43:38');
-INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (4, NULL, 'Inventory Manager', 'inventory@ralson.local', 'invmanager', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Inventory Manager', 'active', 0, '2026-05-23 18:04:18', '2026-05-14 17:43:38');
-INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (5, NULL, 'Dispatch Manager', 'dispatch@ralson.local', 'dispatchmgr', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Dispatch Manager', 'active', 0, '2026-05-24 19:33:40', '2026-05-14 17:43:38');
+INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (4, NULL, 'Inventory Manager', 'inventory@ralson.local', 'invmanager', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Inventory Manager', 'active', 0, '2026-05-26 18:44:50', '2026-05-14 17:43:38');
+INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (5, NULL, 'Dispatch Manager', 'dispatch@ralson.local', 'dispatchmgr', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Dispatch Manager', 'active', 0, '2026-05-25 18:48:25', '2026-05-14 17:43:38');
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (6, NULL, 'Quality Manager', 'quality@ralson.local', 'qualitymgr', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Quality Manager', 'active', 0, '2026-05-23 17:47:10', '2026-05-14 17:43:38');
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (7, NULL, 'Employee User', 'employee@ralson.local', 'employeeuser', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Employee', 'active', 0, NULL, '2026-05-14 17:43:38');
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (561, NULL, 'Gagan Kumar Shah', NULL, 'gag43456', '$2y$10$PW5mc3q6.lKCixv6SLvF0eY5uGjOQJW5xDQ2oNaFLwEuKYvr5xY3C', 'Employee', 'active', 1, NULL, '2026-05-14 19:37:52');
 INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (2910, 5, 'Gagan Kumar Shah', NULL, 'gag53456', '$2y$10$GQQuDXgWFyGbUbXCkX/ML.aHjN.Qk7xzzhLuHJmM8VJXBaMBJA.V.', 'Employee', 'active', 0, '2026-05-21 17:00:22', '2026-05-17 18:41:30');
-INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (14943, NULL, 'Sales Manager', 'sales@ralson.local', 'salesmgr', '$2y$10$PMHkpYKirj3dQrnJR31zveSQwM7eI1q2E/Sd5MyPQm.ODO6wrk/fG', 'Sales Manager', 'active', 0, '2026-05-24 19:31:48', '2026-05-24 17:58:30');
+INSERT INTO `users` (`id`, `employee_id`, `full_name`, `email`, `username`, `password_hash`, `role`, `status`, `must_change_password`, `last_login`, `created_at`) VALUES (14943, NULL, 'Sales Manager', 'sales@ralson.local', 'salesmgr', '$2y$10$PMHkpYKirj3dQrnJR31zveSQwM7eI1q2E/Sd5MyPQm.ODO6wrk/fG', 'Sales Manager', 'active', 0, '2026-05-25 18:48:50', '2026-05-24 17:58:30');
 
 SET FOREIGN_KEY_CHECKS=1;

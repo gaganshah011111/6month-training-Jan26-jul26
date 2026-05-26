@@ -7,13 +7,13 @@ $page = (string)($_GET['page'] ?? 'accounts/dashboard');
 $links = [
     'accounts/dashboard' => ['label' => 'Dashboard', 'icon' => 'bi-speedometer2'],
     'accounts/ledger' => ['label' => 'Customer Ledger', 'icon' => 'bi-journal-text'],
+    'accounts/supplier-ledger' => ['label' => 'Supplier Ledger', 'icon' => 'bi-receipt'],
     'accounts/receivables' => ['label' => 'Receivables', 'icon' => 'bi-hourglass-split'],
+    'accounts/payables' => ['label' => 'Payables', 'icon' => 'bi-journal-arrow-down'],
     'accounts/expenses' => ['label' => 'Expenses', 'icon' => 'bi-wallet2'],
-    'accounts/cashbook' => ['label' => 'Cashbook', 'icon' => 'bi-cash'],
-    'accounts/bankbook' => ['label' => 'Bankbook', 'icon' => 'bi-bank'],
-    'accounts/gst' => ['label' => 'GST Reports', 'icon' => 'bi-percent'],
-    'accounts/pnl' => ['label' => 'Profit & Loss', 'icon' => 'bi-graph-up-arrow'],
-    'accounts/reports' => ['label' => 'Financial Reports', 'icon' => 'bi-file-earmark-bar-graph'],
+    'accounts/cashbook' => ['label' => 'Cash & Bank', 'icon' => 'bi-bank'],
+    'accounts/reports' => ['label' => 'Reports', 'icon' => 'bi-file-earmark-bar-graph'],
+    'accounts/transactions-history' => ['label' => 'Transactions History', 'icon' => 'bi-clock-history'],
 ];
 ?>
 <aside class="col-lg-2 col-md-3 app-sidebar min-vh-100 p-3 sidebar-fixed accounts-sidebar">

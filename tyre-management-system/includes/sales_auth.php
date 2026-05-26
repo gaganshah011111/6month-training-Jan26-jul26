@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/functions.php';
 
 const SALES_MANAGER_ROLE = 'Sales Manager';
+const ACCOUNTS_MANAGER_ROLE = 'Accounts Manager';
 
 /** Routes that belong exclusively to the Sales & CRM department. */
 function sales_department_routes(): array
@@ -25,6 +26,18 @@ function sales_department_routes(): array
         'sales/analytics',
         'api/sales-stock',
         'api/sales-order-lines',
+    ];
+}
+
+/** Read-only sales routes needed by Accounts department. */
+function accounts_manager_sales_routes(): array
+{
+    return [
+        'sales/invoices',
+        'sales/invoice',
+        'sales/invoice-print',
+        'sales/payment-receipt',
+        'sales/payments',
     ];
 }
 
@@ -84,6 +97,9 @@ function sales_enforce_department_access(string $page): void
     $role = normalize_role_name((string)(current_user()['role'] ?? ''));
 
     if (is_sales_department_route($page)) {
+        if ($role === ACCOUNTS_MANAGER_ROLE && in_array($page, accounts_manager_sales_routes(), true)) {
+            return;
+        }
         if ($role !== SALES_MANAGER_ROLE) {
             header('Location: ' . route_url(role_home_page($role)));
             exit;
@@ -93,6 +109,9 @@ function sales_enforce_department_access(string $page): void
     }
 
     if ($role === SALES_MANAGER_ROLE) {
+        if (str_starts_with($page, 'accounts/')) {
+            return;
+        }
         if (in_array($page, sales_manager_operational_routes(), true)) {
             return;
         }

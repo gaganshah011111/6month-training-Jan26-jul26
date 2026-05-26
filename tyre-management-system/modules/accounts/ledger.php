@@ -2,10 +2,11 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../../config/db.php';
-require_once __DIR__ . '/../../includes/sales_service.php';
+require_once __DIR__ . '/../../includes/accounts_finance.php';
+require_once __DIR__ . '/../../includes/erp_export.php';
 
 $pdo = Database::connection();
-$customers = sales_list_customers($pdo, ['status' => 'Active']);
+$customers = acc_customer_ledger_summary($pdo);
 $customerId = (int)($_GET['customer_id'] ?? 0);
 $ledger = $customerId > 0 ? sales_customer_ledger($pdo, $customerId) : ['rows' => [], 'customer' => null, 'summary' => []];
 $customer = $ledger['customer'];
@@ -17,22 +18,36 @@ $rows = $ledger['rows'] ?? [];
     <header class="prod-page__head">
         <div>
             <h1 class="prod-page__title">Customer Ledger</h1>
-            <p class="prod-page__sub">Debit / credit entries per customer with running balance.</p>
+            <p class="prod-page__sub">Customer outstanding, payment status, and detailed debit/credit ledger.</p>
         </div>
     </header>
 
-    <form method="get" class="sales-filter-bar mb-3">
-        <input type="hidden" name="page" value="accounts/ledger">
-        <div class="sales-filter-bar__field" style="max-width:320px">
-            <label>Customer</label>
-            <select class="form-select form-select-sm" name="customer_id" onchange="this.form.submit()">
-                <option value="0">Select customer…</option>
-                <?php foreach ($customers as $c): ?>
-                    <option value="<?= (int)$c['id'] ?>" <?= $customerId === (int)$c['id'] ? 'selected' : '' ?>><?= e($c['company_name']) ?></option>
-                <?php endforeach; ?>
-            </select>
+    <section class="sales-card mb-3">
+        <div class="sales-card__head d-flex justify-content-between align-items-center">
+            <h2 class="sales-card__title mb-0">Customer outstanding ledger</h2>
+            <?= erp_export_toolbar('acc-customer-ledger-table', 'customer-ledger') ?>
         </div>
-    </form>
+        <div class="sales-table-wrap sales-table-scroll">
+            <table class="table table-sm mb-0" id="acc-customer-ledger-table">
+                <thead><tr><th>Customer</th><th class="text-end">Total invoiced</th><th class="text-end">Total paid</th><th class="text-end">Pending amount</th><th>Last payment date</th><th>Status</th><th></th></tr></thead>
+                <tbody>
+                <?php foreach ($customers as $c): ?>
+                    <?php $meta = $c['status_meta'] ?? acc_payment_meta('Unpaid'); ?>
+                    <tr>
+                        <td><?= e((string)$c['company_name']) ?></td>
+                        <td class="text-end"><?= e(sales_format_money((float)$c['total_invoiced'])) ?></td>
+                        <td class="text-end"><?= e(sales_format_money((float)$c['total_paid'])) ?></td>
+                        <td class="text-end fw-semibold"><?= e(sales_format_money((float)$c['pending'])) ?></td>
+                        <td><?= e((string)($c['last_payment'] ?? '—')) ?></td>
+                        <td><span class="badge <?= e($meta['cls']) ?>"><?= e((string)$meta['label']) ?></span></td>
+                        <td><a class="btn btn-sm btn-outline-primary" href="<?= e(route_url('accounts/ledger', ['customer_id' => (int)$c['id']])) ?>">Open</a></td>
+                    </tr>
+                <?php endforeach; ?>
+                <?php if ($customers === []): ?><tr><td colspan="7" class="sales-empty">No customer receivable entries.</td></tr><?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </section>
 
     <?php if ($customer): ?>
     <div class="sales-kpis mb-3">
@@ -45,10 +60,13 @@ $rows = $ledger['rows'] ?? [];
     </div>
 
     <section class="sales-card">
-        <div class="sales-card__head"><h2 class="sales-card__title"><?= e($customer['company_name']) ?> — ledger</h2></div>
+        <div class="sales-card__head d-flex justify-content-between align-items-center">
+            <h2 class="sales-card__title mb-0"><?= e($customer['company_name']) ?> — ledger</h2>
+            <?= erp_export_toolbar('acc-ledger-details-table', 'customer-ledger-details') ?>
+        </div>
         <div class="sales-table-wrap sales-table-scroll">
-            <table class="table table-sm mb-0">
-                <thead><tr><th>Date</th><th>Invoice / ref</th><th class="text-end">Debit</th><th class="text-end">Credit</th><th class="text-end">Balance</th></tr></thead>
+            <table class="table table-sm mb-0" id="acc-ledger-details-table">
+                <thead><tr><th>Date</th><th>Ref</th><th class="text-end">Debit</th><th class="text-end">Credit</th><th class="text-end">Balance</th></tr></thead>
                 <tbody>
                 <?php foreach ($rows as $r): ?>
                     <tr>
@@ -68,7 +86,6 @@ $rows = $ledger['rows'] ?? [];
     </section>
     <?php elseif ($customerId > 0): ?>
         <div class="alert alert-warning">Customer not found.</div>
-    <?php else: ?>
-        <p class="text-muted">Select a customer to view ledger.</p>
     <?php endif; ?>
 </div>
+<script src="assets/js/erp-table-export.js?v=<?= e((string)@filemtime(__DIR__ . '/../../assets/js/erp-table-export.js')) ?>"></script>

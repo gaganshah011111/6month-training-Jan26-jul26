@@ -6,7 +6,7 @@ require_once __DIR__ . '/functions.php';
 /** Roles that may use Accounts & Finance. */
 function accounts_allowed_roles(): array
 {
-    return ['Super Admin', 'Admin', 'Sales Manager'];
+    return ['Super Admin', 'Admin', 'Sales Manager', 'Accounts Manager'];
 }
 
 function is_accounts_department_route(string $page): bool

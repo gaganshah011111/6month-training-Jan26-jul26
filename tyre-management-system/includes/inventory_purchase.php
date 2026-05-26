@@ -452,7 +452,7 @@ function inv_purchase_list(PDO $pdo, array $filters = []): array
                    COALESCE(NULLIF(i.subtotal, 0), i.quantity * i.rate) AS subtotal,
                    i.gst_amount,
                    COALESCE(NULLIF(i.total_amount, 0), i.quantity * i.rate + COALESCE(i.gst_amount, 0)) AS total_amount,
-                   i.paid_amount, i.payment_status, i.invoice_no, i.challan_no,
+                   i.paid_amount, i.payment_status, i.invoice_no, i.challan_no, i.due_date,
                    rm.material_name, rm.unit, s.name AS supplier_name
             FROM stock_inward i
             JOIN raw_materials rm ON rm.id = i.material_id

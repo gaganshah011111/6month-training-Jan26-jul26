@@ -143,6 +143,7 @@ $postRedirectPaths = [
     'modules/sales/customers.php',
     'modules/sales/order.php',
     'modules/sales/payments.php',
+    'modules/accounts/expenses.php',
 ];
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($path, $postRedirectPaths, true)) {
     require __DIR__ . '/' . $path;

@@ -83,27 +83,27 @@ $filterQs = array_filter([
         </div>
     </form>
 
-    <div class="crm-summary-4">
-        <article class="sales-kpi"><span class="sales-kpi__label">Total sales</span><strong><?= e(sales_format_money((float)$s['total_sales'])) ?></strong></article>
+    <div class="crm-summary-4 crm-reports-kpis">
+        <article class="sales-kpi sales-kpi--primary"><span class="sales-kpi__label">Total sales</span><strong><?= e(sales_format_money((float)$s['total_sales'])) ?></strong></article>
         <article class="sales-kpi"><span class="sales-kpi__label">Orders</span><strong><?= e((string)$s['total_orders']) ?></strong></article>
         <article class="sales-kpi sales-kpi--ok"><span class="sales-kpi__label">Paid</span><strong><?= e(sales_format_money((float)$s['total_paid'])) ?></strong></article>
-        <article class="sales-kpi sales-kpi--warn"><span class="sales-kpi__label">Pending</span><strong><?= e(sales_format_money((float)$s['total_pending'])) ?></strong></article>
+        <article class="sales-kpi sales-kpi--danger"><span class="sales-kpi__label">Pending</span><strong><?= e(sales_format_money((float)$s['total_pending'])) ?></strong></article>
     </div>
 
     <div class="row g-4 mb-4">
         <div class="col-md-6">
-            <section class="crm-section">
+            <section class="crm-section crm-reports-card">
                 <div class="crm-section__head"><h2 class="crm-section__title">Dispatch performance</h2></div>
                 <div class="crm-section__body crm-mini-stats">
-                    <div><span>Total</span><strong><?= e((string)($dp['total'] ?? 0)) ?></strong></div>
-                    <div><span>Delivered</span><strong class="text-success"><?= e((string)($dp['delivered'] ?? 0)) ?></strong></div>
-                    <div><span>Pending</span><strong><?= e((string)($dp['pending'] ?? 0)) ?></strong></div>
-                    <div><span>Avg days</span><strong><?= e((string)($dp['avg_days'] ?? 0)) ?></strong></div>
+                    <div class="crm-mini-stats__item"><span>Total</span><strong><?= e((string)($dp['total'] ?? 0)) ?></strong></div>
+                    <div class="crm-mini-stats__item crm-mini-stats__item--ok"><span>Delivered</span><strong><?= e((string)($dp['delivered'] ?? 0)) ?></strong></div>
+                    <div class="crm-mini-stats__item crm-mini-stats__item--warn"><span>Pending</span><strong><?= e((string)($dp['pending'] ?? 0)) ?></strong></div>
+                    <div class="crm-mini-stats__item"><span>Avg days</span><strong><?= e((string)($dp['avg_days'] ?? 0)) ?></strong></div>
                 </div>
             </section>
         </div>
         <div class="col-md-6">
-            <section class="crm-section">
+            <section class="crm-section crm-reports-card">
                 <div class="crm-section__head">
                     <h2 class="crm-section__title">Tyre-wise sales</h2>
                     <?= erp_export_toolbar('crm-tyre-sales', 'tyre-sales') ?>
@@ -129,7 +129,7 @@ $filterQs = array_filter([
         </div>
     </div>
 
-    <section class="crm-section mb-4">
+    <section class="crm-section crm-reports-card mb-4">
         <div class="crm-section__head">
             <h2 class="crm-section__title">Top customers</h2>
             <?= erp_export_toolbar('crm-top-customers', 'top-customers') ?>
@@ -153,7 +153,7 @@ $filterQs = array_filter([
         </div>
     </section>
 
-    <section class="crm-section">
+    <section class="crm-section crm-reports-card">
         <div class="crm-section__head">
             <h2 class="crm-section__title">Payment outstanding</h2>
             <?= erp_export_toolbar('crm-payment-outstanding', 'payment-outstanding') ?>

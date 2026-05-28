@@ -55,6 +55,7 @@ if (str_starts_with((string)$page, 'api/')) {
 
 if ($page === 'employees/credential-slip' || $page === 'payroll/payslip' || $page === 'dispatch/slip'
     || $page === 'sales/invoice-print' || $page === 'sales/payment-receipt' || $page === 'sales/order-print'
+    || $page === 'accounts/payment-receipt' || $page === 'accounts/invoice-print'
     || $page === 'inventory/purchase-print' || str_starts_with((string)$page, 'inventory/purchase-print')) {
     require __DIR__ . '/' . $path;
     exit;

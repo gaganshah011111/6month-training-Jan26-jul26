@@ -25,19 +25,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'payments') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_payment') {
-    verify_csrf();
-    $inwardId = (int)($_POST['inward_id'] ?? 0);
-    try {
-        inv_purchase_add_payment($pdo, $inwardId, $_POST);
-        set_flash('success', 'Payment recorded successfully.');
-    } catch (Throwable $e) {
-        set_flash('danger', $e->getMessage());
-    }
-    header('Location: ' . route_url('inventory/purchase-history', [
-        'view' => $inwardId,
-        'from' => $_POST['return_from'] ?? '',
-        'to' => $_POST['return_to'] ?? '',
-    ]));
+    set_flash('warning', 'Procurement is view-only for payments. Please use Accounts > Payables.');
+    header('Location: ' . route_url('inventory/purchase-history'));
     exit;
 }
 
@@ -123,19 +112,23 @@ $baseQs = 'page=inventory/purchase-history&from=' . rawurlencode($from) . '&to='
 $today = date('Y-m-d');
 ?>
 
-<div class="inv-page">
-<?php inv_page_header(
-    'Purchase History',
-    'Track purchases, add payments, and export filtered results.',
-    '<a class="btn btn-primary btn-sm" href="' . e(route_url('inventory/add-stock')) . '"><i class="bi bi-plus-lg me-1"></i>Inward</a>'
-); ?>
+<div class="accounts-page">
+    <header class="prod-page__head">
+        <div>
+            <h1 class="prod-page__title">Purchase History</h1>
+            <p class="prod-page__sub">Track purchases and payable status. Payment posting is managed by Accounts.</p>
+        </div>
+        <div>
+            <a class="btn btn-sm btn-primary" href="<?= e(route_url('inventory/add-stock')) ?>"><i class="bi bi-plus-lg me-1"></i>Inward</a>
+        </div>
+    </header>
 
-    <form method="get" class="inv-filter-bar">
+    <form method="get" class="sales-filter-bar mb-3">
         <input type="hidden" name="page" value="inventory/purchase-history">
-        <div class="inv-filter-bar__row">
-            <div class="col-auto"><label class="form-label">From</label><input type="date" class="form-control form-control-sm" name="from" value="<?= e($from) ?>"></div>
-            <div class="col-auto"><label class="form-label">To</label><input type="date" class="form-control form-control-sm" name="to" value="<?= e($to) ?>"></div>
-            <div class="col-md-2"><label class="form-label">Supplier</label>
+        <div class="sales-filter-bar__row d-flex flex-wrap gap-2 align-items-end">
+            <div class="sales-filter-bar__field"><label>From</label><input type="date" class="form-control form-control-sm" name="from" value="<?= e($from) ?>"></div>
+            <div class="sales-filter-bar__field"><label>To</label><input type="date" class="form-control form-control-sm" name="to" value="<?= e($to) ?>"></div>
+            <div class="sales-filter-bar__field"><label>Supplier</label>
                 <select class="form-select form-select-sm erp-select-search" name="supplier_id" data-placeholder="All">
                     <option value="0">All</option>
                     <?php foreach ($suppliers as $s): ?>
@@ -143,7 +136,7 @@ $today = date('Y-m-d');
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="col-md-2"><label class="form-label">Material</label>
+            <div class="sales-filter-bar__field"><label>Material</label>
                 <select class="form-select form-select-sm erp-select-search" name="material_id" data-placeholder="All">
                     <option value="0">All</option>
                     <?php foreach ($materials as $m): ?>
@@ -151,7 +144,7 @@ $today = date('Y-m-d');
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="col-auto"><label class="form-label">Payment</label>
+            <div class="sales-filter-bar__field"><label>Payment</label>
                 <select class="form-select form-select-sm" name="payment_status">
                     <option value="">All</option>
                     <?php foreach (['Paid', 'Partial', 'Unpaid'] as $ps): ?>
@@ -159,20 +152,20 @@ $today = date('Y-m-d');
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="col-md-2"><label class="form-label">Search</label><input class="form-control form-control-sm" name="q" value="<?= e($q) ?>" placeholder="PINV, supplier…"></div>
-            <div class="col-auto"><button class="btn btn-primary btn-sm">Apply filters</button></div>
-            <?= inv_filter_exports($baseQs) ?>
+            <div class="sales-filter-bar__field"><label>Search</label><input class="form-control form-control-sm" name="q" value="<?= e($q) ?>" placeholder="PINV, supplier…"></div>
+            <div><button class="btn btn-primary btn-sm">Apply filters</button></div>
+            <div class="ms-auto"><?= inv_filter_exports($baseQs) ?></div>
         </div>
     </form>
 
     <?php if ($viewRow): ?>
         <?php $pm = inv_purchase_payment_meta((string)$viewRow['payment_status']); ?>
-        <section class="inv-card mb-3">
-            <div class="inv-card__head d-flex flex-wrap justify-content-between align-items-center gap-2">
-                <h2 class="inv-card__title mb-0"><?= e((string)$viewRow['pinv_no']) ?></h2>
+        <section class="sales-card mb-3">
+            <div class="sales-card__head d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <h2 class="sales-card__title mb-0"><?= e((string)$viewRow['pinv_no']) ?></h2>
                 <span class="badge inv-pay--<?= e($pm['badge']) ?>"><?= e($pm['label']) ?></span>
             </div>
-            <div class="inv-card__body">
+            <div class="sales-card__body">
                 <div class="row g-3">
                     <div class="col-md-8">
                         <div class="row g-2 small">
@@ -193,13 +186,7 @@ $today = date('Y-m-d');
                     <a class="btn btn-outline-secondary btn-sm" href="<?= e(inv_purchase_print_url((int)$viewRow['id'])) ?>" target="_blank">Download PDF</a>
                     <a class="btn btn-outline-primary btn-sm" href="<?= e(route_url('inventory/purchase-edit', ['id' => (int)$viewRow['id']])) ?>">Edit</a>
                     <?php if ((float)$viewRow['pending_amount'] > inv_purchase_tolerance()): ?>
-                        <button type="button" class="btn btn-success btn-sm inv-open-pay-modal"
-                            data-id="<?= (int)$viewRow['id'] ?>"
-                            data-pinv="<?= e((string)$viewRow['pinv_no']) ?>"
-                            data-supplier="<?= e((string)($viewRow['supplier_name'] ?? '')) ?>"
-                            data-total="<?= e((string)$viewRow['total_amount']) ?>"
-                            data-paid="<?= e((string)$viewRow['paid_amount']) ?>"
-                            data-pending="<?= e((string)$viewRow['pending_amount']) ?>">Add payment</button>
+                        <span class="badge text-bg-light border">Accounts managed</span>
                     <?php endif; ?>
                     <button type="button" class="btn btn-outline-secondary btn-sm inv-open-pay-history"
                         data-id="<?= (int)$viewRow['id'] ?>"
@@ -209,9 +196,9 @@ $today = date('Y-m-d');
         </section>
     <?php endif; ?>
 
-    <section class="inv-card">
-        <?php inv_table_scroll_open('min(56vh, 520px)'); ?>
-            <table class="table table-sm inv-table mb-0">
+    <section class="sales-card">
+        <div class="sales-table-wrap sales-table-scroll" style="max-height:min(56vh,520px)">
+            <table class="table table-sm mb-0">
                 <thead>
                     <tr>
                         <th>PINV</th><th>Date</th><th>Supplier</th><th>Material</th>
@@ -230,17 +217,6 @@ $today = date('Y-m-d');
                         ['label' => 'Print / PDF', 'url' => inv_purchase_print_url((int)$r['id'], true), 'icon' => 'bi-file-pdf', 'tone' => 'pdf', 'attrs' => 'target="_blank" rel="noopener"'],
                         ['label' => 'Edit', 'url' => route_url('inventory/purchase-edit', ['id' => (int)$r['id']]), 'icon' => 'bi-pencil', 'tone' => 'edit'],
                     ];
-                    if ($canPay) {
-                        $actions[] = [
-                            'label' => 'Add payment',
-                            'url' => '#inv-pay',
-                            'icon' => 'bi-cash-coin',
-                            'tone' => 'payment',
-                            'attrs' => 'data-pay-open="1" data-id="' . (int)$r['id'] . '" data-pinv="' . e((string)$r['pinv_no']) . '" data-supplier="' . e((string)($r['supplier_name'] ?? '')) . '" data-total="' . e((string)$r['total_amount']) . '" data-paid="' . e((string)$r['paid_amount']) . '" data-pending="' . e((string)$pending) . '"',
-                        ];
-                    } else {
-                        $actions[] = ['label' => 'Add payment', 'icon' => 'bi-cash-coin', 'tone' => 'payment', 'disabled' => true];
-                    }
                     $actions[] = [
                         'label' => 'Payment history',
                         'url' => '#inv-pay-history',
@@ -266,55 +242,10 @@ $today = date('Y-m-d');
                 <?php endif; ?>
                 </tbody>
             </table>
-        <?php inv_table_scroll_close(); ?>
+        </div>
     </section>
 </div>
 
-<!-- Add payment modal -->
-<div class="modal fade" id="invPayModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <form method="post" id="inv-pay-form">
-                <?= csrf_input() ?>
-                <input type="hidden" name="action" value="add_payment">
-                <input type="hidden" name="inward_id" id="inv-pay-inward-id" value="">
-                <input type="hidden" name="return_from" value="<?= e($from) ?>">
-                <input type="hidden" name="return_to" value="<?= e($to) ?>">
-                <div class="modal-header py-2">
-                    <h5 class="modal-title">Add payment</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="inv-pay-balance mb-3">
-                        <div class="inv-pay-balance__row"><span>PINV</span><strong id="inv-pay-pinv">—</strong></div>
-                        <div class="inv-pay-balance__row"><span>Supplier</span><strong id="inv-pay-supplier">—</strong></div>
-                        <div class="inv-pay-balance__row"><span>Invoice total</span><strong id="inv-pay-total">₹0.00</strong></div>
-                        <div class="inv-pay-balance__row"><span>Already paid</span><strong class="text-success" id="inv-pay-paid">₹0.00</strong></div>
-                        <div class="inv-pay-balance__row inv-pay-balance__row--pending"><span>Remaining</span><strong class="text-danger" id="inv-pay-pending">₹0.00</strong></div>
-                    </div>
-                    <div class="row g-2">
-                        <div class="col-6"><label class="form-label">New payment (₹)</label><input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="amount" id="inv-pay-amount" required></div>
-                        <div class="col-6"><label class="form-label">Payment date</label><input type="date" class="form-control form-control-sm" name="payment_date" value="<?= e($today) ?>" required></div>
-                        <div class="col-6"><label class="form-label">Payment mode</label>
-                            <select class="form-select form-select-sm" name="payment_mode" required>
-                                <option value="Cash">Cash</option>
-                                <option value="UPI">UPI</option>
-                                <option value="Bank">Bank</option>
-                                <option value="Credit">Credit</option>
-                            </select>
-                        </div>
-                        <div class="col-6"><label class="form-label">Transaction reference</label><input class="form-control form-control-sm" name="payment_ref" maxlength="80"></div>
-                        <div class="col-12"><label class="form-label">Notes</label><textarea class="form-control form-control-sm" name="notes" rows="2"></textarea></div>
-                    </div>
-                </div>
-                <div class="modal-footer py-2">
-                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success btn-sm">Record payment</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 
 <!-- Payment history modal -->
 <div class="modal fade" id="invPayHistoryModal" tabindex="-1" aria-hidden="true">
@@ -334,12 +265,6 @@ $today = date('Y-m-d');
     </div>
 </div>
 
-<?php if ($openPay && $viewRow && (float)$viewRow['pending_amount'] > inv_purchase_tolerance()): ?>
-<script>document.addEventListener('DOMContentLoaded', function () {
-    const btn = document.querySelector('.inv-open-pay-modal[data-id="<?= (int)$viewRow['id'] ?>"]');
-    if (btn) btn.click();
-});</script>
-<?php endif; ?>
 <?php if ($openPrint && $viewRow): ?>
 <script>document.addEventListener('DOMContentLoaded', function () {
     window.open(<?= json_encode(inv_purchase_print_url((int)$viewRow['id'], true), JSON_THROW_ON_ERROR) ?>, '_blank', 'noopener');

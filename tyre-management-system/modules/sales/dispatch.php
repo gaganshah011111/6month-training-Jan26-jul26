@@ -119,7 +119,7 @@ try {
                 if ($invId) {
                     $actions[] = ['label' => 'View invoice', 'url' => route_url('sales/invoice', ['id' => $invId]), 'icon' => 'bi-receipt'];
                 }
-                $actions[] = ['label' => 'Record payment', 'url' => route_url('sales/payments', ['customer_id' => (int)$r['customer_id']]), 'icon' => 'bi-cash'];
+                $actions[] = ['label' => 'View in Accounts', 'url' => route_url('accounts/receivables'), 'icon' => 'bi-bank2'];
                 $actions[] = ['label' => 'Slip PDF', 'url' => dispatch_slip_url($slipId), 'icon' => 'bi-file-pdf', 'attrs' => 'target="_blank" rel="noopener"'];
                 $actions[] = ['label' => 'Print slip', 'url' => dispatch_slip_url($slipId, 'print'), 'icon' => 'bi-printer', 'attrs' => 'target="_blank" rel="noopener"'];
                 ?>

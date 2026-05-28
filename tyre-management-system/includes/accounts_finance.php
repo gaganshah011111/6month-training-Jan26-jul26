@@ -130,6 +130,38 @@ function acc_customer_ledger_summary(PDO $pdo): array
     return $rows;
 }
 
+/**
+ * KPI strip for Accounts → Payables (respects list filters).
+ *
+ * @param array{from?: string, to?: string, supplier_id?: int, payment_status?: string} $filters
+ * @return array{pending: float, overdue: float, month_paid: float}
+ */
+function acc_payables_page_kpis(PDO $pdo, array $filters = []): array
+{
+    inv_purchase_ensure_schema($pdo);
+    $rows = inv_purchase_list($pdo, $filters);
+    $totalPending = 0.0;
+    $totalOverdue = 0.0;
+    $today = date('Y-m-d');
+    foreach ($rows as $r) {
+        $pending = (float)($r['pending_amount'] ?? 0);
+        $totalPending += $pending;
+        $due = (string)($r['due_date'] ?? '');
+        if ($due !== '' && $due < $today && $pending > inv_purchase_tolerance()) {
+            $totalOverdue += $pending;
+        }
+    }
+    $monthPaid = (float)$pdo->query(
+        "SELECT COALESCE(SUM(amount),0) FROM purchase_payments WHERE payment_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01')"
+    )->fetchColumn();
+
+    return [
+        'pending' => $totalPending,
+        'overdue' => $totalOverdue,
+        'month_paid' => $monthPaid,
+    ];
+}
+
 function acc_supplier_ledger_summary(PDO $pdo): array
 {
     $rows = inv_supplier_ledger_list($pdo);

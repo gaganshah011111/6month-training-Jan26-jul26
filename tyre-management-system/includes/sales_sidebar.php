@@ -10,7 +10,7 @@ $links = [
     'sales/customers' => ['label' => 'Customers', 'icon' => 'bi-building'],
     'sales/orders' => ['label' => 'Sales Orders', 'icon' => 'bi-cart-check'],
     'sales/invoices' => ['label' => 'Invoices', 'icon' => 'bi-receipt'],
-    'sales/payments' => ['label' => 'Payments', 'icon' => 'bi-cash-stack'],
+    'sales/payments' => ['label' => 'Payment Status', 'icon' => 'bi-cash-stack'],
     'sales/dispatch' => ['label' => 'Dispatch Tracking', 'icon' => 'bi-truck'],
     'sales/reports' => ['label' => 'CRM Reports', 'icon' => 'bi-clipboard-data'],
 ];

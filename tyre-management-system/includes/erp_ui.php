@@ -100,7 +100,17 @@ function erp_ui_extra_stylesheets(): array
         'reports/dispatch' => ['dispatch-module.css'],
     ];
 
-    return $map[$page] ?? [];
+    $styles = $map[$page] ?? [];
+    if (str_starts_with($page, 'accounts/')) {
+        if (!in_array('sales-module.css', $styles, true)) {
+            $styles[] = 'sales-module.css';
+        }
+        if (!in_array('accounts-module.css', $styles, true)) {
+            $styles[] = 'accounts-module.css';
+        }
+    }
+
+    return $styles;
 }
 
 /** Load global ERP shell CSS (+ optional page CSS). */
@@ -113,7 +123,7 @@ function erp_ui_enqueue(): void
     $done = true;
 
     $base = __DIR__ . '/../assets/css/';
-    $files = ['erp-module.css', 'erp-ui-polish.css'];
+    $files = ['erp-module.css', 'erp-ui-polish.css', 'accounts-module.css'];
 
     foreach (erp_ui_extra_stylesheets() as $extra) {
         $files[] = $extra;

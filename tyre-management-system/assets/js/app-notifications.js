@@ -19,7 +19,7 @@
 
     function fmtTime(iso) {
         if (!iso) return '';
-        var d = new Date(String(iso).replace(' ', 'T'));
+        var d = new Date(String(iso).replace(' ', 'T'));gi
         if (isNaN(d.getTime())) return String(iso);
         var now = new Date();
         var diff = (now - d) / 1000;

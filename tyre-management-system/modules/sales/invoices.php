@@ -62,7 +62,7 @@ try {
     <?= crm_page_header(
         'Invoices',
         'Generated after dispatch — view, print, and track payment status.',
-        '<a href="' . e(route_url('sales/payments')) . '" class="btn btn-outline-secondary btn-sm">Record payment</a>'
+        '<a href="' . e(route_url('accounts/receivables')) . '" class="btn btn-outline-secondary btn-sm">View in Accounts</a>'
     ) ?>
 
     <?php if ($loadError): ?><?= sales_error_alert('Unable to load invoices.') ?><?php endif; ?>
@@ -162,7 +162,6 @@ try {
                     ['label' => 'View', 'url' => route_url('sales/invoice', ['id' => $iid]), 'icon' => 'bi-eye'],
                     ['label' => 'PDF', 'url' => route_url('sales/invoice-print', ['id' => $iid]), 'icon' => 'bi-file-pdf', 'attrs' => 'target="_blank" rel="noopener"'],
                     ['label' => 'Print', 'url' => route_url('sales/invoice-print', ['id' => $iid, 'print' => 1]), 'icon' => 'bi-printer', 'attrs' => 'target="_blank" rel="noopener"'],
-                    ['label' => 'Payment', 'url' => route_url('sales/payments', ['invoice_id' => $iid]), 'icon' => 'bi-cash-stack'],
                 ];
                 ?>
                 <tr class="sales-invoice-row"

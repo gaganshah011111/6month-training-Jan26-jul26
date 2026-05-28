@@ -18,7 +18,7 @@ $rows = acc_finance_transactions($pdo, ['from' => $from, 'to' => $to]);
             <p class="prod-page__sub">Master finance log of customer payments, supplier payments, and expenses.</p>
         </div>
         <nav class="prod-page__links">
-            <a href="<?= e(route_url('sales/payments')) ?>">Record customer payment</a>
+            <a href="<?= e(route_url('accounts/receivables')) ?>">Record customer payment</a>
             <a href="<?= e(route_url('inventory/purchase-history')) ?>">Record supplier payment</a>
         </nav>
     </header>

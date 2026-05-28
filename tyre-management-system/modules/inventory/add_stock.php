@@ -166,32 +166,18 @@ $supplierJson = json_encode(array_map(static function ($s) {
                 </section>
 
                 <section class="inv-card inv-purchase-section">
-                    <div class="inv-card__head"><h2 class="inv-card__title">4. Payment details</h2></div>
+                    <div class="inv-card__head"><h2 class="inv-card__title">4. Payable terms (Accounts managed)</h2></div>
                     <div class="inv-card__body">
                         <div class="row g-2">
-                            <div class="col-md-3">
-                                <label class="form-label">Payment status</label>
-                                <select class="form-select form-select-sm" name="payment_status" id="inv-pay-status">
-                                    <option value="Paid">Paid</option>
-                                    <option value="Partial">Partial</option>
-                                    <option value="Unpaid" selected>Unpaid</option>
-                                </select>
-                            </div>
-                            <div class="col-md-3"><label class="form-label">Paid amount (₹)</label><input type="number" step="0.01" min="0" class="form-control form-control-sm inv-calc" name="paid_amount" id="inv-paid" value="0"></div>
-                            <div class="col-md-3"><label class="form-label">Remaining (₹)</label><input class="form-control form-control-sm" id="inv-remaining" readonly></div>
-                            <div class="col-md-3">
-                                <label class="form-label">Payment mode</label>
-                                <select class="form-select form-select-sm" name="payment_mode">
-                                    <option value="">—</option>
-                                    <option>Cash</option>
-                                    <option>UPI</option>
-                                    <option>Bank</option>
-                                    <option>Credit</option>
-                                </select>
-                            </div>
+                            <input type="hidden" name="payment_status" value="Unpaid">
+                            <input type="hidden" name="paid_amount" value="0">
                             <div class="col-md-3"><label class="form-label">Due date</label><input type="date" class="form-control form-control-sm" name="due_date"></div>
-                            <div class="col-md-3"><label class="form-label">Transaction reference</label><input class="form-control form-control-sm" name="payment_ref" maxlength="80"></div>
-                            <div class="col-md-6"><label class="form-label">Notes</label><textarea class="form-control form-control-sm" name="notes" rows="2"></textarea></div>
+                            <div class="col-md-9"><label class="form-label">Notes</label><textarea class="form-control form-control-sm" name="notes" rows="2" placeholder="Payment is managed by Accounts in Payables module."></textarea></div>
+                            <div class="col-12">
+                                <div class="alert alert-info py-2 mb-0 small">
+                                    Purchase Inward creates supplier payable automatically with <strong>Unpaid</strong> status. Record supplier payment from <strong>Accounts &amp; Finance &gt; Payables</strong>.
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>

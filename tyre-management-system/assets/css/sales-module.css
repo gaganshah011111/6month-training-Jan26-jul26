@@ -80,6 +80,10 @@
   border-left: 3px solid #22c55e;
 }
 
+.sales-kpi--primary {
+  border-left: 3px solid #2563eb;
+}
+
 .sales-card {
   background: #fff;
   border: 1px solid #e2e8f0;
@@ -1330,6 +1334,84 @@
 
 .crm-reports-page .crm-reports-kpis {
   grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+}
+
+.crm-reports-page .crm-filter-inline {
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.crm-reports-page .crm-filter-inline__field label {
+  color: #334155;
+  font-weight: 700;
+}
+
+.crm-reports-page .crm-reports-card .crm-section__head {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.crm-reports-page .crm-reports-card .crm-section__title {
+  color: #0f172a;
+}
+
+.crm-reports-page .crm-reports-card .crm-section__body {
+  border-color: #cbd5e1;
+}
+
+.crm-reports-page .crm-mini-stats {
+  padding: 0.9rem;
+  gap: 0.55rem;
+}
+
+.crm-reports-page .crm-mini-stats__item {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.5rem 0.4rem;
+  background: #fff;
+}
+
+.crm-reports-page .crm-mini-stats__item--ok {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.crm-reports-page .crm-mini-stats__item--warn {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.crm-reports-page .crm-table-scroll tbody td {
+  color: #1e293b;
+}
+
+.crm-reports-page .crm-table-scroll .fw-semibold {
+  color: #0f172a;
+}
+
+/* Fix tyre-wise sales table readability on narrow cards */
+.crm-reports-page #crm-tyre-sales {
+  min-width: 100% !important;
+  table-layout: fixed;
+}
+
+.crm-reports-page #crm-tyre-sales th:nth-child(1),
+.crm-reports-page #crm-tyre-sales td:nth-child(1) {
+  width: 52%;
+}
+
+.crm-reports-page #crm-tyre-sales th:nth-child(2),
+.crm-reports-page #crm-tyre-sales td:nth-child(2),
+.crm-reports-page #crm-tyre-sales th:nth-child(3),
+.crm-reports-page #crm-tyre-sales td:nth-child(3) {
+  width: 24%;
+}
+
+.crm-reports-page #crm-tyre-sales th,
+.crm-reports-page #crm-tyre-sales td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .crm-reports-filters .sales-filter-bar__grid {

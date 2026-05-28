@@ -24,6 +24,9 @@ $links = [
         if (!$isActive && $route === 'accounts/ledger' && $page === 'accounts/ledger-view') {
             $isActive = true;
         }
+        if (!$isActive && $route === 'accounts/receivables' && in_array($page, ['accounts/invoice-view', 'accounts/invoice-print'], true)) {
+            $isActive = true;
+        }
         ?>
         <a class="sidebar-link d-flex align-items-center gap-2 p-2 text-decoration-none rounded mb-1 <?= $isActive ? 'active-nav' : '' ?>" href="<?= e(route_url($route)) ?>">
             <i class="bi <?= e($meta['icon']) ?>"></i>

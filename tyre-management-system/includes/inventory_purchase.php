@@ -1,6 +1,28 @@
 <?php
 declare(strict_types=1);
 
+if (!function_exists('inv_table_exists')) {
+    function inv_table_exists(PDO $pdo, string $table): bool
+    {
+        if (function_exists('dh_table_exists')) {
+            return dh_table_exists($pdo, $table);
+        }
+        $st = $pdo->prepare('SHOW TABLES LIKE :t');
+        $st->execute(['t' => $table]);
+
+        return (bool)$st->fetchColumn();
+    }
+}
+
+if (!function_exists('inv_current_user_name')) {
+    function inv_current_user_name(): string
+    {
+        $u = function_exists('current_user') ? current_user() : null;
+
+        return trim((string)($u['full_name'] ?? $u['username'] ?? 'System'));
+    }
+}
+
 function inv_purchase_tolerance(): float
 {
     return 0.02;
@@ -134,6 +156,99 @@ function inv_purchase_add_payment(PDO $pdo, int $inwardId, array $data): int
     );
 
     return $paymentId;
+}
+
+/** @return array<string, mixed>|null */
+function inv_purchase_get_payment(PDO $pdo, int $paymentId): ?array
+{
+    inv_purchase_ensure_payment_schema($pdo);
+    if ($paymentId <= 0 || !inv_table_exists($pdo, 'purchase_payments')) {
+        return null;
+    }
+    $st = $pdo->prepare('SELECT * FROM purchase_payments WHERE id = :id LIMIT 1');
+    $st->execute(['id' => $paymentId]);
+    $row = $st->fetch(PDO::FETCH_ASSOC);
+
+    return $row ?: null;
+}
+
+/**
+ * Update an existing supplier payment row and resync inward totals.
+ */
+function inv_purchase_update_payment(PDO $pdo, int $paymentId, array $data): void
+{
+    inv_purchase_ensure_payment_schema($pdo);
+    if (!inv_table_exists($pdo, 'purchase_payments')) {
+        throw new RuntimeException('Payment module is not available. Reload the application once.');
+    }
+
+    $existing = inv_purchase_get_payment($pdo, $paymentId);
+    if (!$existing) {
+        throw new InvalidArgumentException('Payment not found.');
+    }
+
+    $inwardId = (int)($existing['inward_id'] ?? 0);
+    $postedInward = (int)($data['inward_id'] ?? 0);
+    if ($postedInward > 0 && $postedInward !== $inwardId) {
+        throw new InvalidArgumentException('Payment does not belong to selected invoice.');
+    }
+
+    $row = inv_purchase_get($pdo, $inwardId);
+    if (!$row) {
+        throw new InvalidArgumentException('Purchase entry not found.');
+    }
+
+    $newAmount = round((float)($data['amount'] ?? $data['payment_amount'] ?? 0), 2);
+    if ($newAmount <= 0) {
+        throw new InvalidArgumentException('Payment amount must be greater than zero.');
+    }
+
+    $payDate = (string)($data['payment_date'] ?? date('Y-m-d'));
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $payDate)) {
+        throw new InvalidArgumentException('Valid payment date is required.');
+    }
+
+    $mode = trim((string)($data['payment_mode'] ?? '')) ?: null;
+    $allowedModes = ['Cash', 'UPI', 'Bank', 'Credit'];
+    if ($mode !== null && !in_array($mode, $allowedModes, true)) {
+        $mode = null;
+    }
+
+    $ref = trim((string)($data['payment_ref'] ?? $data['transaction_reference'] ?? '')) ?: null;
+    $notes = trim((string)($data['notes'] ?? '')) ?: null;
+
+    $oldAmount = round((float)($existing['amount'] ?? 0), 2);
+    $total = (float)($row['total_amount'] ?? 0);
+    $paidWithoutThis = round(max(0, (float)($row['paid_amount'] ?? 0) - $oldAmount), 2);
+    $maxAllowed = round(max(0, $total - $paidWithoutThis), 2);
+    $tol = inv_purchase_tolerance();
+    if ($newAmount > $maxAllowed + $tol) {
+        throw new InvalidArgumentException('Amount exceeds invoice pending balance (₹' . number_format($maxAllowed, 2) . ').');
+    }
+
+    $pdo->prepare(
+        'UPDATE purchase_payments
+         SET payment_date = :d, amount = :amt, payment_mode = :mode, payment_ref = :ref, notes = :notes
+         WHERE id = :id'
+    )->execute([
+        'd' => $payDate,
+        'amt' => $newAmount,
+        'mode' => $mode,
+        'ref' => $ref,
+        'notes' => $notes,
+        'id' => $paymentId,
+    ]);
+
+    inv_purchase_sync_inward_payment($pdo, $inwardId);
+
+    $pinv = (string)($row['pinv_no'] ?? 'PINV-' . $inwardId);
+    inv_log_activity(
+        $pdo,
+        'adjustment',
+        (int)($row['material_id'] ?? 0) ?: null,
+        0,
+        $pinv . ': supplier payment updated to ₹' . number_format($newAmount, 2) . ' (' . ($mode ?? '—') . ')'
+    );
 }
 
 /** @return list<array<string, mixed>> */
@@ -448,7 +563,7 @@ function inv_purchase_payment_meta(string $status): array
 function inv_purchase_list(PDO $pdo, array $filters = []): array
 {
     inv_purchase_ensure_schema($pdo);
-    $sql = "SELECT i.id, i.pinv_no, i.inward_date, i.quantity, i.rate,
+    $sql = "SELECT i.id, i.supplier_id, i.pinv_no, i.inward_date, i.quantity, i.rate,
                    COALESCE(NULLIF(i.subtotal, 0), i.quantity * i.rate) AS subtotal,
                    i.gst_amount,
                    COALESCE(NULLIF(i.total_amount, 0), i.quantity * i.rate + COALESCE(i.gst_amount, 0)) AS total_amount,

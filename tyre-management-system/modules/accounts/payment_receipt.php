@@ -2,16 +2,9 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../../config/db.php';
-require_once __DIR__ . '/../../includes/sales_auth.php';
 require_once __DIR__ . '/../../includes/sales_service.php';
 require_once __DIR__ . '/../../includes/dispatch_service.php';
 require_once __DIR__ . '/../../includes/erp_document_print.php';
-
-$role = normalize_role_name((string)(current_user()['role'] ?? ''));
-if (!in_array($role, ['Sales Manager', 'Accounts Manager', 'Super Admin', 'Admin'], true)) {
-    echo '<div class="alert alert-warning">Payment operations are managed by Accounts Department.</div>';
-    exit;
-}
 
 $pdo = Database::connection();
 $id = (int)($_GET['id'] ?? 0);
@@ -26,20 +19,14 @@ $receiptNo = sales_payment_receipt_no($id, (string)$pay['payment_date']);
 $invTotal = (float)$pay['invoice_total'];
 $invPaid = (float)$pay['invoice_paid'];
 $remaining = max(0, $invTotal - $invPaid);
-if ($remaining < 0.01) {
-    $statusLabel = 'PAID';
-} elseif ($invPaid > 0.01) {
-    $statusLabel = 'PARTIAL';
-} else {
-    $statusLabel = 'UNPAID';
-}
+$statusLabel = $remaining < 0.01 ? 'PAID' : ($invPaid > 0.01 ? 'PARTIAL' : 'UNPAID');
 $collector = (string)(current_user()['name'] ?? current_user()['username'] ?? 'Accounts');
 $autoPrint = isset($_GET['print']);
 $generatedAt = date('d M Y, H:i');
 
 erp_doc_print_begin([
     'title' => 'Receipt — ' . $receiptNo,
-    'back_url' => route_url('sales/payments'),
+    'back_url' => route_url('accounts/receivables'),
     'auto_print' => $autoPrint,
 ]);
 erp_doc_print_header($company, 'Payment Receipt', 'Official payment acknowledgement', 'Accounts & Finance · Receipts');
@@ -50,7 +37,7 @@ erp_doc_field('Receipt number', $receiptNo);
 erp_doc_field('Payment date', (string)$pay['payment_date']);
 erp_doc_field('Payment mode', (string)$pay['payment_mode']);
 erp_doc_field('Transaction ref', (string)($pay['reference_no'] ?? '—'));
-erp_doc_field('Collector', $collector);
+erp_doc_field('Accounts user', $collector);
 echo '<div style="grid-column:1/-1"><span class="slip__label">Status</span><br>';
 echo erp_doc_payment_status_badge($statusLabel) . '</div>';
 erp_doc_grid_close();
@@ -82,6 +69,6 @@ if ((string)($pay['remarks'] ?? '') !== '') {
 }
 
 erp_doc_print_footer(
-    'Customer signature',
+    'Accounts signature',
     'Generated: ' . e($generatedAt) . '<br>Receipt: ' . e($receiptNo)
 );

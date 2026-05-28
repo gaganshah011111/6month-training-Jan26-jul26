@@ -18,6 +18,11 @@ if (!$inv) {
 $company = dispatch_company_name($pdo);
 $disp = sales_invoice_display_status($inv);
 $pending = (float)$disp['pending'];
+$paymentStatusLabel = match ($disp['label']) {
+    'Paid' => 'PAID',
+    'Partially Paid', 'Partial' => 'PARTIAL',
+    default => 'UNPAID',
+};
 $payments = sales_invoice_payments($pdo, $id);
 $dispatches = $inv['order_id'] ? sales_dispatch_for_order($pdo, (int)$inv['order_id']) : [];
 $standalone = isset($_GET['print']) || (string)($_GET['page'] ?? '') === 'sales/invoice-print';
@@ -37,7 +42,7 @@ if ($standalone) {
         </div>
         <nav class="prod-page__links d-flex flex-wrap gap-2">
             <a class="btn btn-sm btn-outline-secondary" href="<?= e(route_url('sales/invoice-print', ['id' => $id])) ?>" target="_blank" rel="noopener">Print / PDF</a>
-            <a class="btn btn-sm btn-primary" href="<?= e(route_url('sales/payments', ['invoice_id' => $id, 'customer_id' => (int)$inv['customer_id']])) ?>">Record payment</a>
+            <a class="btn btn-sm btn-outline-primary" href="<?= e(route_url('accounts/receivables')) ?>">View in Accounts</a>
             <?php if ($inv['order_id']): ?>
                 <a class="btn btn-sm btn-outline-secondary" href="<?= e(route_url('sales/order', ['id' => (int)$inv['order_id']])) ?>">Sales order</a>
             <?php endif; ?>
@@ -116,14 +121,16 @@ if ($standalone) {
 
         <div class="col-lg-4">
             <section class="sales-card sales-card--balance">
-                <div class="sales-card__head"><h2 class="sales-card__title">Balance</h2></div>
+                <div class="sales-card__head"><h2 class="sales-card__title">Payment status (managed by Accounts)</h2></div>
                 <div class="sales-card__body">
                     <dl class="so-summary-dl">
+                        <dt>Invoice status</dt><dd>GENERATED</dd>
+                        <dt>Payment status</dt><dd><span class="<?= e($disp['class']) ?>"><?= e($paymentStatusLabel) ?></span></dd>
                         <dt>Invoice total</dt><dd><?= e(sales_format_money((float)$inv['total_amount'])) ?></dd>
                         <dt>Paid</dt><dd class="text-success"><?= e(sales_format_money((float)$inv['amount_paid'])) ?></dd>
-                        <dt class="so-summary-dl__total">Pending</dt><dd class="so-summary-dl__total text-danger"><?= e(sales_format_money($pending)) ?></dd>
+                        <dt class="so-summary-dl__total">Remaining</dt><dd class="so-summary-dl__total text-danger"><?= e(sales_format_money($pending)) ?></dd>
+                        <dt>Managed by</dt><dd>Accounts Department</dd>
                     </dl>
-                    <span class="<?= e($disp['class']) ?>"><?= e($disp['label']) ?></span>
                 </div>
             </section>
 

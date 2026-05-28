@@ -195,7 +195,7 @@ if ($order && $isView) {
                         <li><strong>Sales order</strong> — <?= e($order['so_number']) ?></li>
                         <li><strong>Dispatch</strong> — <?= (int)array_sum(array_column($order['items'], 'qty_dispatched')) > 0 ? 'In progress' : 'Pending in Dispatch Manager' ?></li>
                         <li><strong>Invoice</strong> — <?= $invId ? 'Generated' : 'After dispatch' ?></li>
-                        <li><strong>Payment</strong> — <?= (string)$order['status'] === 'Completed' ? 'Closed' : 'Track in CRM Payments' ?></li>
+                        <li><strong>Payment</strong> — <?= (string)$order['status'] === 'Completed' ? 'Closed' : 'Track in Accounts Department' ?></li>
                     </ol>
                 </aside>
             </div>

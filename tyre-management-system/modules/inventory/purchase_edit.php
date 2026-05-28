@@ -50,7 +50,9 @@ $payments = inv_purchase_list_payments($pdo, $id);
                     </dl>
                     <span class="badge inv-pay--<?= e($pm['badge']) ?>"><?= e($pm['label']) ?></span>
                     <?php if ((float)$row['pending_amount'] > inv_purchase_tolerance()): ?>
-                        <a class="btn btn-success btn-sm w-100 mt-2" href="<?= e(route_url('inventory/purchase-history', ['view' => $id, 'pay' => 1])) ?>">Add payment</a>
+                        <div class="alert alert-light border mt-2 mb-0 py-2 small">
+                            Payment posting is handled by Accounts Department.
+                        </div>
                     <?php endif; ?>
                 </div>
             </section>

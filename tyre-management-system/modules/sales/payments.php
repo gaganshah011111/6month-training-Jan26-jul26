@@ -4,219 +4,279 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../includes/sales_auth.php';
 require_once __DIR__ . '/../../includes/sales_service.php';
+require_once __DIR__ . '/../../includes/erp_export.php';
 
-require_sales_manager();
-
-$pdo = Database::connection();
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    verify_csrf();
-    try {
-        $paymentId = sales_save_payment($pdo, $_POST);
-        set_flash('success', 'Payment recorded. Receipt: ' . sales_payment_receipt_no($paymentId, (string)($_POST['payment_date'] ?? date('Y-m-d'))));
-        $_SESSION['last_payment_receipt_id'] = $paymentId;
-    } catch (Throwable $e) {
-        sales_log_exception($e, 'save_payment');
-        set_flash('danger', $e instanceof InvalidArgumentException ? $e->getMessage() : 'Unable to record payment.');
-    }
-    redirect('sales/payments');
+if (!has_role(['Sales Manager', 'Accounts Manager', 'Super Admin', 'Admin'])) {
+    echo '<div class="alert alert-warning">Access denied.</div>';
+    return;
 }
 
+$pdo = Database::connection();
 $loadError = false;
+
+$customerId = (int)($_GET['customer_id'] ?? 0);
+$status = trim((string)($_GET['payment_status'] ?? ''));
+$from = trim((string)($_GET['from'] ?? ''));
+$to = trim((string)($_GET['to'] ?? ''));
+$historyInvoiceId = (int)($_GET['invoice_id'] ?? 0);
+$export = (string)($_GET['export'] ?? '');
+
+if (!in_array($status, ['', 'Pending', 'Partial', 'Paid', 'Overdue'], true)) {
+    $status = '';
+}
+
 $customers = [];
-$openInvoices = [];
-$recent = [];
-$outstanding = [];
-$dash = [];
-$preCustomer = (int)($_GET['customer_id'] ?? 0);
-$preInvoice = (int)($_GET['invoice_id'] ?? 0);
-$filterCustomer = (int)($_GET['filter_customer'] ?? 0);
-$filterFrom = trim((string)($_GET['filter_from'] ?? ''));
-$filterTo = trim((string)($_GET['filter_to'] ?? ''));
+$dash = ['total_receivable' => 0, 'collected' => 0, 'pending' => 0, 'overdue' => 0];
+$rows = [];
+$history = [];
+$overdueTop = [];
+$receiptByInvoice = [];
 
 try {
     sales_reconcile_invoice_balances($pdo);
     $customers = sales_list_customers($pdo, ['status' => 'Active']);
-    $openInvoices = sales_list_invoices($pdo, []);
     $dash = sales_payment_dashboard($pdo);
-    $outstanding = sales_customer_outstanding_full($pdo);
-    $sql = 'SELECT p.*, i.invoice_no, c.company_name FROM sales_payments p
-         INNER JOIN sales_invoices i ON i.id = p.invoice_id
-         INNER JOIN sales_customers c ON c.id = p.customer_id WHERE 1=1';
-    $params = [];
-    if ($filterCustomer > 0) {
-        $sql .= ' AND p.customer_id = :cid';
-        $params['cid'] = $filterCustomer;
+
+    $rows = sales_list_invoices($pdo, [
+        'customer_id' => $customerId > 0 ? $customerId : null,
+        'payment_status' => $status !== '' ? $status : '',
+        'from' => $from,
+        'to' => $to,
+    ]);
+
+    $st = $pdo->prepare(
+        "SELECT invoice_id, MAX(id) AS payment_id
+         FROM sales_payments
+         GROUP BY invoice_id"
+    );
+    $st->execute();
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) ?: [] as $r) {
+        $receiptByInvoice[(int)$r['invoice_id']] = (int)$r['payment_id'];
     }
-    if ($filterFrom !== '') {
-        $sql .= ' AND p.payment_date >= :df';
-        $params['df'] = $filterFrom;
+
+    $hSql = 'SELECT p.*, i.invoice_no, i.payment_status, c.company_name
+             FROM sales_payments p
+             INNER JOIN sales_invoices i ON i.id = p.invoice_id
+             INNER JOIN sales_customers c ON c.id = p.customer_id
+             WHERE 1=1';
+    $hParams = [];
+    if ($customerId > 0) {
+        $hSql .= ' AND p.customer_id = :cid';
+        $hParams['cid'] = $customerId;
     }
-    if ($filterTo !== '') {
-        $sql .= ' AND p.payment_date <= :dt';
-        $params['dt'] = $filterTo;
+    if ($from !== '') {
+        $hSql .= ' AND p.payment_date >= :df';
+        $hParams['df'] = $from;
     }
-    $sql .= ' ORDER BY p.payment_date DESC, p.id DESC LIMIT 50';
-    $st = $pdo->prepare($sql);
-    $st->execute($params);
-    $recent = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    if ($to !== '') {
+        $hSql .= ' AND p.payment_date <= :dt';
+        $hParams['dt'] = $to;
+    }
+    if ($historyInvoiceId > 0) {
+        $hSql .= ' AND p.invoice_id = :iid';
+        $hParams['iid'] = $historyInvoiceId;
+    }
+    $hSql .= ' ORDER BY p.payment_date DESC, p.id DESC LIMIT 120';
+    $hst = $pdo->prepare($hSql);
+    $hst->execute($hParams);
+    $history = $hst->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    $ost = $pdo->prepare(
+        "SELECT i.id, i.invoice_no, i.due_date, (i.total_amount - i.amount_paid) AS pending, c.company_name
+         FROM sales_invoices i
+         INNER JOIN sales_customers c ON c.id = i.customer_id
+         WHERE (i.total_amount - i.amount_paid) > 0.01
+           AND i.due_date IS NOT NULL
+           AND i.due_date <> ''
+           AND i.due_date < CURDATE()
+         ORDER BY pending DESC
+         LIMIT 5"
+    );
+    $ost->execute();
+    $overdueTop = $ost->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    if ($export === 'csv' || $export === 'pdf') {
+        $headers = ['Invoice no', 'Customer', 'Invoice amount', 'Paid amount', 'Remaining', 'Due date', 'Payment status'];
+        $data = [];
+        foreach ($rows as $inv) {
+            $disp = sales_invoice_display_status($inv);
+            $statusLabel = match ((string)$disp['label']) {
+                'Paid' => 'PAID',
+                'Partially Paid', 'Partial' => 'PARTIAL',
+                'Overdue' => 'OVERDUE',
+                default => 'UNPAID',
+            };
+            $data[] = [
+                (string)$inv['invoice_no'],
+                (string)$inv['company_name'],
+                sales_format_money((float)$inv['total_amount']),
+                sales_format_money((float)$inv['amount_paid']),
+                sales_format_money((float)$disp['pending']),
+                (string)($inv['due_date'] ?? '—'),
+                $statusLabel,
+            ];
+        }
+        if ($export === 'csv') {
+            erp_send_csv('payment-status-' . date('Y-m-d') . '.csv', $headers, $data);
+        }
+        erp_print_html_table('Payment Status', $headers, $data, true);
+    }
 } catch (Throwable $e) {
-    sales_log_exception($e, 'sales_payments');
+    sales_log_exception($e, 'sales_payment_status');
     $loadError = true;
 }
 
-$invoiceOptions = [];
-foreach ($openInvoices as $inv) {
-    $bal = sales_invoice_pending_amount((float)$inv['total_amount'], (float)$inv['amount_paid']);
-    if ($bal <= 0 && $preInvoice !== (int)$inv['id']) {
-        continue;
-    }
-    $disp = sales_invoice_display_status($inv);
-    $invoiceOptions[] = [
-        'id' => (int)$inv['id'],
-        'customer_id' => (int)$inv['customer_id'],
-        'invoice_no' => (string)$inv['invoice_no'],
-        'total' => (float)$inv['total_amount'],
-        'paid' => (float)$inv['amount_paid'],
-        'balance' => $bal,
-        'label' => $disp['label'],
-    ];
-}
+$filterQs = array_filter([
+    'page' => 'sales/payments',
+    'customer_id' => $customerId > 0 ? (string)$customerId : '',
+    'payment_status' => $status,
+    'from' => $from,
+    'to' => $to,
+], static fn($v) => $v !== '');
 ?>
 
 <div class="sales-page crm-layout payments-layout">
-    <?= crm_page_header('Payments', 'Record receipts and monitor customer outstanding balances.') ?>
+    <?= crm_page_header('Payment Status', 'Read-only payment monitoring for invoices, pending collections, and customer follow-up.') ?>
 
-    <?php if ($loadError): ?><?= sales_error_alert('Unable to load payments.') ?><?php endif; ?>
+    <?php if ($loadError): ?><?= sales_error_alert('Unable to load payment status.') ?><?php endif; ?>
+
+    <form method="get" class="crm-filter-inline">
+        <input type="hidden" name="page" value="sales/payments">
+        <div class="crm-filter-inline__field">
+            <label>Customer search</label>
+            <select class="form-select form-select-sm erp-select-search" name="customer_id" data-placeholder="All customers">
+                <option value="0">All customers</option>
+                <?php foreach ($customers as $c): ?>
+                    <option value="<?= (int)$c['id'] ?>" <?= $customerId === (int)$c['id'] ? 'selected' : '' ?>><?= e($c['company_name']) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="crm-filter-inline__field">
+            <label>Status</label>
+            <select class="form-select form-select-sm" name="payment_status">
+                <option value="">All</option>
+                <option value="Paid" <?= $status === 'Paid' ? 'selected' : '' ?>>PAID</option>
+                <option value="Partial" <?= $status === 'Partial' ? 'selected' : '' ?>>PARTIAL</option>
+                <option value="Pending" <?= $status === 'Pending' ? 'selected' : '' ?>>UNPAID</option>
+                <option value="Overdue" <?= $status === 'Overdue' ? 'selected' : '' ?>>OVERDUE</option>
+            </select>
+        </div>
+        <div class="crm-filter-inline__field"><label>From date</label><input type="date" class="form-control form-control-sm" name="from" value="<?= e($from) ?>"></div>
+        <div class="crm-filter-inline__field"><label>To date</label><input type="date" class="form-control form-control-sm" name="to" value="<?= e($to) ?>"></div>
+        <div class="crm-filter-inline__actions">
+            <button class="btn btn-primary btn-sm" type="submit">Apply filter</button>
+            <a class="btn btn-outline-secondary btn-sm" href="<?= e(route_url('sales/payments')) ?>">Reset</a>
+            <a class="btn btn-outline-secondary btn-sm" href="<?= e(route_url('sales/payments', array_merge($filterQs, ['export' => 'pdf']))) ?>" target="_blank" rel="noopener">PDF</a>
+            <a class="btn btn-outline-secondary btn-sm" href="<?= e(route_url('sales/payments', array_merge($filterQs, ['export' => 'csv']))) ?>">Excel</a>
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">Print</button>
+        </div>
+    </form>
 
     <div class="crm-summary-4">
-        <article class="sales-kpi"><span class="sales-kpi__label">Receivable</span><strong><?= e(sales_format_money((float)($dash['total_receivable'] ?? 0))) ?></strong></article>
+        <article class="sales-kpi"><span class="sales-kpi__label">Total receivable</span><strong><?= e(sales_format_money((float)($dash['total_receivable'] ?? 0))) ?></strong></article>
         <article class="sales-kpi sales-kpi--ok"><span class="sales-kpi__label">Collected</span><strong><?= e(sales_format_money((float)($dash['collected'] ?? 0))) ?></strong></article>
         <article class="sales-kpi sales-kpi--warn"><span class="sales-kpi__label">Pending</span><strong><?= e(sales_format_money((float)($dash['pending'] ?? 0))) ?></strong></article>
         <article class="sales-kpi sales-kpi--danger"><span class="sales-kpi__label">Overdue</span><strong><?= e(sales_format_money((float)($dash['overdue'] ?? 0))) ?></strong></article>
     </div>
 
     <div class="row g-4 mb-4">
-        <div class="col-lg-4">
-            <section class="sales-card payments-layout__form h-100">
-                <div class="sales-card__head"><h2 class="sales-card__title">Record payment</h2></div>
-                <div class="sales-card__body">
-                    <form method="post" class="vstack gap-2" id="sales-payment-form">
-                        <?= csrf_input() ?>
-                        <div>
-                            <label class="form-label">Customer</label>
-                            <select class="form-select form-select-sm erp-select-search" name="customer_id" id="payCustomer" required data-placeholder="Search customer…">
-                                <option value="">Search customer…</option>
-                                <?php foreach ($customers as $c): ?>
-                                    <option value="<?= (int)$c['id'] ?>" <?= $preCustomer === (int)$c['id'] ? 'selected' : '' ?>><?= e($c['company_name']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="form-label">Invoice</label>
-                            <select class="form-select form-select-sm" name="invoice_id" id="payInvoice" required>
-                                <option value="">Select invoice</option>
-                                <?php foreach ($invoiceOptions as $inv): ?>
-                                    <option value="<?= $inv['id'] ?>"
-                                            data-customer="<?= $inv['customer_id'] ?>"
-                                            data-total="<?= e((string)$inv['total']) ?>"
-                                            data-paid="<?= e((string)$inv['paid']) ?>"
-                                            data-balance="<?= e((string)$inv['balance']) ?>"
-                                            <?= $preInvoice === $inv['id'] ? 'selected' : '' ?>>
-                                        <?= e($inv['invoice_no']) ?> — <?= e(sales_format_money($inv['balance'])) ?> due
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="row g-2">
-                            <div class="col-6"><label class="form-label small text-muted">Invoice total</label><input type="text" class="form-control form-control-sm" id="payInvTotal" readonly></div>
-                            <div class="col-6"><label class="form-label small text-muted">Remaining</label><input type="text" class="form-control form-control-sm fw-semibold" id="payInvRemain" readonly></div>
-                        </div>
-                        <div><label class="form-label">Payment date</label><input type="date" class="form-control form-control-sm" name="payment_date" value="<?= e(date('Y-m-d')) ?>" required></div>
-                        <div><label class="form-label">Amount</label><input type="number" class="form-control form-control-sm" name="amount" id="payAmount" min="0.01" step="0.01" required></div>
-                        <div><label class="form-label">Mode</label><select class="form-select form-select-sm" name="payment_mode"><?php foreach (SALES_PAYMENT_MODES as $m): ?><option><?= e($m) ?></option><?php endforeach; ?></select></div>
-                        <div><label class="form-label">Reference</label><input class="form-control form-control-sm" name="reference_no" placeholder="Optional"></div>
-                        <button class="btn btn-primary btn-sm w-100 mt-1" type="submit">Save payment</button>
-                    </form>
-                </div>
-            </section>
-        </div>
         <div class="col-lg-8">
             <section class="crm-section h-100">
                 <div class="crm-section__head">
-                    <h2 class="crm-section__title">Customer outstanding</h2>
-                    <?= erp_export_toolbar('payments-outstanding-table', 'customer-outstanding') ?>
+                    <h2 class="crm-section__title">Payment status table</h2>
+                    <?= erp_export_toolbar('sales-payment-status-table', 'payment-status') ?>
                 </div>
                 <div class="crm-section__body">
-                    <?= crm_table_open('payments-outstanding-table') ?>
-                    <thead><tr><th>Customer</th><th class="text-end">Invoiced</th><th class="text-end">Pending</th><th>Status</th></tr></thead>
+                    <?= crm_table_open('sales-payment-status-table', false) ?>
+                    <thead><tr><th>Invoice no</th><th>Customer</th><th class="text-end">Invoice amount</th><th class="text-end">Paid amount</th><th class="text-end">Remaining</th><th>Due date</th><th>Payment status</th><th class="text-end">Actions</th></tr></thead>
                     <tbody>
-                    <?php foreach (array_slice($outstanding, 0, 20) as $o): ?>
+                    <?php foreach ($rows as $inv): ?>
+                        <?php
+                        $disp = sales_invoice_display_status($inv);
+                        $iid = (int)$inv['id'];
+                        $payId = (int)($receiptByInvoice[$iid] ?? 0);
+                        $actions = [
+                            ['label' => 'View invoice', 'url' => route_url('sales/invoice', ['id' => $iid]), 'icon' => 'bi-eye'],
+                            ['label' => 'View receipt PDF', 'url' => $payId > 0 ? route_url('sales/payment-receipt', ['id' => $payId]) : '#', 'icon' => 'bi-file-pdf', 'attrs' => 'target="_blank" rel="noopener"', 'disabled' => $payId < 1],
+                            ['label' => 'View payment history', 'url' => route_url('sales/payments', array_merge($filterQs, ['invoice_id' => $iid])) . '#payment-history', 'icon' => 'bi-clock-history'],
+                        ];
+                        $statusLabel = match ((string)$disp['label']) {
+                            'Paid' => 'PAID',
+                            'Partially Paid', 'Partial' => 'PARTIAL',
+                            'Overdue' => 'OVERDUE',
+                            default => 'UNPAID',
+                        };
+                        ?>
                         <tr>
-                            <td><a href="<?= e(route_url('sales/payments', ['customer_id' => (int)($o['id'] ?? 0)])) ?>"><?= e($o['company_name']) ?></a></td>
-                            <td class="text-end"><?= e(sales_format_money((float)$o['total_invoiced'])) ?></td>
-                            <td class="text-end fw-semibold"><?= e(sales_format_money((float)$o['pending'])) ?></td>
-                            <td><span class="<?= e($o['status_class']) ?>"><?= e($o['status_label']) ?></span></td>
+                            <td><strong><?= e((string)$inv['invoice_no']) ?></strong></td>
+                            <td><?= e((string)$inv['company_name']) ?></td>
+                            <td class="text-end"><?= e(sales_format_money((float)$inv['total_amount'])) ?></td>
+                            <td class="text-end"><?= e(sales_format_money((float)$inv['amount_paid'])) ?></td>
+                            <td class="text-end fw-semibold"><?= e(sales_format_money((float)$disp['pending'])) ?></td>
+                            <td><?= e((string)($inv['due_date'] ?? '—')) ?></td>
+                            <td><span class="<?= e($disp['class']) ?>"><?= e($statusLabel) ?></span></td>
+                            <td class="text-end"><?= crm_action_icons($actions) ?></td>
                         </tr>
                     <?php endforeach; ?>
-                    <?php if ($outstanding === []): ?>
-                        <tr><td colspan="4" class="sales-empty text-center py-3">No outstanding balances.</td></tr>
-                    <?php endif; ?>
+                    <?php if ($rows === []): ?><tr><td colspan="8" class="sales-empty text-center py-4">No invoices for selected filters.</td></tr><?php endif; ?>
                     </tbody>
                     <?= crm_table_close() ?>
                 </div>
             </section>
         </div>
+        <div class="col-lg-4">
+            <section class="crm-section h-100">
+                <div class="crm-section__head">
+                    <h2 class="crm-section__title">Top overdue customers</h2>
+                </div>
+                <div class="crm-section__body p-3">
+                    <div class="vstack gap-2">
+                        <?php foreach ($overdueTop as $o): ?>
+                            <article class="sales-kpi mb-0">
+                                <span class="sales-kpi__label"><?= e((string)$o['company_name']) ?></span>
+                                <strong class="text-danger"><?= e(sales_format_money((float)$o['pending'])) ?></strong>
+                                <div class="small text-muted mt-1">Invoice: <?= e((string)$o['invoice_no']) ?> · Due: <?= e((string)$o['due_date']) ?></div>
+                            </article>
+                        <?php endforeach; ?>
+                        <?php if ($overdueTop === []): ?><p class="small text-muted mb-0">No overdue customers right now.</p><?php endif; ?>
+                    </div>
+                </div>
+            </section>
+        </div>
     </div>
 
-    <section class="crm-section">
+    <section class="crm-section" id="payment-history">
         <div class="crm-section__head">
             <h2 class="crm-section__title">Payment history</h2>
-            <div class="d-flex flex-wrap gap-2 align-items-center">
-                <form method="get" class="d-flex flex-wrap gap-2 align-items-center mb-0">
-                    <input type="hidden" name="page" value="sales/payments">
-                    <select class="form-select form-select-sm erp-select-search" name="filter_customer" data-placeholder="All customers" style="width:auto;min-width:160px">
-                        <option value="0">All customers</option>
-                        <?php foreach ($customers as $c): ?>
-                            <option value="<?= (int)$c['id'] ?>" <?= $filterCustomer === (int)$c['id'] ? 'selected' : '' ?>><?= e($c['company_name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                    <input type="date" class="form-control form-control-sm" name="filter_from" value="<?= e($filterFrom) ?>" style="width:auto">
-                    <input type="date" class="form-control form-control-sm" name="filter_to" value="<?= e($filterTo) ?>" style="width:auto">
-                    <button class="btn btn-sm btn-outline-secondary" type="submit">Filter</button>
-                </form>
-                <?= erp_export_toolbar('payments-history-table', 'payment-history') ?>
-            </div>
+            <?= erp_export_toolbar('sales-payment-history-table', 'payment-history') ?>
         </div>
         <div class="crm-section__body">
-            <?= crm_table_open('payments-history-table') ?>
-            <thead><tr><th>Date</th><th>Customer</th><th>Invoice</th><th>Mode</th><th class="text-end">Amount</th><th class="text-end">Actions</th></tr></thead>
+            <?= crm_table_open('sales-payment-history-table') ?>
+            <thead><tr><th>Date</th><th>Customer</th><th>Invoice</th><th class="text-end">Paid amount</th><th>Mode</th><th>Status</th></tr></thead>
             <tbody>
-            <?php foreach ($recent as $p): ?>
+            <?php foreach ($history as $p): ?>
                 <?php
-                $pid = (int)$p['id'];
-                $actions = [
-                    ['label' => 'View receipt', 'url' => route_url('sales/payment-receipt', ['id' => $pid]), 'icon' => 'bi-eye', 'attrs' => 'target="_blank" rel="noopener"'],
-                    ['label' => 'Print receipt', 'url' => route_url('sales/payment-receipt', ['id' => $pid, 'print' => 1]), 'icon' => 'bi-printer', 'attrs' => 'target="_blank" rel="noopener"'],
-                    ['label' => 'View invoice', 'url' => route_url('sales/invoice', ['id' => (int)$p['invoice_id']]), 'icon' => 'bi-receipt'],
-                ];
+                    $stLabel = (string)($p['payment_status'] ?? 'Pending');
+                    $stClass = match ($stLabel) {
+                        'Paid' => 'crm-track crm-track--paid',
+                        'Partial' => 'crm-track crm-track--partial-pay',
+                        'Overdue' => 'crm-track crm-track--overdue',
+                        default => 'crm-track crm-track--unpaid',
+                    };
                 ?>
                 <tr>
-                    <td><?= e($p['payment_date']) ?></td>
-                    <td><?= e($p['company_name']) ?></td>
-                    <td><?= e($p['invoice_no']) ?></td>
-                    <td><?= e($p['payment_mode']) ?></td>
+                    <td><?= e((string)$p['payment_date']) ?></td>
+                    <td><?= e((string)$p['company_name']) ?></td>
+                    <td><?= e((string)$p['invoice_no']) ?></td>
                     <td class="text-end fw-semibold"><?= e(sales_format_money((float)$p['amount'])) ?></td>
-                    <td class="text-end"><?= crm_action_icons($actions) ?></td>
+                    <td><?= e((string)$p['payment_mode']) ?></td>
+                    <td><span class="<?= e($stClass) ?>"><?= e(strtoupper($stLabel === 'Pending' ? 'UNPAID' : $stLabel)) ?></span></td>
                 </tr>
             <?php endforeach; ?>
-            <?php if ($recent === []): ?>
-                <tr><td colspan="6" class="sales-empty text-center py-4">No payments recorded yet.</td></tr>
-            <?php endif; ?>
+            <?php if ($history === []): ?><tr><td colspan="6" class="sales-empty text-center py-4">No payment history for selected filters.</td></tr><?php endif; ?>
             </tbody>
             <?= crm_table_close() ?>
         </div>
     </section>
 </div>
-<script src="assets/js/sales-payments.js?v=<?= e((string)@filemtime(__DIR__ . '/../../assets/js/sales-payments.js')) ?>"></script>
 <script src="assets/js/erp-table-export.js?v=<?= e((string)@filemtime(__DIR__ . '/../../assets/js/erp-table-export.js')) ?>"></script>

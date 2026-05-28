@@ -1,0 +1,195 @@
+:is(.accounts-shell, .sales-shell, .inventory-shell, .dispatch-shell) .erp-layout,
+.erp-layout {
+  background:
+    radial-gradient(1200px 400px at 15% -10%, rgba(198, 40, 40, 0.08), transparent 45%),
+    radial-gradient(900px 350px at 85% -20%, rgba(21, 35, 63, 0.12), transparent 45%),
+    #f4f7fb;
+}
+
+:is(.accounts-page, .erp-page) {
+  max-width: 1320px;
+  margin: 0 auto;
+}
+
+:is(.accounts-page, .erp-page) .prod-page__head,
+:is(.accounts-page, .erp-page) .sales-card {
+  border-radius: 16px;
+}
+
+:is(.accounts-page, .erp-page) .prod-page__head {
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: linear-gradient(130deg, rgba(255, 255, 255, 0.86), rgba(244, 248, 255, 0.82));
+  backdrop-filter: blur(6px);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+  padding: 1rem 1.1rem;
+  margin-bottom: 0.9rem;
+}
+
+:is(.accounts-page, .erp-page) .prod-page__title {
+  font-size: 2.05rem;
+  font-weight: 800;
+  color: #101f3e;
+}
+
+:is(.accounts-page, .erp-page) .prod-page__sub {
+  color: #5d6f8f;
+}
+
+:is(.accounts-page, .erp-page) .sales-kpi {
+  border-radius: 14px;
+  border: 1px solid #e2e8f3;
+  background: linear-gradient(155deg, #ffffff, #f8fbff);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+:is(.accounts-page, .erp-page) .sales-kpi:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 26px rgba(15, 23, 42, 0.1);
+}
+
+:is(.accounts-page, .erp-page) .sales-kpi strong,
+:is(.accounts-page, .erp-page) .sales-kpi .sales-kpi__value {
+  font-size: 1.18rem;
+  font-weight: 800;
+  line-height: 1.2;
+  max-width: 100%;
+  display: block;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+:is(.accounts-page, .erp-page) .sales-kpi {
+  min-width: 0;
+}
+
+:is(.accounts-page, .erp-page) .sales-kpi .sales-kpi__value,
+:is(.accounts-page, .erp-page) .sales-kpi strong {
+  font-size: clamp(0.95rem, 1.5vw, 1.18rem);
+}
+
+:is(.accounts-page, .erp-page) .sales-card {
+  border: 1px solid rgba(205, 217, 236, 0.9);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 251, 255, 0.9));
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+:is(.accounts-page, .erp-page) .sales-card__head {
+  background: linear-gradient(180deg, #f8fbff, #eef4fd);
+  border-bottom: 1px solid #dde7f5;
+}
+
+:is(.accounts-page, .erp-page) .sales-card__title {
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+}
+
+:is(.accounts-page, .erp-page) .sales-filter-bar {
+  border-radius: 14px;
+  border: 1px solid #dde7f5;
+  background: linear-gradient(155deg, #ffffff, #f7fbff);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+
+:is(.accounts-page, .erp-page) .form-control,
+:is(.accounts-page, .erp-page) .form-select {
+  border-radius: 10px;
+  border-color: #d4dfef;
+}
+
+:is(.accounts-page, .erp-page) .form-control:focus,
+:is(.accounts-page, .erp-page) .form-select:focus {
+  border-color: #8ea6cd;
+  box-shadow: 0 0 0 0.2rem rgba(39, 81, 142, 0.15);
+}
+
+:is(.accounts-page, .erp-page) .table thead th {
+  background: linear-gradient(180deg, #192845, #172540);
+  color: #f8fbff;
+  border-bottom: none;
+  font-size: 0.7rem;
+}
+
+:is(.accounts-page, .erp-page) .table tbody tr:nth-child(even) {
+  background: #f9fbff;
+}
+
+:is(.accounts-page, .erp-page) .table tbody tr:hover {
+  background: #eef4ff;
+}
+
+:is(.accounts-page, .erp-page) .sales-table-wrap {
+  border-radius: 12px;
+}
+
+:is(.accounts-page, .erp-page) .recv-pill {
+  border-radius: 999px;
+  padding: 0.18rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: #eef4ff;
+  color: #213a66;
+}
+
+:is(.accounts-page, .erp-page) .crm-track--paid {
+  box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.22), 0 0 16px rgba(34, 197, 94, 0.16);
+}
+
+:is(.accounts-page, .erp-page) .crm-track--overdue {
+  box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.22), 0 0 16px rgba(248, 113, 113, 0.16);
+}
+
+:is(.accounts-page, .erp-page) .crm-track--partial-pay {
+  box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.22), 0 0 16px rgba(251, 146, 60, 0.16);
+}
+
+:is(.accounts-page, .erp-page) .btn {
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+:is(.accounts-page, .erp-page) .btn:hover {
+  transform: translateY(-1px);
+}
+
+:is(.accounts-page, .erp-page) .modal-content {
+  border-radius: 16px;
+  border: 1px solid #dce5f3;
+  box-shadow: 0 22px 42px rgba(2, 8, 23, 0.25);
+}
+
+:is(.accounts-page, .erp-page) .progress {
+  border-radius: 999px;
+  background: #e8edf6;
+}
+
+:is(.accounts-page, .erp-page) .progress-bar {
+  background: linear-gradient(90deg, #16a34a, #22c55e, #4ade80);
+  box-shadow: 0 0 16px rgba(34, 197, 94, 0.35);
+}
+
+/* Payment status badges (Accounts pages do not load inventory-module.css) */
+:is(.accounts-page, .erp-page) .badge.inv-pay--paid {
+  background: #16a34a !important;
+  color: #fff !important;
+}
+
+:is(.accounts-page, .erp-page) .badge.inv-pay--partial {
+  background: #ea580c !important;
+  color: #fff !important;
+}
+
+:is(.accounts-page, .erp-page) .badge.inv-pay--unpaid {
+  background: #dc2626 !important;
+  color: #fff !important;
+}
+
+@media (max-width: 992px) {
+  :is(.accounts-page, .erp-page) .prod-page__title {
+    font-size: 1.6rem;
+  }
+  :is(.accounts-page, .erp-page) .sales-kpis {
+    grid-template-columns: repeat(2, minmax(150px, 1fr)) !important;
+  }
+}

@@ -20,6 +20,17 @@ $alerts = array_values(array_filter(
 if ($alerts === []) {
     $alerts = array_slice($d['payment_alerts'] ?? [], 0, 6);
 }
+$partialInvoices = 0;
+$overdueInvoices = 0;
+foreach (($d['payment_alerts'] ?? []) as $a) {
+    $st = (string)($a['payment_status'] ?? '');
+    if ($st === 'Partial') {
+        $partialInvoices++;
+    }
+    if ($st === 'Overdue' || ((string)($a['due_date'] ?? '') !== '' && (string)($a['due_date'] ?? '') < date('Y-m-d'))) {
+        $overdueInvoices++;
+    }
+}
 ?>
 
 <div class="sales-page crm-layout">
@@ -32,7 +43,6 @@ if ($alerts === []) {
     <?= crm_quick_actions([
         ['label' => 'Create SO', 'url' => route_url('sales/order'), 'icon' => 'bi-plus-lg', 'primary' => true],
         ['label' => 'Invoices', 'url' => route_url('sales/invoices'), 'icon' => 'bi-receipt'],
-        ['label' => 'Record payment', 'url' => route_url('sales/payments'), 'icon' => 'bi-cash-stack'],
         ['label' => 'Dispatch tracking', 'url' => route_url('sales/dispatch'), 'icon' => 'bi-truck'],
     ]) ?>
 
@@ -75,24 +85,14 @@ if ($alerts === []) {
         <div class="col-lg-4">
             <section class="crm-section">
                 <div class="crm-section__head">
-                    <h2 class="crm-section__title">Important alerts</h2>
-                    <a class="small text-decoration-none" href="<?= e(route_url('sales/payments')) ?>">Payments</a>
+                    <h2 class="crm-section__title">Payment summary</h2>
                 </div>
                 <div class="crm-section__body">
-                    <ul class="crm-alerts-list">
-                        <?php foreach ($alerts as $a): ?>
-                            <li>
-                                <span>
-                                    <strong><?= e($a['company_name']) ?></strong><br>
-                                    <span class="text-muted"><?= e($a['invoice_no']) ?> · due <?= e((string)($a['due_date'] ?? '—')) ?></span>
-                                </span>
-                                <strong class="text-danger"><?= e(sales_format_money((float)$a['due_amt'])) ?></strong>
-                            </li>
-                        <?php endforeach; ?>
-                        <?php if ($alerts === []): ?>
-                            <li class="text-muted justify-content-center">No overdue or pending alerts.</li>
-                        <?php endif; ?>
-                    </ul>
+                    <div class="crm-mini-stats">
+                        <div><span>Pending collections</span><strong class="text-warning"><?= e(sales_format_money((float)$d['pending_payments'])) ?></strong></div>
+                        <div><span>Partial invoices</span><strong><?= e((string)$partialInvoices) ?></strong></div>
+                        <div><span>Overdue</span><strong class="text-danger"><?= e((string)$overdueInvoices) ?></strong></div>
+                    </div>
                 </div>
             </section>
         </div>

@@ -91,9 +91,12 @@ function has_role($role): bool
         return false;
     }
 
+    require_once __DIR__ . '/admin_roles_service.php';
+    $effectiveRole = role_effective_for_access($sessionRole);
+
     $roles = is_array($role) ? $role : [$role];
     $roles = array_map(static fn($r) => normalize_role_name((string)$r), $roles);
-    return in_array($sessionRole, $roles, true);
+    return in_array($sessionRole, $roles, true) || in_array($effectiveRole, $roles, true);
 }
 
 function format_currency(float $amount): string
@@ -198,6 +201,20 @@ function page_allowed_roles(): array
         'dashboard' => ['Super Admin', 'Admin'],
         'users/index' => ['Super Admin', 'Admin'],
         'settings/profile' => ['Super Admin', 'Admin'],
+        'admin/dashboard' => ['Super Admin', 'Admin'],
+        'admin/users' => ['Super Admin', 'Admin'],
+        'admin/roles' => ['Super Admin', 'Admin'],
+        'admin/departments' => ['Super Admin', 'Admin'],
+        'admin/settings' => ['Super Admin', 'Admin'],
+        'admin/activity-logs' => ['Super Admin', 'Admin'],
+        'admin/reports' => ['Super Admin', 'Admin'],
+        'admin/backup' => ['Super Admin', 'Admin'],
+        'admin/user' => ['Super Admin', 'Admin'],
+        'admin/system-health' => ['Super Admin', 'Admin'],
+        'admin/employee-oversight' => ['Super Admin', 'Admin'],
+        'admin/sales-oversight' => ['Super Admin', 'Admin'],
+        'admin/purchase-oversight' => ['Super Admin', 'Admin'],
+        'admin/finance-oversight' => ['Super Admin', 'Admin'],
 
         'hr/dashboard' => ['HR Manager', 'Super Admin', 'Admin'],
         'employees/list' => ['HR Manager', 'Super Admin', 'Admin'],
@@ -341,7 +358,8 @@ function can_access_page(string $page, ?array $user = null): bool
         return false;
     }
 
-    $role = normalize_role_name((string)($user['role'] ?? ''));
+    require_once __DIR__ . '/admin_roles_service.php';
+    $role = role_effective_for_access(normalize_role_name((string)($user['role'] ?? '')));
     $rules = page_allowed_roles();
     if (!isset($rules[$page])) {
         return in_array($role, ['Super Admin', 'Admin'], true);

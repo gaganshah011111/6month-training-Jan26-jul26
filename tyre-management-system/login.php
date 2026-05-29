@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/admin_security_service.php';
 $cssPath = __DIR__ . '/assets/css/style.css';
 $cssVersion = is_file($cssPath) ? (string)filemtime($cssPath) : (string)time();
 
@@ -18,6 +19,13 @@ if (isset($_SESSION['user'])) {
 }
 
 $error = '';
+$info = '';
+if (isset($_GET['logged_out'])) {
+    $info = 'You have been logged out by an administrator.';
+}
+if (isset($_GET['blocked'])) {
+    $error = 'Your account is not permitted to sign in.';
+}
 $debugOutput = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $login = trim((string)($_POST['login'] ?? ''));
@@ -53,14 +61,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             if (!$user) {
+                admin_record_login($pdo, null, $login, false, 'Account not found');
                 $error = 'Account not found.';
             } else {
-                $statusValue = $user['status'] ?? null;
-                $isActive = $statusValue === 1
-                    || $statusValue === '1'
-                    || (is_string($statusValue) && strtolower(trim($statusValue)) === 'active');
+                $statusValue = strtolower(trim((string)($user['status'] ?? 'active')));
+                $blockedStatuses = ['inactive', 'locked', 'frozen', 'terminated'];
+                if (in_array($statusValue, $blockedStatuses, true)) {
+                    admin_record_login($pdo, (int)$user['id'], $login, false, 'Status: ' . $statusValue);
+                    $error = admin_login_status_message($statusValue);
+                } else {
+                    $isActive = $statusValue === 'active' || $statusValue === '1' || $user['status'] === 1;
 
                 if (!$isActive) {
+                    admin_record_login($pdo, (int)$user['id'], $login, false, 'Inactive');
                     $error = 'Account inactive.';
                 } else {
                     $dbPassword = (string)($user['password_hash'] ?? $user['password'] ?? '');
@@ -70,6 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         : hash_equals($dbPassword, $password);
 
                     if (!$passwordMatches) {
+                        admin_record_login($pdo, (int)$user['id'], $login, false, 'Wrong password');
                         $error = 'Wrong password.';
                     } else {
                         if (!isset($user['full_name']) && isset($user['name'])) {
@@ -78,6 +92,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         login_user($user, $remember);
                         try {
+                            admin_record_login($pdo, (int)$user['id'], $login, true, null);
+                            admin_register_session($pdo, (int)$user['id']);
                             $pdo->prepare('UPDATE users SET last_login = NOW() WHERE id = :id')->execute(['id' => (int)$user['id']]);
                         } catch (Throwable) {
                         }
@@ -90,6 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             exit;
                         }
                     }
+                }
                 }
             }
         }
@@ -117,6 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <h4 class="mb-0">Ralson ERP Login</h4>
                     </div>
                     <p class="text-muted small mb-3">Sign in with your <strong>username</strong> or corporate <strong>email</strong>.</p>
+                    <?php if ($info): ?><div class="alert alert-info"><?= e($info) ?></div><?php endif; ?>
                     <?php if ($error): ?><div class="alert alert-danger"><?= e($error) ?></div><?php endif; ?>
                     <?php if (!empty($debugOutput)): ?>
                         <div class="alert alert-warning">

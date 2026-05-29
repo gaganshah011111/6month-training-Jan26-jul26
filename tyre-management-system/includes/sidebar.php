@@ -6,9 +6,20 @@ $user = current_user();
 $role = (string)($user['role'] ?? '');
 $iconMap = [
     'Super Dashboard' => 'bi-speedometer2',
+    'ERP Control Center' => 'bi-speedometer2',
     'User Management' => 'bi-people',
+    'Roles & Permissions' => 'bi-shield-lock',
+    'Department Management' => 'bi-diagram-3',
     'System Settings' => 'bi-gear',
+    'Activity Logs' => 'bi-journal-text',
+    'Audit Center' => 'bi-journal-text',
+    'Employees' => 'bi-person-badge',
+    'Sales & CRM' => 'bi-graph-up',
+    'Purchase & Suppliers' => 'bi-truck',
+    'Finance' => 'bi-bank2',
     'Global Reports' => 'bi-graph-up',
+    'System Health' => 'bi-heart-pulse',
+    'Backup & Restore' => 'bi-cloud-arrow-down',
     'Dashboard' => 'bi-house-door',
     'Employees' => 'bi-person-badge',
     'Attendance' => 'bi-calendar-check',
@@ -60,7 +71,23 @@ $iconMap = [
     <?php
     $menu = match ($role) {
         'Super Admin', 'Admin' => [
-            'System' => ['super/dashboard' => 'Super Dashboard', 'users/index' => 'User Management', 'leave/list' => 'Leave', 'hr/payroll-settings' => 'Payroll Settings', 'settings/profile' => 'System Settings', 'reports/hr' => 'Global Reports'],
+            'System Administration' => [
+                'super/dashboard' => 'ERP Control Center',
+                'admin/users' => 'User Management',
+                'admin/roles' => 'Roles & Permissions',
+                'admin/departments' => 'Department Management',
+                'admin/settings' => 'System Settings',
+                'admin/activity-logs' => 'Audit Center',
+                'admin/system-health' => 'System Health',
+                'admin/reports' => 'Global Reports',
+                'admin/backup' => 'Backup & Restore',
+            ],
+            'Oversight' => [
+                'admin/employee-oversight' => 'Employees',
+                'admin/sales-oversight' => 'Sales & CRM',
+                'admin/purchase-oversight' => 'Purchase & Suppliers',
+                'admin/finance-oversight' => 'Finance',
+            ],
         ],
         'HR Manager' => [
             'HR Management' => ['hr/dashboard' => 'Dashboard', 'employees/list' => 'Employees', 'attendance/list' => 'Attendance', 'leave/list' => 'Leave', 'payroll/list' => 'Payroll', 'hr/payroll-settings' => 'Payroll Settings', 'reports/hr' => 'HR Reports'],
@@ -141,6 +168,12 @@ $iconMap = [
             <?php $icon = $iconMap[$label] ?? 'bi-circle'; ?>
             <?php
             $isActive = $page === $key;
+            if (!$isActive && str_starts_with($key, 'admin/') && str_starts_with($page, 'admin/')) {
+                $isActive = $page === $key;
+            }
+            if (!$isActive && $key === 'super/dashboard' && ($page === 'super/dashboard' || $page === 'admin/dashboard')) {
+                $isActive = true;
+            }
             if (!$isActive && str_starts_with($key, 'machines/') && str_starts_with($page, 'machines/')) {
                 $isActive = true;
             }

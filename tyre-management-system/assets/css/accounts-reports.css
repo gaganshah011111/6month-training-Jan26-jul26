@@ -1,0 +1,411 @@
+/* Accounts Finance Analytics & Reporting Center */
+.acc-reports-page {
+    --acc-ink: #0f172a;
+    --acc-muted: #64748b;
+    --acc-border: #e2e8f0;
+    --acc-bg: #f8fafc;
+    --acc-green: #059669;
+    --acc-red: #dc2626;
+    --acc-blue: #2563eb;
+    --acc-orange: #ea580c;
+    --acc-purple: #7c3aed;
+    --acc-teal: #0d9488;
+    font-family: Inter, system-ui, sans-serif;
+    color: var(--acc-ink);
+    max-width: 100%;
+}
+
+.acc-reports__head {
+    margin-bottom: 0.5rem;
+}
+
+.acc-reports__title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.02em;
+}
+
+.acc-reports__sub {
+    margin: 0.15rem 0 0;
+    font-size: 0.78rem;
+    color: var(--acc-muted);
+}
+
+.acc-reports__filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.5rem 0.75rem;
+    padding: 0.65rem 0.85rem;
+    margin-bottom: 0.55rem;
+    background: #fff;
+    border: 1px solid var(--acc-border);
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.acc-reports__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.acc-reports__field label {
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--acc-muted);
+    margin: 0;
+}
+
+.acc-reports__field .form-control,
+.acc-reports__field .form-select {
+    min-width: 9.5rem;
+    font-size: 0.8rem;
+}
+
+.acc-reports__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-left: auto;
+    align-items: center;
+}
+
+.acc-reports__tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.65rem;
+}
+
+.acc-reports__tab {
+    display: inline-block;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--acc-muted);
+    background: #fff;
+    border: 1px solid var(--acc-border);
+    border-radius: 999px;
+    transition: all 0.15s ease;
+}
+
+.acc-reports__tab:hover {
+    color: var(--acc-blue);
+    border-color: #bfdbfe;
+    background: #eff6ff;
+}
+
+.acc-reports__tab.is-active {
+    color: #fff;
+    background: var(--acc-blue);
+    border-color: var(--acc-blue);
+}
+
+.acc-reports__kpis {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.acc-kpi {
+    background: #fff;
+    border: 1px solid var(--acc-border);
+    border-radius: 10px;
+    padding: 0.55rem 0.65rem;
+    border-left: 4px solid var(--acc-blue);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.acc-kpi__label {
+    display: block;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--acc-muted);
+    font-weight: 600;
+}
+
+.acc-kpi__value {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-top: 0.15rem;
+    line-height: 1.2;
+    word-break: break-word;
+}
+
+.acc-kpi--revenue { border-left-color: var(--acc-green); }
+.acc-kpi--expense { border-left-color: var(--acc-red); }
+.acc-kpi--profit { border-left-color: var(--acc-blue); }
+.acc-kpi--recv { border-left-color: var(--acc-orange); }
+.acc-kpi--pay { border-left-color: var(--acc-purple); }
+.acc-kpi--cash { border-left-color: var(--acc-teal); }
+
+.acc-reports__grid {
+    display: grid;
+    gap: 0.65rem;
+    margin-bottom: 0.65rem;
+}
+
+.acc-reports__grid--2 {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.acc-rpt-card {
+    background: #fff;
+    border: 1px solid var(--acc-border);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.acc-rpt-card__head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+    background: #fafbfc;
+}
+
+.acc-rpt-card__title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin: 0;
+    padding: 0.55rem 0.75rem 0;
+}
+
+.acc-rpt-card__subtitle {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--acc-muted);
+    margin: 0.75rem 0.35rem 0.35rem;
+    padding: 0 0.4rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.acc-rpt-card__hint {
+    font-size: 0.68rem;
+    color: var(--acc-muted);
+    margin: 0;
+    padding: 0.35rem 0.75rem 0.65rem;
+}
+
+.acc-pnl {
+    padding: 0.25rem 0.75rem 0.5rem;
+}
+
+.acc-pnl__row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.4rem 0;
+    border-bottom: 1px dashed #f1f5f9;
+    font-size: 0.8rem;
+}
+
+.acc-pnl__row span { color: var(--acc-muted); }
+.acc-pnl__row strong { font-weight: 600; }
+
+.acc-pnl__row--deduct strong { color: var(--acc-red); }
+.acc-pnl__row--total {
+    border-bottom: none;
+    margin-top: 0.25rem;
+    padding-top: 0.55rem;
+    border-top: 2px solid var(--acc-border);
+    font-size: 0.88rem;
+}
+
+.acc-pnl__row--total strong { color: var(--acc-blue); font-size: 1rem; }
+
+.acc-insights {
+    list-style: none;
+    margin: 0;
+    padding: 0.35rem 0.75rem 0.75rem;
+}
+
+.acc-insights li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.45rem;
+    padding: 0.45rem 0;
+    font-size: 0.78rem;
+    border-bottom: 1px solid #f8fafc;
+    line-height: 1.4;
+}
+
+.acc-insights li:last-child { border-bottom: none; }
+.acc-insights .bi { color: #f59e0b; flex-shrink: 0; margin-top: 0.1rem; }
+
+.acc-reports__charts {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.65rem;
+    margin-bottom: 0.65rem;
+}
+
+.acc-chart-card {
+    background: #fff;
+    border: 1px solid var(--acc-border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.acc-chart-card--wide {
+    grid-column: 1 / -1;
+}
+
+.acc-chart-card__title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    margin: 0;
+    padding: 0.5rem 0.7rem;
+    border-bottom: 1px solid #f1f5f9;
+    background: #fafbfc;
+}
+
+.acc-chart-card__body {
+    padding: 0.5rem 0.65rem 0.65rem;
+    min-height: 200px;
+}
+
+.acc-analytics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.45rem;
+    padding: 0.35rem 0.75rem 0.5rem;
+}
+
+.acc-analytics__stat {
+    background: var(--acc-bg);
+    border-radius: 8px;
+    padding: 0.45rem 0.5rem;
+    text-align: center;
+}
+
+.acc-analytics__stat span {
+    display: block;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--acc-muted);
+    font-weight: 600;
+}
+
+.acc-analytics__stat strong {
+    display: block;
+    font-size: 0.85rem;
+    margin-top: 0.15rem;
+}
+
+.acc-top-list {
+    list-style: none;
+    margin: 0;
+    padding: 0 0.75rem 0.75rem;
+}
+
+.acc-top-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0;
+    font-size: 0.78rem;
+    border-bottom: 1px solid #f8fafc;
+}
+
+.acc-top-list li span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.acc-top-list li strong {
+    flex-shrink: 0;
+    font-weight: 600;
+}
+
+.acc-cashflow-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem 0.75rem;
+}
+
+.acc-cashflow-item {
+    background: var(--acc-bg);
+    border-radius: 8px;
+    padding: 0.55rem 0.5rem;
+    text-align: center;
+    border: 1px solid #f1f5f9;
+}
+
+.acc-cashflow-item span {
+    display: block;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--acc-muted);
+    font-weight: 600;
+}
+
+.acc-cashflow-item strong {
+    display: block;
+    font-size: 0.88rem;
+    margin-top: 0.2rem;
+}
+
+.acc-cashflow-item--in strong { color: var(--acc-green); }
+.acc-cashflow-item--out strong { color: var(--acc-red); }
+
+.acc-rpt-card--detail .acc-rpt-card__title {
+    padding: 0;
+}
+
+.acc-rpt-card--detail {
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 1200px) {
+    .acc-reports__kpis {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    .acc-cashflow-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .acc-reports__kpis,
+    .acc-reports__grid--2,
+    .acc-reports__charts,
+    .acc-analytics,
+    .acc-cashflow-grid {
+        grid-template-columns: 1fr;
+    }
+    .acc-reports__actions {
+        margin-left: 0;
+        width: 100%;
+    }
+}
+
+@media print {
+    .acc-reports__filters,
+    .acc-reports__tabs,
+    .acc-reports__actions,
+    .erp-export-toolbar {
+        display: none !important;
+    }
+    .acc-reports-page {
+        font-size: 10pt;
+    }
+}

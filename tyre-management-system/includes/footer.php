@@ -71,6 +71,21 @@ if (in_array($footerPage, ['accounts/cashbook', 'accounts/bankbook'], true)) {
     $treasuryVer = is_file($treasuryJs) ? (string)filemtime($treasuryJs) : (string)time();
     echo '<script src="assets/js/accounts-treasury.js?v=' . e($treasuryVer) . '"></script>' . "\n";
 }
+if ($footerPage === 'accounts/reports') {
+    $accRptJs = __DIR__ . '/../assets/js/accounts-reports.js';
+    $accRptVer = is_file($accRptJs) ? (string)filemtime($accRptJs) : (string)time();
+    echo '<script src="assets/js/accounts-reports.js?v=' . e($accRptVer) . '"></script>' . "\n";
+}
+if ($footerPage === 'accounts/transactions-history') {
+    $accTxJs = __DIR__ . '/../assets/js/accounts-transactions.js';
+    $accTxVer = is_file($accTxJs) ? (string)filemtime($accTxJs) : (string)time();
+    echo '<script src="assets/js/accounts-transactions.js?v=' . e($accTxVer) . '"></script>' . "\n";
+}
+if ($footerPage === 'super/dashboard' || str_starts_with($footerPage, 'admin/')) {
+    $adminJs = __DIR__ . '/../assets/js/admin-control-center.js';
+    $adminVer = is_file($adminJs) ? (string)filemtime($adminJs) : (string)time();
+    echo '<script src="assets/js/admin-control-center.js?v=' . e($adminVer) . '"></script>' . "\n";
+}
 ?>
 </body>
 </html>

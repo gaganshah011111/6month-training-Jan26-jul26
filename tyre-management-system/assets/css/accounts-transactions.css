@@ -1,0 +1,349 @@
+/* Accounts Transactions History — Master Financial Audit Log */
+.acc-tx-page {
+    --acc-tx-ink: #0f172a;
+    --acc-tx-muted: #64748b;
+    --acc-tx-border: #e2e8f0;
+    --acc-tx-green: #059669;
+    --acc-tx-red: #dc2626;
+    --acc-tx-orange: #ea580c;
+    --acc-tx-purple: #7c3aed;
+    --acc-tx-blue: #2563eb;
+    font-family: Inter, system-ui, sans-serif;
+    color: var(--acc-tx-ink);
+}
+
+.acc-tx__head { margin-bottom: 0.55rem; }
+.acc-tx__title { font-size: 1.2rem; font-weight: 700; margin: 0; }
+.acc-tx__sub { margin: 0.12rem 0 0; font-size: 0.76rem; color: var(--acc-tx-muted); }
+
+.acc-tx__kpis {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.45rem;
+    margin-bottom: 0.6rem;
+}
+
+.acc-tx-kpi {
+    background: #fff;
+    border: 1px solid var(--acc-tx-border);
+    border-radius: 8px;
+    padding: 0.45rem 0.55rem;
+    border-left: 3px solid var(--acc-tx-blue);
+}
+
+.acc-tx-kpi span {
+    display: block;
+    font-size: 0.58rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--acc-tx-muted);
+    font-weight: 600;
+}
+
+.acc-tx-kpi strong {
+    display: block;
+    font-size: 0.92rem;
+    font-weight: 700;
+    margin-top: 0.12rem;
+    line-height: 1.2;
+}
+
+.acc-tx-kpi--in { border-left-color: var(--acc-tx-green); }
+.acc-tx-kpi--out { border-left-color: var(--acc-tx-red); }
+.acc-tx-kpi--pending { border-left-color: #f59e0b; }
+
+.acc-tx__filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.45rem 0.65rem;
+    padding: 0.6rem 0.75rem;
+    margin-bottom: 0.55rem;
+    background: #fff;
+    border: 1px solid var(--acc-tx-border);
+    border-radius: 10px;
+}
+
+.acc-tx__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.12rem;
+}
+
+.acc-tx__field label {
+    font-size: 0.6rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--acc-tx-muted);
+    margin: 0;
+}
+
+.acc-tx__field .form-control,
+.acc-tx__field .form-select {
+    min-width: 7.5rem;
+    font-size: 0.78rem;
+}
+
+.acc-tx__field--search .form-control { min-width: 10rem; }
+
+.acc-tx__range {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.acc-tx__range input { width: 5.5rem; }
+.acc-tx__range span { color: var(--acc-tx-muted); font-size: 0.75rem; }
+
+.acc-tx__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-left: auto;
+    align-items: center;
+}
+
+.acc-tx__table-wrap {
+    background: #fff;
+    border: 1px solid var(--acc-tx-border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 0.65rem;
+}
+
+.acc-tx__table-scroll {
+    overflow: auto;
+    max-height: min(62vh, 680px);
+}
+
+.acc-tx-table {
+    font-size: 0.76rem;
+    margin: 0;
+}
+
+.acc-tx-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #f8fafc;
+    border-bottom: 2px solid var(--acc-tx-border);
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--acc-tx-muted);
+    font-weight: 700;
+    white-space: nowrap;
+    padding: 0.45rem 0.5rem;
+}
+
+.acc-tx-table tbody td {
+    padding: 0.35rem 0.5rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.acc-tx-row {
+    transition: background 0.12s ease;
+    border-left: 3px solid transparent;
+}
+
+.acc-tx-row:hover { background: #f8fafc; }
+
+.acc-tx-row--customer { border-left-color: var(--acc-tx-green); }
+.acc-tx-row--supplier { border-left-color: var(--acc-tx-orange); }
+.acc-tx-row--salary { border-left-color: var(--acc-tx-purple); }
+.acc-tx-row--expense { border-left-color: var(--acc-tx-red); }
+.acc-tx-row--loan { border-left-color: var(--acc-tx-blue); }
+.acc-tx-row--other { border-left-color: #94a3b8; }
+
+.acc-tx-code { font-weight: 600; font-family: ui-monospace, monospace; font-size: 0.72rem; }
+.acc-tx-ref { max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acc-tx-amt { font-weight: 600; white-space: nowrap; }
+
+.acc-tx-type {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.acc-tx-dir {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.acc-tx-dir--in { color: var(--acc-tx-green); }
+.acc-tx-dir--out { color: var(--acc-tx-red); }
+
+.acc-tx-status {
+    display: inline-block;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.15rem 0.4rem;
+    border-radius: 999px;
+}
+
+.acc-tx-status--done { background: #dcfce7; color: #166534; }
+.acc-tx-status--pending { background: #fef3c7; color: #92400e; }
+
+.acc-tx-actions {
+    display: inline-flex;
+    gap: 0.35rem;
+    align-items: center;
+}
+
+.acc-tx-actions .btn-link {
+    color: var(--acc-tx-muted);
+    text-decoration: none;
+    line-height: 1;
+}
+
+.acc-tx-actions .btn-link:hover { color: var(--acc-tx-blue); }
+
+.acc-tx__analytics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.55rem;
+    margin-bottom: 1rem;
+}
+
+.acc-tx-chart-card {
+    background: #fff;
+    border: 1px solid var(--acc-tx-border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.acc-tx-chart-card__title {
+    font-size: 0.76rem;
+    font-weight: 700;
+    margin: 0;
+    padding: 0.45rem 0.65rem;
+    border-bottom: 1px solid #f1f5f9;
+    background: #fafbfc;
+}
+
+.acc-tx-chart-card__body {
+    padding: 0.45rem 0.55rem 0.55rem;
+    min-height: 180px;
+}
+
+.acc-tx-top-cats { padding: 0.35rem 0.55rem 0.55rem; }
+
+.acc-tx-top-cats__row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.38rem 0.15rem;
+    font-size: 0.74rem;
+    border-bottom: 1px solid #f8fafc;
+}
+
+.acc-tx-top-cats__row span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.acc-tx-top-cats__row strong { flex-shrink: 0; font-weight: 600; }
+
+/* Drawer */
+.offcanvas.acc-tx-drawer {
+    width: min(420px, 94vw) !important;
+}
+
+.acc-tx-drawer .offcanvas-header {
+    border-bottom: 1px solid var(--acc-tx-border);
+    padding: 0.75rem 1rem;
+}
+
+.acc-tx-drawer .offcanvas-title { font-size: 1rem; font-weight: 700; }
+.acc-tx-drawer__sub { font-size: 0.72rem; color: var(--acc-tx-muted); }
+
+.acc-tx-drawer-section {
+    margin-bottom: 0.85rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.acc-tx-drawer-section:last-child { border-bottom: none; margin-bottom: 0; }
+
+.acc-tx-drawer-section__title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--acc-tx-muted);
+    margin: 0 0 0.45rem;
+}
+
+.acc-tx-drawer-dl {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.35rem 0.75rem;
+    margin: 0;
+    font-size: 0.78rem;
+}
+
+.acc-tx-drawer-dl dt {
+    color: var(--acc-tx-muted);
+    font-weight: 500;
+    margin: 0;
+}
+
+.acc-tx-drawer-dl dd {
+    margin: 0;
+    font-weight: 600;
+    text-align: right;
+}
+
+.acc-tx-drawer-dl .full { grid-column: 1 / -1; }
+.acc-tx-drawer-dl .full dd { text-align: left; margin-top: 0.15rem; }
+
+.acc-tx-audit {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 0.74rem;
+    line-height: 1.45;
+}
+
+.acc-tx-audit li {
+    padding: 0.35rem 0;
+    border-bottom: 1px dashed #f1f5f9;
+}
+
+.acc-tx-audit li:last-child { border-bottom: none; }
+
+.acc-tx-drawer-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.75rem;
+}
+
+@media (max-width: 1200px) {
+    .acc-tx__kpis { grid-template-columns: repeat(3, 1fr); }
+    .acc-tx__analytics { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 768px) {
+    .acc-tx__kpis,
+    .acc-tx__analytics { grid-template-columns: 1fr; }
+    .acc-tx__actions { margin-left: 0; width: 100%; }
+}
+
+@media print {
+    .acc-tx__filters,
+    .acc-tx__actions,
+    .acc-tx-actions,
+    .acc-tx__analytics,
+    .acc-tx-drawer { display: none !important; }
+    .acc-tx__table-scroll { max-height: none; overflow: visible; }
+}

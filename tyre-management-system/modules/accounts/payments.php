@@ -2,56 +2,58 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../../config/db.php';
-require_once __DIR__ . '/../../includes/accounts_finance.php';
-require_once __DIR__ . '/../../includes/erp_export.php';
+require_once __DIR__ . '/../../includes/accounts_transactions.php';
 
 $pdo = Database::connection();
-$from = (string)($_GET['from'] ?? date('Y-m-01'));
-$to = (string)($_GET['to'] ?? date('Y-m-d'));
-$rows = acc_finance_transactions($pdo, ['from' => $from, 'to' => $to]);
+acc_tx_history_handle_export($pdo);
+
+$bundle = acc_tx_history_bundle($pdo, $_GET);
+$filters = $bundle['filters'];
+$rows = $bundle['rows'];
+$kpis = $bundle['kpis'];
 ?>
 
-<div class="accounts-page">
-    <header class="prod-page__head">
+<div class="accounts-page acc-tx-page module-shell">
+    <header class="acc-tx__head">
         <div>
-            <h1 class="prod-page__title">Transactions History</h1>
-            <p class="prod-page__sub">Master finance log of customer payments, supplier payments, and expenses.</p>
+            <h1 class="acc-tx__title">Payment Transactions</h1>
+            <p class="acc-tx__sub">Legacy payment log · <?= e($filters['from']) ?> to <?= e($filters['to']) ?></p>
         </div>
-        <nav class="prod-page__links">
-            <a href="<?= e(route_url('accounts/receivables')) ?>">Record customer payment</a>
-            <a href="<?= e(route_url('inventory/purchase-history')) ?>">Record supplier payment</a>
-        </nav>
+        <a href="<?= e(route_url('accounts/transactions-history')) ?>" class="btn btn-sm btn-outline-primary">Open Audit Log</a>
     </header>
 
-    <form method="get" class="sales-filter-bar mb-3">
-        <input type="hidden" name="page" value="accounts/payments">
-        <div class="sales-filter-bar__row">
-            <div class="sales-filter-bar__field"><label>From</label><input type="date" class="form-control form-control-sm" name="from" value="<?= e($from) ?>"></div>
-            <div class="sales-filter-bar__field"><label>To</label><input type="date" class="form-control form-control-sm" name="to" value="<?= e($to) ?>"></div>
-            <div class="align-self-end"><button class="btn btn-sm btn-primary">Apply</button></div>
-            <div class="ms-auto"><?= erp_export_toolbar('acc-transactions-table', 'transactions-history') ?></div>
-        </div>
-    </form>
-
-    <section class="sales-card">
-        <div class="sales-table-wrap sales-table-scroll">
-            <table class="table table-sm mb-0" id="acc-transactions-table">
-                <thead><tr><th>Transaction ID</th><th>Date</th><th>Type</th><th>Party</th><th>Reference</th><th class="text-end">Amount</th><th>Mode</th><th>Status</th></tr></thead>
+    <section class="acc-tx__table-wrap">
+        <div class="acc-tx__table-scroll">
+            <table class="table table-sm acc-tx-table mb-0" id="acc-transactions-table">
+                <thead>
+                <tr>
+                    <th>Transaction ID</th>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Party</th>
+                    <th>Reference</th>
+                    <th class="text-end">Amount</th>
+                    <th>Mode</th>
+                    <th>Status</th>
+                </tr>
+                </thead>
                 <tbody>
-                <?php foreach ($rows as $p): ?>
-                    <?php $meta = acc_payment_meta((string)($p['tx_status'] ?? 'Pending')); ?>
-                    <tr>
-                        <td><?= e((string)$p['txid']) ?></td>
-                        <td><?= e((string)$p['tx_date']) ?></td>
-                        <td><?= e((string)$p['tx_type']) ?></td>
-                        <td><?= e((string)$p['party']) ?></td>
-                        <td><?= e((string)$p['reference_no']) ?></td>
-                        <td class="text-end"><?= e(sales_format_money((float)$p['amount'])) ?></td>
-                        <td><?= e((string)$p['payment_mode']) ?></td>
-                        <td><span class="badge <?= e($meta['cls']) ?>"><?= e((string)$meta['label']) ?></span></td>
+                <?php foreach ($rows as $r): ?>
+                    <?php $st = $r['status_meta']; ?>
+                    <tr class="acc-tx-row <?= e((string)$r['row_accent']) ?>">
+                        <td class="acc-tx-code"><?= e((string)$r['tx_code']) ?></td>
+                        <td><?= e((string)$r['tx_date']) ?></td>
+                        <td><?= e((string)$r['tx_type']) ?></td>
+                        <td><?= e((string)$r['party']) ?></td>
+                        <td><?= e((string)$r['reference_no']) ?></td>
+                        <td class="text-end acc-tx-amt"><?= e((string)$r['amount_fmt']) ?></td>
+                        <td><?= e((string)$r['payment_mode']) ?></td>
+                        <td><span class="acc-tx-status <?= e((string)$st['cls']) ?>"><?= e((string)$st['label']) ?></span></td>
                     </tr>
                 <?php endforeach; ?>
-                <?php if ($rows === []): ?><tr><td colspan="8" class="sales-empty">No transactions in selected period.</td></tr><?php endif; ?>
+                <?php if ($rows === []): ?>
+                    <tr><td colspan="8" class="text-center text-muted py-4">No transactions in selected period.</td></tr>
+                <?php endif; ?>
                 </tbody>
             </table>
         </div>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../../config/db.php';
 require_once __DIR__ . '/../../../includes/payroll_service.php';
 require_once __DIR__ . '/../../../includes/payroll_test_data.php';
+require_once __DIR__ . '/../../../includes/accounts_salary_payroll.php';
 
 if (!has_role(['Super Admin', 'HR Manager', 'Admin'])) {
     echo 'Access denied';
@@ -21,12 +22,20 @@ if (!preg_match('/^\d{4}-\d{2}$/', $payrollMonth)) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string)($_POST['action'] ?? 'generate');
     try {
-        if ($action === 'mark_paid') {
-            $sid = post_int('salary_id');
-            if (!payroll_mark_paid($pdo, $sid)) {
-                throw new RuntimeException('Could not mark payslip as paid.');
-            }
-            set_flash('success', 'Salary marked as paid.');
+        if ($action === 'verify_payroll') {
+            $month = (string)($_POST['month_year'] ?? $payrollMonth);
+            $n = payroll_verify_month($pdo, $month);
+            set_flash('success', "Verified payroll for {$n} employee(s) — " . payroll_format_month_label($month) . '.');
+        } elseif ($action === 'send_to_accounts') {
+            $month = (string)($_POST['month_year'] ?? $payrollMonth);
+            $by = (string)(current_user()['full_name'] ?? 'HR Manager');
+            $res = payroll_send_month_to_accounts($pdo, $month, $by);
+            set_flash(
+                'success',
+                'Payroll sent to Accounts: ' . payroll_format_month_label($month)
+                . ' — ' . (int)$res['employee_count'] . ' employees, '
+                . '₹' . number_format((float)$res['total_amount'], 0) . ' pending payment.'
+            );
         } elseif (in_array($action, ['generate_test_payroll', 'clear_test_data', 'clear_test_data_all'], true)) {
             if (!is_payroll_test_tools_enabled()) {
                 throw new RuntimeException('Payroll test tools are disabled in this environment.');
@@ -131,11 +140,27 @@ $testToolsEnabled = is_payroll_test_tools_enabled();
 $testDefaults = payroll_test_default_counts();
 $activeEmployeesForTest = [];
 if ($testToolsEnabled) {
-    $activeEmployeesForTest = $pdo->query("SELECT id, employee_code, full_name FROM employees WHERE status = 'active' ORDER BY full_name")->fetchAll(PDO::FETCH_ASSOC);
+    $activeEmployeesForTest = $pdo->query(
+        "SELECT id, employee_code, full_name
+         FROM employees
+         WHERE LOWER(COALESCE(status, '')) = 'active'
+         ORDER BY full_name"
+    )->fetchAll(PDO::FETCH_ASSOC);
+    if ($activeEmployeesForTest === []) {
+        $activeEmployeesForTest = $pdo->query(
+            "SELECT id, employee_code, full_name
+             FROM employees
+             ORDER BY full_name"
+        )->fetchAll(PDO::FETCH_ASSOC);
+    }
 }
 $payrollNotice = payroll_test_take_notice();
 $highlightEmployeeId = (int)($payrollNotice['employee_id'] ?? 0);
 $pendingVerificationCount = payroll_count_pending_verification($pdo, $payrollMonth);
+$accountsBatch = payroll_month_accounts_batch($pdo, $payrollMonth);
+$readyToSendCount = payroll_month_ready_to_send_count($pdo, $payrollMonth);
+$monthHrCounts = payroll_month_counts($pdo, $payrollMonth);
+$toVerifyCount = (int)($monthHrCounts['generated'] ?? 0);
 ?>
 <div class="hr-page module-shell payroll-dashboard">
     <div class="payroll-dashboard__head d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
@@ -160,6 +185,35 @@ $pendingVerificationCount = payroll_count_pending_verification($pdo, $payrollMon
     <div class="alert alert-warning d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <span><i class="bi bi-exclamation-triangle me-2"></i><strong><?= e((string)$pendingVerificationCount) ?></strong> attendance <?= $pendingVerificationCount === 1 ? 'entry requires' : 'entries require' ?> verification before payroll. Unresolved records are excluded from salary calculation.</span>
         <a class="btn btn-sm btn-warning" href="<?= e(route_url('attendance/list')) ?>&att_section=verify&verify_month=<?= e(urlencode($payrollMonth)) ?>">Review queue</a>
+    </div>
+    <?php endif; ?>
+
+    <?php if ((int)($monthHrCounts['sent'] ?? 0) > 0): ?>
+    <div class="alert alert-success d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <span><i class="bi bi-send-check me-2"></i>Payroll for <strong><?= e($monthLabel) ?></strong> sent to Accounts (<?= (int)$monthHrCounts['sent'] ?> employees). Payment is recorded only in Accounts &amp; Finance.</span>
+        <?php if (has_role(['Super Admin', 'Admin'])): ?>
+            <a class="btn btn-sm btn-outline-success" href="<?= e(route_url('accounts/salary-payments', ['month_year' => $payrollMonth])) ?>">Open in Accounts</a>
+        <?php endif; ?>
+    </div>
+    <?php elseif ($toVerifyCount > 0): ?>
+    <div class="alert alert-info d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <span><i class="bi bi-shield-check me-2"></i><strong><?= $toVerifyCount ?></strong> payroll row(s) need verification.</span>
+        <form method="post" class="mb-0" onsubmit="return confirm('Verify payroll for all generated employees?');">
+            <?= csrf_input() ?>
+            <input type="hidden" name="action" value="verify_payroll">
+            <input type="hidden" name="month_year" value="<?= e($payrollMonth) ?>">
+            <button type="submit" class="btn btn-sm btn-info text-white"><i class="bi bi-check2-circle me-1"></i>Verify Payroll</button>
+        </form>
+    </div>
+    <?php elseif ($readyToSendCount > 0): ?>
+    <div class="alert alert-primary d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <span><i class="bi bi-bank me-2"></i><strong><?= (int)$readyToSendCount ?></strong> verified row(s) ready to send to Accounts.</span>
+        <form method="post" class="mb-0" onsubmit="return confirm('Send verified payroll to Accounts?');">
+            <?= csrf_input() ?>
+            <input type="hidden" name="action" value="send_to_accounts">
+            <input type="hidden" name="month_year" value="<?= e($payrollMonth) ?>">
+            <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-send me-1"></i>Send to Accounts</button>
+        </form>
     </div>
     <?php endif; ?>
 
@@ -268,8 +322,10 @@ $pendingVerificationCount = payroll_count_pending_verification($pdo, $payrollMon
                         <option value="">All statuses</option>
                         <option value="pending" <?= $filters['salary_status'] === 'pending' ? 'selected' : '' ?>>Payroll pending</option>
                         <option value="generated" <?= $filters['salary_status'] === 'generated' ? 'selected' : '' ?>>Payroll generated</option>
+                        <option value="verified" <?= $filters['salary_status'] === 'verified' ? 'selected' : '' ?>>Verified</option>
                         <option value="draft" <?= $filters['salary_status'] === 'draft' ? 'selected' : '' ?>>Draft</option>
                         <option value="paid" <?= $filters['salary_status'] === 'paid' ? 'selected' : '' ?>>Paid</option>
+                        <option value="sent_to_accounts" <?= $filters['salary_status'] === 'sent_to_accounts' ? 'selected' : '' ?>>Sent to Accounts</option>
                         <option value="unpaid" <?= $filters['salary_status'] === 'unpaid' ? 'selected' : '' ?>>Unpaid (generated)</option>
                     </select>
                 </div>
@@ -347,15 +403,6 @@ $pendingVerificationCount = payroll_count_pending_verification($pdo, $payrollMon
                             <?php if ($salaryId): ?>
                                 <a class="btn btn-sm btn-outline-secondary" href="<?= e(route_url('payroll/payslip') . '&id=' . $salaryId) ?>" target="_blank" title="View payslip"><i class="bi bi-eye"></i></a>
                                 <a class="btn btn-sm btn-outline-danger" href="<?= e(route_url('payroll/payslip') . '&id=' . $salaryId) ?>" target="_blank" onclick="setTimeout(function(){window.print();},500); return true;" title="Download PDF"><i class="bi bi-file-pdf"></i></a>
-                                <?php if ((string)$emp['ui_status'] !== 'paid'): ?>
-                                <form method="post" class="d-inline" onsubmit="return confirm('Mark this salary as paid?');">
-                                    <?= csrf_input() ?>
-                                    <input type="hidden" name="action" value="mark_paid">
-                                    <input type="hidden" name="salary_id" value="<?= $salaryId ?>">
-                                    <input type="hidden" name="month_year" value="<?= e($payrollMonth) ?>">
-                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Mark paid"><i class="bi bi-check2"></i></button>
-                                </form>
-                                <?php endif; ?>
                             <?php endif; ?>
                         </td>
                     </tr>
@@ -483,7 +530,7 @@ $pendingVerificationCount = payroll_count_pending_verification($pdo, $payrollMon
                         <div class="col-lg-7">
                             <div class="payroll-test-panel mb-4">
                                 <label class="form-label fw-semibold" for="payrollTestEmployeeId">Employee</label>
-                                <select class="form-select form-select-lg payroll-test-modal__select erp-select-search" name="employee_id" id="payrollTestEmployeeId" required data-placeholder="Search employee…" onchange="if(window.loadPayrollTestPreview){window.loadPayrollTestPreview();}">
+                                <select class="form-select form-select-lg payroll-test-modal__select" name="employee_id" id="payrollTestEmployeeId" required data-erp-searchable="off" onchange="if(window.loadPayrollTestPreview){window.loadPayrollTestPreview();}">
                                     <option value="">— Select employee —</option>
                                     <?php foreach ($activeEmployeesForTest as $ae): ?>
                                         <option value="<?= (int)$ae['id'] ?>"><?= e((string)$ae['employee_code']) ?> — <?= e((string)$ae['full_name']) ?></option>
@@ -644,7 +691,7 @@ window.payrollDashboardConfig = {
 <script>
 (function () {
     'use strict';
-    var PREVIEW_API = <?= json_encode($testPreviewApiUrlFull, JSON_THROW_ON_ERROR) ?>;
+    var PREVIEW_API = <?= json_encode($testPreviewApiUrlAbs, JSON_THROW_ON_ERROR) ?>;
     var PREVIEW_MONTH = <?= json_encode($payrollMonth, JSON_THROW_ON_ERROR) ?>;
 
     function inr(n) {
@@ -681,6 +728,8 @@ window.payrollDashboardConfig = {
     }
 
     var reqId = 0;
+    var lastQueryKey = '';
+    var previewCache = {};
 
     function loadPayrollTestPreviewInline() {
         var sel = document.getElementById('payrollTestEmployeeId');
@@ -696,6 +745,20 @@ window.payrollDashboardConfig = {
         var ot = (document.getElementById('ptOt') || {}).value || '0';
         var late = (document.getElementById('ptLate') || {}).value || '0';
 
+        var queryKey = [empId, PREVIEW_MONTH, present, half, absent, ot, late].join('|');
+        if (queryKey === lastQueryKey && previewCache[queryKey]) {
+            var c0 = previewCache[queryKey];
+            setText('ptGross', inr(c0.gross_salary));
+            setText('ptDed', inr(c0.total_deduction));
+            setText('ptNet', inr(c0.net_salary));
+            setText('ptMetaPresent', c0.attendance && c0.attendance.present_days != null ? String(c0.attendance.present_days) : '—');
+            setText('ptMetaOt', inr(c0.overtime_amount));
+            setText('ptMetaPf', inr(c0.pf_amount));
+            setPreviewState('ready');
+            return;
+        }
+        lastQueryKey = queryKey;
+
         var myId = ++reqId;
         setPreviewState('loading');
 
@@ -709,7 +772,11 @@ window.payrollDashboardConfig = {
             + '&test_ot_hours=' + encodeURIComponent(ot)
             + '&test_late=' + encodeURIComponent(late);
 
-        fetch(url, { credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' } })
+        fetch(url, {
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers: { Accept: 'application/json' }
+        })
             .then(function (r) {
                 return r.text().then(function (text) {
                     var data = {};
@@ -733,6 +800,7 @@ window.payrollDashboardConfig = {
                     return;
                 }
                 var c = data.calc;
+                previewCache[queryKey] = c;
                 var att = c.attendance || {};
                 setText('ptGross', inr(c.gross_salary));
                 setText('ptDed', inr(c.total_deduction));
@@ -765,13 +833,20 @@ window.payrollDashboardConfig = {
             form.addEventListener('change', loadPayrollTestPreviewInline);
             form.addEventListener('input', function () {
                 clearTimeout(bindPreview._t);
-                bindPreview._t = setTimeout(loadPayrollTestPreviewInline, 400);
+                bindPreview._t = setTimeout(loadPayrollTestPreviewInline, 220);
             });
         }
         if (refresh) {
             refresh.addEventListener('click', loadPayrollTestPreviewInline);
         }
-        modal.addEventListener('shown.bs.modal', loadPayrollTestPreviewInline);
+        modal.addEventListener('shown.bs.modal', function () {
+            var val = String(sel.value || '').trim();
+            if (val) {
+                loadPayrollTestPreviewInline();
+            } else {
+                setPreviewState('empty');
+            }
+        });
     }
 
     if (document.readyState === 'loading') {

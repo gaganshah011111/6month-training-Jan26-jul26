@@ -8,12 +8,45 @@ require_once __DIR__ . '/../../includes/erp_export.php';
 $pdo = Database::connection();
 inv_purchase_ensure_schema($pdo);
 
+$quickFilter = strtolower(trim((string)($_GET['qf'] ?? 'all')));
+if (!in_array($quickFilter, ['all', 'overdue', 'week', 'month'], true)) {
+    $quickFilter = 'all';
+}
 $from = (string)($_GET['from'] ?? date('Y-m-01'));
 $to = (string)($_GET['to'] ?? date('Y-m-d'));
 $supplierId = (int)($_GET['supplier_id'] ?? 0);
 $paymentStatus = (string)($_GET['payment_status'] ?? '');
 $filters = ['from' => $from, 'to' => $to, 'supplier_id' => $supplierId, 'payment_status' => $paymentStatus];
 $rows = inv_purchase_list($pdo, $filters);
+$today = date('Y-m-d');
+$rows = array_values(array_filter($rows, static function (array $r) use ($quickFilter, $paymentStatus, $today): bool {
+    $due = trim((string)($r['due_date'] ?? ''));
+    $pending = (float)($r['pending_amount'] ?? 0);
+    $needsOutstanding = strcasecmp($paymentStatus, 'Paid') !== 0;
+
+    if ($quickFilter === 'overdue') {
+        if ($due === '' || $due >= $today) {
+            return false;
+        }
+        return $needsOutstanding ? $pending > inv_purchase_tolerance() : true;
+    }
+    if ($quickFilter === 'week') {
+        $weekEnd = date('Y-m-d', strtotime('+7 days'));
+        if ($due === '' || $due < $today || $due > $weekEnd) {
+            return false;
+        }
+        return $needsOutstanding ? $pending > inv_purchase_tolerance() : true;
+    }
+    if ($quickFilter === 'month') {
+        $monthEnd = date('Y-m-d', strtotime('+30 days'));
+        if ($due === '' || $due < $today || $due > $monthEnd) {
+            return false;
+        }
+        return $needsOutstanding ? $pending > inv_purchase_tolerance() : true;
+    }
+
+    return true;
+}));
 $suppliers = inv_list_suppliers($pdo);
 $kpis = acc_payables_page_kpis($pdo, $filters);
 $totalPending = (float)$kpis['pending'];
@@ -37,6 +70,12 @@ $monthPaid = (float)$kpis['month_paid'];
 
     <form method="get" class="sales-filter-bar mb-3">
         <input type="hidden" name="page" value="accounts/payables">
+        <input type="hidden" name="qf" value="<?= e($quickFilter) ?>">
+        <div class="d-flex flex-wrap gap-2 mb-2">
+            <?php foreach (['all' => 'All invoices', 'overdue' => 'Overdue', 'week' => 'Due this week', 'month' => 'Due this month'] as $k => $label): ?>
+                <a class="btn btn-sm <?= $quickFilter === $k ? 'btn-primary' : 'btn-outline-secondary' ?>" href="<?= e(route_url('accounts/payables', ['qf' => $k, 'from' => $from !== '' ? $from : null, 'to' => $to !== '' ? $to : null, 'supplier_id' => $supplierId > 0 ? $supplierId : null, 'payment_status' => $paymentStatus !== '' ? $paymentStatus : null])) ?>"><?= e($label) ?></a>
+            <?php endforeach; ?>
+        </div>
         <div class="sales-filter-bar__row d-flex flex-wrap gap-2 align-items-end">
             <div class="sales-filter-bar__field" style="min-width:150px"><label>From</label><input type="date" class="form-control form-control-sm" name="from" value="<?= e($from) ?>"></div>
             <div class="sales-filter-bar__field" style="min-width:150px"><label>To</label><input type="date" class="form-control form-control-sm" name="to" value="<?= e($to) ?>"></div>
@@ -81,7 +120,7 @@ $monthPaid = (float)$kpis['month_paid'];
                             <a class="btn btn-sm btn-outline-primary" href="<?= e(route_url('accounts/payable-invoice', ['id' => (int)$r['id']])) ?>">View Invoice</a>
                             <button type="button" class="btn btn-sm btn-outline-success js-open-payable-payment" data-inward-id="<?= (int)$r['id'] ?>"<?= (float)$r['pending_amount'] <= inv_purchase_tolerance() ? ' disabled' : '' ?>>Record Payment</button>
                             <a class="btn btn-sm btn-outline-secondary" href="<?= e(inv_purchase_print_url((int)$r['id'], true)) ?>" target="_blank" rel="noopener">PDF</a>
-                            <a class="btn btn-sm btn-outline-dark" href="<?= e(route_url('accounts/supplier-ledger', ['supplier_id' => (int)($r['supplier_id'] ?? 0)])) ?>">Ledger</a>
+                            <a class="btn btn-sm btn-outline-dark" href="<?= e(route_url('accounts/supplier-ledger-detail', ['supplier_id' => (int)($r['supplier_id'] ?? 0)])) ?>">Ledger</a>
                         </td>
                     </tr>
                 <?php endforeach; ?>

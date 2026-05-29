@@ -62,12 +62,14 @@ function erp_ui_extra_stylesheets(): array
         'sales/analytics' => ['sales-module.css'],
         'accounts/dashboard' => ['sales-module.css'],
         'accounts/ledger' => ['sales-module.css'],
+        'accounts/customer-ledger-detail' => ['sales-module.css'],
         'accounts/supplier-ledger' => ['sales-module.css'],
+        'accounts/supplier-ledger-detail' => ['sales-module.css'],
         'accounts/receivables' => ['sales-module.css'],
         'accounts/payables' => ['sales-module.css'],
-        'accounts/expenses' => ['sales-module.css'],
-        'accounts/cashbook' => ['sales-module.css'],
-        'accounts/bankbook' => ['sales-module.css'],
+        'accounts/expenses' => ['sales-module.css', 'expenses-module.css'],
+        'accounts/cashbook' => ['sales-module.css', 'expenses-module.css', 'treasury-module.css'],
+        'accounts/bankbook' => ['sales-module.css', 'treasury-module.css'],
         'accounts/gst' => ['sales-module.css'],
         'accounts/pnl' => ['sales-module.css'],
         'accounts/balance-sheet' => ['sales-module.css'],
@@ -107,6 +109,9 @@ function erp_ui_extra_stylesheets(): array
         }
         if (!in_array('accounts-module.css', $styles, true)) {
             $styles[] = 'accounts-module.css';
+        }
+        if (str_contains($page, 'salary')) {
+            $styles[] = 'salary-payments.css';
         }
     }
 

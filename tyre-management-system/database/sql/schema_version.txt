@@ -1,2 +1,2 @@
-schema_version=022_purchase_payments
-updated_at=2026-05-26T19:21:20+05:30
+schema_version=024_salary_payments_v2
+updated_at=2026-05-29T17:30:56+05:30

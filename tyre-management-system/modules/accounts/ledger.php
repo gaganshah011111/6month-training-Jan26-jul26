@@ -2,90 +2,120 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../../config/db.php';
-require_once __DIR__ . '/../../includes/accounts_finance.php';
-require_once __DIR__ . '/../../includes/erp_export.php';
+require_once __DIR__ . '/../../includes/accounts_ledger.php';
+require_once __DIR__ . '/../../includes/sales_service.php';
+
+if (!has_role(['Accounts Manager', 'Super Admin', 'Admin', 'Sales Manager'])) {
+    echo '<div class="alert alert-warning m-3">Access denied.</div>';
+    return;
+}
 
 $pdo = Database::connection();
-$customers = acc_customer_ledger_summary($pdo);
-$customerId = (int)($_GET['customer_id'] ?? 0);
-$ledger = $customerId > 0 ? sales_customer_ledger($pdo, $customerId) : ['rows' => [], 'customer' => null, 'summary' => []];
-$customer = $ledger['customer'];
-$summary = $ledger['summary'] ?? [];
-$rows = $ledger['rows'] ?? [];
+acc_ledger_handle_export($pdo, (string)($_GET['export_scope'] ?? 'list'));
+
+$filters = [
+    'customer_id' => (int)($_GET['customer_id'] ?? 0),
+    'status' => trim((string)($_GET['status'] ?? '')),
+    'from' => trim((string)($_GET['from'] ?? '')),
+    'to' => trim((string)($_GET['to'] ?? '')),
+    'q' => trim((string)($_GET['search'] ?? $_GET['q'] ?? '')),
+];
+$customers = acc_customer_ledger_list($pdo, $filters);
+$customerOptions = sales_list_customers($pdo, ['status' => 'Active']);
 ?>
 
-<div class="accounts-page">
-    <header class="prod-page__head">
+<div class="accounts-page acc-ledger-page">
+    <header class="prod-page__head d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
         <div>
             <h1 class="prod-page__title">Customer Ledger</h1>
-            <p class="prod-page__sub">Customer outstanding, payment status, and detailed debit/credit ledger.</p>
+            <p class="prod-page__sub mb-0">Outstanding balances from CRM invoices, customer payments, and receivables.</p>
         </div>
+        <?= acc_ledger_export_toolbar('accounts/ledger', 'customer', 'list', 'customer-ledger') ?>
     </header>
 
-    <section class="sales-card mb-3">
-        <div class="sales-card__head d-flex justify-content-between align-items-center">
-            <h2 class="sales-card__title mb-0">Customer outstanding ledger</h2>
-            <?= erp_export_toolbar('acc-customer-ledger-table', 'customer-ledger') ?>
+    <form method="get" class="sales-card mb-3 p-3 acc-ledger-filters">
+        <input type="hidden" name="page" value="accounts/ledger">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small mb-1">Customer</label>
+                <select class="form-select form-select-sm" name="customer_id">
+                    <option value="">All customers</option>
+                    <?php foreach ($customerOptions as $co): ?>
+                        <option value="<?= (int)$co['id'] ?>" <?= $filters['customer_id'] === (int)$co['id'] ? 'selected' : '' ?>><?= e((string)$co['company_name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">Status</label>
+                <select class="form-select form-select-sm" name="status">
+                    <option value="">All</option>
+                    <option value="Paid" <?= $filters['status'] === 'Paid' ? 'selected' : '' ?>>Paid</option>
+                    <option value="Partial" <?= $filters['status'] === 'Partial' ? 'selected' : '' ?>>Partial</option>
+                    <option value="Unpaid" <?= $filters['status'] === 'Unpaid' ? 'selected' : '' ?>>Unpaid</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">From Date</label>
+                <input type="date" class="form-control form-control-sm" name="from" value="<?= e($filters['from']) ?>">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">To Date</label>
+                <input type="date" class="form-control form-control-sm" name="to" value="<?= e($filters['to']) ?>">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small mb-1">Search Customer</label>
+                <input type="search" class="form-control form-control-sm" name="search" value="<?= e($filters['q']) ?>" placeholder="Name or code">
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+            </div>
+            <div class="col-auto">
+                <a class="btn btn-outline-secondary btn-sm" href="<?= e(route_url('accounts/ledger')) ?>">Reset</a>
+            </div>
         </div>
-        <div class="sales-table-wrap sales-table-scroll">
-            <table class="table table-sm mb-0" id="acc-customer-ledger-table">
-                <thead><tr><th>Customer</th><th class="text-end">Total invoiced</th><th class="text-end">Total paid</th><th class="text-end">Pending amount</th><th>Last payment date</th><th>Status</th><th></th></tr></thead>
-                <tbody>
-                <?php foreach ($customers as $c): ?>
-                    <?php $meta = $c['status_meta'] ?? acc_payment_meta('Unpaid'); ?>
-                    <tr>
-                        <td><?= e((string)$c['company_name']) ?></td>
-                        <td class="text-end"><?= e(sales_format_money((float)$c['total_invoiced'])) ?></td>
-                        <td class="text-end"><?= e(sales_format_money((float)$c['total_paid'])) ?></td>
-                        <td class="text-end fw-semibold"><?= e(sales_format_money((float)$c['pending'])) ?></td>
-                        <td><?= e((string)($c['last_payment'] ?? '—')) ?></td>
-                        <td><span class="badge <?= e($meta['cls']) ?>"><?= e((string)$meta['label']) ?></span></td>
-                        <td><a class="btn btn-sm btn-outline-primary" href="<?= e(route_url('accounts/ledger', ['customer_id' => (int)$c['id']])) ?>">Open</a></td>
-                    </tr>
-                <?php endforeach; ?>
-                <?php if ($customers === []): ?><tr><td colspan="7" class="sales-empty">No customer receivable entries.</td></tr><?php endif; ?>
-                </tbody>
-            </table>
-        </div>
-    </section>
-
-    <?php if ($customer): ?>
-    <div class="sales-kpis mb-3">
-        <article class="sales-kpi"><span class="sales-kpi__label">Opening</span><strong><?= e(sales_format_money((float)($summary['opening'] ?? 0))) ?></strong></article>
-        <article class="sales-kpi"><span class="sales-kpi__label">Total sales</span><strong><?= e(sales_format_money((float)($summary['total_sales'] ?? 0))) ?></strong></article>
-        <article class="sales-kpi"><span class="sales-kpi__label">Total paid</span><strong class="text-success"><?= e(sales_format_money((float)($summary['total_paid'] ?? 0))) ?></strong></article>
-        <article class="sales-kpi"><span class="sales-kpi__label">Outstanding</span><strong class="text-danger"><?= e(sales_format_money((float)($summary['outstanding'] ?? 0))) ?></strong></article>
-        <article class="sales-kpi"><span class="sales-kpi__label">Last payment</span><strong><?= e((string)($summary['last_payment'] ?? '—')) ?></strong></article>
-        <article class="sales-kpi"><span class="sales-kpi__label">Credit days</span><strong><?= e((string)($summary['credit_days'] ?? '—')) ?></strong></article>
-    </div>
+    </form>
 
     <section class="sales-card">
-        <div class="sales-card__head d-flex justify-content-between align-items-center">
-            <h2 class="sales-card__title mb-0"><?= e($customer['company_name']) ?> — ledger</h2>
-            <?= erp_export_toolbar('acc-ledger-details-table', 'customer-ledger-details') ?>
+        <div class="sales-card__head">
+            <h2 class="sales-card__title mb-0">Customer accounts</h2>
         </div>
         <div class="sales-table-wrap sales-table-scroll">
-            <table class="table table-sm mb-0" id="acc-ledger-details-table">
-                <thead><tr><th>Date</th><th>Ref</th><th class="text-end">Debit</th><th class="text-end">Credit</th><th class="text-end">Balance</th></tr></thead>
+            <table class="table table-sm table-hover mb-0" id="acc-customer-ledger-table">
+                <thead>
+                <tr>
+                    <th>Customer</th>
+                    <th class="text-end">Total Invoiced</th>
+                    <th class="text-end">Total Paid</th>
+                    <th class="text-end">Pending Amount</th>
+                    <th>Last Payment Date</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+                </thead>
                 <tbody>
-                <?php foreach ($rows as $r): ?>
+                <?php if ($customers === []): ?>
+                    <tr><td colspan="7" class="sales-empty">No customers with invoice or payment activity for these filters.</td></tr>
+                <?php endif; ?>
+                <?php foreach ($customers as $c):
+                    $meta = $c['status_meta'] ?? acc_payment_meta('Unpaid');
+                ?>
                     <tr>
-                        <td><?= e($r['date']) ?></td>
-                        <td><?= e($r['ref']) ?></td>
-                        <td class="text-end"><?= (float)$r['debit'] > 0 ? e(sales_format_money((float)$r['debit'])) : '—' ?></td>
-                        <td class="text-end"><?= (float)$r['credit'] > 0 ? e(sales_format_money((float)$r['credit'])) : '—' ?></td>
-                        <td class="text-end fw-semibold"><?= e(sales_format_money((float)$r['balance'])) ?></td>
+                        <td>
+                            <div class="fw-semibold"><?= e((string)$c['company_name']) ?></div>
+                            <div class="small text-muted font-monospace"><?= e((string)($c['customer_code'] ?? '')) ?></div>
+                        </td>
+                        <td class="text-end"><?= e(sales_format_money((float)$c['total_invoiced'])) ?></td>
+                        <td class="text-end text-success"><?= e(sales_format_money((float)$c['total_paid'])) ?></td>
+                        <td class="text-end text-danger fw-semibold"><?= e(sales_format_money((float)$c['pending'])) ?></td>
+                        <td><?= e((string)($c['last_payment'] ?? '—')) ?></td>
+                        <td><span class="badge <?= e($meta['cls']) ?>"><?= e((string)$meta['label']) ?></span></td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-primary" href="<?= e(route_url('accounts/customer-ledger-detail', ['customer_id' => (int)$c['id']])) ?>">Open</a>
+                        </td>
                     </tr>
                 <?php endforeach; ?>
-                <?php if ($rows === []): ?>
-                    <tr><td colspan="5" class="sales-empty">No ledger entries.</td></tr>
-                <?php endif; ?>
                 </tbody>
             </table>
         </div>
     </section>
-    <?php elseif ($customerId > 0): ?>
-        <div class="alert alert-warning">Customer not found.</div>
-    <?php endif; ?>
 </div>
-<script src="assets/js/erp-table-export.js?v=<?= e((string)@filemtime(__DIR__ . '/../../assets/js/erp-table-export.js')) ?>"></script>

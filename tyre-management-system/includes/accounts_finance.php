@@ -3,9 +3,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/sales_service.php';
 require_once __DIR__ . '/inventory_service.php';
-
-const ACC_EXPENSE_CATEGORIES = ['Electricity', 'Diesel', 'Salary', 'Transport', 'Maintenance', 'Office', 'Misc'];
-const ACC_PAYMENT_MODES = ['Cash', 'UPI', 'Bank', 'Cheque'];
+require_once __DIR__ . '/accounts_expenses.php';
+require_once __DIR__ . '/accounts_treasury.php';
 
 function acc_payment_meta(string $status): array
 {
@@ -18,116 +17,15 @@ function acc_payment_meta(string $status): array
 
 function acc_ensure_schema(PDO $pdo): void
 {
-    $pdo->exec(
-        "CREATE TABLE IF NOT EXISTS accounts_expenses (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            category VARCHAR(40) NOT NULL,
-            amount DECIMAL(14,2) NOT NULL DEFAULT 0,
-            payment_mode VARCHAR(20) NOT NULL DEFAULT 'Cash',
-            expense_date DATE NOT NULL,
-            remarks VARCHAR(255) NULL,
-            attachment VARCHAR(255) NULL,
-            created_by VARCHAR(120) NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            INDEX idx_acc_expense_date (expense_date),
-            INDEX idx_acc_expense_cat (category),
-            INDEX idx_acc_expense_mode (payment_mode)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
-    );
-}
-
-function acc_save_expense(PDO $pdo, array $data): int
-{
-    acc_ensure_schema($pdo);
-    $category = trim((string)($data['category'] ?? ''));
-    $amount = max(0, (float)($data['amount'] ?? 0));
-    $mode = trim((string)($data['payment_mode'] ?? 'Cash'));
-    $date = trim((string)($data['expense_date'] ?? date('Y-m-d')));
-    if (!in_array($category, ACC_EXPENSE_CATEGORIES, true)) {
-        throw new InvalidArgumentException('Select a valid expense category.');
-    }
-    if ($amount <= 0) {
-        throw new InvalidArgumentException('Expense amount must be greater than zero.');
-    }
-    if (!in_array($mode, ACC_PAYMENT_MODES, true)) {
-        throw new InvalidArgumentException('Invalid payment mode.');
-    }
-    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
-        throw new InvalidArgumentException('Valid expense date is required.');
-    }
-    $st = $pdo->prepare(
-        'INSERT INTO accounts_expenses (category, amount, payment_mode, expense_date, remarks, attachment, created_by)
-         VALUES (:c, :a, :m, :d, :r, :f, :by)'
-    );
-    $st->execute([
-        'c' => $category,
-        'a' => round($amount, 2),
-        'm' => $mode,
-        'd' => $date,
-        'r' => trim((string)($data['remarks'] ?? '')) ?: null,
-        'f' => trim((string)($data['attachment'] ?? '')) ?: null,
-        'by' => (string)((current_user()['full_name'] ?? current_user()['username'] ?? current_user()['email'] ?? 'ERP User')),
-    ]);
-
-    return (int)$pdo->lastInsertId();
-}
-
-function acc_list_expenses(PDO $pdo, array $filters = []): array
-{
-    acc_ensure_schema($pdo);
-    $sql = 'SELECT * FROM accounts_expenses WHERE 1=1';
-    $params = [];
-    $from = (string)($filters['from'] ?? '');
-    $to = (string)($filters['to'] ?? '');
-    $cat = trim((string)($filters['category'] ?? ''));
-    $q = trim((string)($filters['q'] ?? ''));
-    if ($from !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) {
-        $sql .= ' AND expense_date >= :f';
-        $params['f'] = $from;
-    }
-    if ($to !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) {
-        $sql .= ' AND expense_date <= :t';
-        $params['t'] = $to;
-    }
-    if ($cat !== '' && in_array($cat, ACC_EXPENSE_CATEGORIES, true)) {
-        $sql .= ' AND category = :c';
-        $params['c'] = $cat;
-    }
-    if ($q !== '') {
-        $sql .= ' AND (remarks LIKE :q OR attachment LIKE :q OR created_by LIKE :q)';
-        $params['q'] = '%' . $q . '%';
-    }
-    $sql .= ' ORDER BY expense_date DESC, id DESC';
-    $st = $pdo->prepare($sql);
-    $st->execute($params);
-
-    return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
-}
-
-function acc_expense_totals(PDO $pdo, string $from, string $to): array
-{
-    acc_ensure_schema($pdo);
-    $st = $pdo->prepare(
-        'SELECT COALESCE(SUM(amount),0) AS total,
-                COALESCE(SUM(CASE WHEN expense_date >= DATE_FORMAT(CURDATE(), "%Y-%m-01") THEN amount ELSE 0 END),0) AS month_total
-         FROM accounts_expenses
-         WHERE expense_date >= :f AND expense_date <= :t'
-    );
-    $st->execute(['f' => $from, 't' => $to]);
-
-    return $st->fetch(PDO::FETCH_ASSOC) ?: ['total' => 0, 'month_total' => 0];
+    acc_expense_ensure_schema($pdo);
+    acc_treasury_ensure_schema($pdo);
 }
 
 function acc_customer_ledger_summary(PDO $pdo): array
 {
-    $rows = sales_customer_outstanding_full($pdo);
-    foreach ($rows as &$r) {
-        $r['pending'] = (float)($r['pending'] ?? 0);
-        $r['status_meta'] = acc_payment_meta((string)($r['status_label'] ?? 'Unpaid'));
-    }
-    unset($r);
+    require_once __DIR__ . '/accounts_ledger.php';
 
-    return $rows;
+    return acc_customer_ledger_list($pdo, []);
 }
 
 /**
@@ -164,16 +62,9 @@ function acc_payables_page_kpis(PDO $pdo, array $filters = []): array
 
 function acc_supplier_ledger_summary(PDO $pdo): array
 {
-    $rows = inv_supplier_ledger_list($pdo);
-    foreach ($rows as &$r) {
-        $pending = (float)($r['pending_balance'] ?? 0);
-        $paid = (float)($r['total_paid'] ?? 0);
-        $status = $pending <= inv_purchase_tolerance() ? 'Paid' : ($paid > inv_purchase_tolerance() ? 'Partial' : 'Unpaid');
-        $r['status_meta'] = acc_payment_meta($status);
-    }
-    unset($r);
+    require_once __DIR__ . '/accounts_ledger.php';
 
-    return $rows;
+    return acc_supplier_ledger_list($pdo, []);
 }
 
 function acc_dashboard_data(PDO $pdo): array
@@ -237,26 +128,9 @@ function acc_dashboard_data(PDO $pdo): array
     $supplierRecent = inv_purchase_list_payments($pdo, null, ['from' => date('Y-m-01'), 'to' => $today]);
     $supplierRecent = array_slice($supplierRecent, 0, 8);
 
-    $inCash = (float)$pdo->query(
-        "SELECT COALESCE(SUM(amount),0) FROM sales_payments WHERE payment_mode = 'Cash'"
-    )->fetchColumn();
-    $inBank = (float)$pdo->query(
-        "SELECT COALESCE(SUM(amount),0) FROM sales_payments WHERE payment_mode IN ('UPI','Bank Transfer','Cheque')"
-    )->fetchColumn();
-    $outCashSupplier = (float)$pdo->query(
-        "SELECT COALESCE(SUM(amount),0) FROM purchase_payments WHERE payment_mode = 'Cash'"
-    )->fetchColumn();
-    $outBankSupplier = (float)$pdo->query(
-        "SELECT COALESCE(SUM(amount),0) FROM purchase_payments WHERE payment_mode IN ('UPI','Bank','Cheque')"
-    )->fetchColumn();
-    $outCashExpense = (float)$pdo->query(
-        "SELECT COALESCE(SUM(amount),0) FROM accounts_expenses WHERE payment_mode = 'Cash'"
-    )->fetchColumn();
-    $outBankExpense = (float)$pdo->query(
-        "SELECT COALESCE(SUM(amount),0) FROM accounts_expenses WHERE payment_mode IN ('UPI','Bank','Cheque')"
-    )->fetchColumn();
-    $cashInHand = $inCash - $outCashSupplier - $outCashExpense;
-    $bankBalance = $inBank - $outBankSupplier - $outBankExpense;
+    $tk = acc_treasury_kpis($pdo, false);
+    $cashInHand = (float)$tk['cash_in_hand'];
+    $bankBalance = (float)$tk['bank_balance'];
 
     $revTrend = $pdo->query(
         "SELECT DATE_FORMAT(invoice_date, '%Y-%m') AS ym, COALESCE(SUM(total_amount),0) AS amount
@@ -349,6 +223,22 @@ function acc_finance_transactions(PDO $pdo, array $filters = []): array
     );
     $exp->execute(['f' => $from, 't' => $to]);
     $rows = array_merge($rows, $exp->fetchAll(PDO::FETCH_ASSOC) ?: []);
+
+    if (function_exists('acc_salary_ensure_schema')) {
+        acc_salary_ensure_schema($pdo);
+        $sal = $pdo->prepare(
+            "SELECT CONCAT('SL-', p.id) AS txid, p.payment_date AS tx_date, 'Salary Payment' AS tx_type,
+                    e.full_name AS party,
+                    CONCAT('Payroll ', s.month_year, COALESCE(CONCAT(' · ', p.reference_no), '')) AS reference_no,
+                    p.amount, p.payment_mode, 'Completed' AS tx_status
+             FROM accounts_salary_payments p
+             INNER JOIN salaries s ON s.id = p.salary_id
+             INNER JOIN employees e ON e.id = p.employee_id
+             WHERE p.payment_date >= :f AND p.payment_date <= :t AND p.salary_id IS NOT NULL"
+        );
+        $sal->execute(['f' => $from, 't' => $to]);
+        $rows = array_merge($rows, $sal->fetchAll(PDO::FETCH_ASSOC) ?: []);
+    }
 
     usort($rows, static fn($a, $b) => strcmp((string)$b['tx_date'], (string)$a['tx_date']));
 

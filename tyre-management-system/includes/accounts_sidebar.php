@@ -10,6 +10,7 @@ $links = [
     'accounts/supplier-ledger' => ['label' => 'Supplier Ledger', 'icon' => 'bi-receipt'],
     'accounts/receivables' => ['label' => 'Receivables', 'icon' => 'bi-hourglass-split'],
     'accounts/payables' => ['label' => 'Payables', 'icon' => 'bi-journal-arrow-down'],
+    'accounts/salary-payments' => ['label' => 'Salary Payments', 'icon' => 'bi-cash-coin'],
     'accounts/expenses' => ['label' => 'Expenses', 'icon' => 'bi-wallet2'],
     'accounts/cashbook' => ['label' => 'Cash & Bank', 'icon' => 'bi-bank'],
     'accounts/reports' => ['label' => 'Reports', 'icon' => 'bi-file-earmark-bar-graph'],
@@ -21,10 +22,16 @@ $links = [
     <?php foreach ($links as $route => $meta): ?>
         <?php
         $isActive = $page === $route;
-        if (!$isActive && $route === 'accounts/ledger' && $page === 'accounts/ledger-view') {
+        if (!$isActive && $route === 'accounts/ledger' && in_array($page, ['accounts/customer-ledger-detail', 'accounts/ledger-view'], true)) {
+            $isActive = true;
+        }
+        if (!$isActive && $route === 'accounts/supplier-ledger' && $page === 'accounts/supplier-ledger-detail') {
             $isActive = true;
         }
         if (!$isActive && $route === 'accounts/receivables' && in_array($page, ['accounts/invoice-view', 'accounts/invoice-print'], true)) {
+            $isActive = true;
+        }
+        if (!$isActive && $route === 'accounts/salary-payments' && in_array($page, ['accounts/salary-payment-detail', 'accounts/salary-payslip', 'accounts/salary-payment-receipt', 'payroll/payslip'], true)) {
             $isActive = true;
         }
         ?>

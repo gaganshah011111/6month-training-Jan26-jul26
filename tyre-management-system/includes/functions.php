@@ -15,7 +15,7 @@ function e(string $value): string
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 
-function redirect(string $page): void
+function redirect(string $page, array $query = []): void
 {
     if (
         str_contains($page, '.php') ||
@@ -23,11 +23,16 @@ function redirect(string $page): void
         str_starts_with($page, 'https://') ||
         str_starts_with($page, '/')
     ) {
-        header('Location: ' . $page);
+        $url = $page;
+        if ($query !== []) {
+            $sep = str_contains($page, '?') ? '&' : '?';
+            $url .= $sep . http_build_query($query);
+        }
+        header('Location: ' . $url);
         exit;
     }
 
-    header('Location: index.php?page=' . urlencode($page));
+    header('Location: ' . route_url($page, $query));
     exit;
 }
 
@@ -204,7 +209,12 @@ function page_allowed_roles(): array
         'attendance/list' => ['HR Manager', 'Super Admin', 'Admin'],
         'leave/list' => ['HR Manager', 'Super Admin', 'Admin'],
         'payroll/list' => ['HR Manager', 'Super Admin', 'Admin'],
-        'payroll/payslip' => ['HR Manager', 'Super Admin', 'Admin'],
+        'payroll/payslip' => ['HR Manager', 'Super Admin', 'Admin', 'Accounts Manager'],
+        'accounts/salary-payments' => ['Super Admin', 'Admin', 'Accounts Manager'],
+        'accounts/salary-payment-detail' => ['Super Admin', 'Admin', 'Accounts Manager'],
+        'accounts/salary-payslip' => ['Super Admin', 'Admin', 'Accounts Manager', 'HR Manager'],
+        'accounts/salary-payment-receipt' => ['Super Admin', 'Admin', 'Accounts Manager'],
+        'api/accounts-salary-payment' => ['Super Admin', 'Admin', 'Accounts Manager'],
         'api/payroll-calculate' => ['HR Manager', 'Super Admin', 'Admin'],
         'api/payroll-test-preview' => ['HR Manager', 'Super Admin', 'Admin'],
         'api/hr-notifications' => ['HR Manager', 'Super Admin', 'Admin'],
@@ -282,15 +292,19 @@ function page_allowed_roles(): array
         'sales/analytics' => ['Sales Manager'],
         'accounts/dashboard' => ['Super Admin', 'Admin', 'Sales Manager', 'Accounts Manager'],
         'accounts/ledger' => ['Super Admin', 'Admin', 'Sales Manager', 'Accounts Manager'],
+        'accounts/customer-ledger-detail' => ['Super Admin', 'Admin', 'Sales Manager', 'Accounts Manager'],
         'accounts/supplier-ledger' => ['Super Admin', 'Admin', 'Sales Manager', 'Accounts Manager'],
+        'accounts/supplier-ledger-detail' => ['Super Admin', 'Admin', 'Sales Manager', 'Accounts Manager', 'Inventory Manager'],
         'accounts/payable-invoice' => ['Super Admin', 'Admin', 'Sales Manager', 'Accounts Manager'],
         'accounts/invoice-view' => ['Super Admin', 'Admin', 'Sales Manager', 'Accounts Manager'],
         'accounts/invoice-print' => ['Super Admin', 'Admin', 'Sales Manager', 'Accounts Manager'],
         'accounts/receivables' => ['Super Admin', 'Admin', 'Sales Manager', 'Accounts Manager'],
         'accounts/payables' => ['Super Admin', 'Admin', 'Sales Manager', 'Accounts Manager'],
         'accounts/expenses' => ['Super Admin', 'Admin', 'Sales Manager', 'Accounts Manager'],
-        'accounts/cashbook' => ['Super Admin', 'Admin', 'Sales Manager', 'Accounts Manager'],
-        'accounts/bankbook' => ['Super Admin', 'Admin', 'Sales Manager', 'Accounts Manager'],
+        'accounts/expense-file' => ['Super Admin', 'Admin', 'Sales Manager', 'Accounts Manager'],
+        'api/accounts-expense' => ['Super Admin', 'Admin', 'Sales Manager', 'Accounts Manager'],
+        'accounts/cashbook' => ['Super Admin', 'Admin', 'Sales Manager', 'Accounts Manager', 'HR Manager'],
+        'accounts/bankbook' => ['Super Admin', 'Admin', 'Sales Manager', 'Accounts Manager', 'HR Manager'],
         'accounts/gst' => ['Super Admin', 'Admin', 'Sales Manager', 'Accounts Manager'],
         'accounts/pnl' => ['Super Admin', 'Admin', 'Sales Manager', 'Accounts Manager'],
         'accounts/balance-sheet' => ['Super Admin', 'Admin', 'Sales Manager', 'Accounts Manager'],

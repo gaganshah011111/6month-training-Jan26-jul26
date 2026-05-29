@@ -16,11 +16,13 @@ const INV_ISSUE_REASONS = [
     'wastage' => 'Wastage',
 ];
 
-function inv_current_user_name(): string
-{
-    $u = function_exists('current_user') ? current_user() : null;
+if (!function_exists('inv_current_user_name')) {
+    function inv_current_user_name(): string
+    {
+        $u = function_exists('current_user') ? current_user() : null;
 
-    return trim((string)($u['full_name'] ?? $u['username'] ?? 'System'));
+        return trim((string)($u['full_name'] ?? $u['username'] ?? 'System'));
+    }
 }
 
 function inv_usage_reason_label(string $code): string

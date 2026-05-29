@@ -66,6 +66,11 @@ if ($footerPage === 'employees/list') {
     $erdVer = is_file($erdJs) ? (string)filemtime($erdJs) : (string)time();
     echo '<script src="assets/js/employee-record-drawer.js?v=' . e($erdVer) . '"></script>' . "\n";
 }
+if (in_array($footerPage, ['accounts/cashbook', 'accounts/bankbook'], true)) {
+    $treasuryJs = __DIR__ . '/../assets/js/accounts-treasury.js';
+    $treasuryVer = is_file($treasuryJs) ? (string)filemtime($treasuryJs) : (string)time();
+    echo '<script src="assets/js/accounts-treasury.js?v=' . e($treasuryVer) . '"></script>' . "\n";
+}
 ?>
 </body>
 </html>

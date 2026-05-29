@@ -101,6 +101,7 @@ if ($invoiceIds !== []) {
 
     <form method="get" class="sales-filter-bar mb-3 d-flex flex-wrap gap-2 align-items-end">
         <input type="hidden" name="page" value="accounts/receivables">
+        <input type="hidden" name="filter" value="<?= e($filter) ?>">
         <?php foreach (['all' => 'All invoices', 'overdue' => 'Overdue', 'week' => 'Due this week', 'month' => 'Due this month'] as $k => $label): ?>
             <a class="btn btn-sm <?= $filter === $k ? 'btn-primary' : 'btn-outline-secondary' ?>" href="<?= e(route_url('accounts/receivables', ['filter' => $k, 'customer_id' => $customerId > 0 ? $customerId : null, 'status' => $statusFilter, 'from' => $from !== '' ? $from : null, 'to' => $to !== '' ? $to : null])) ?>"><?= e($label) ?></a>
         <?php endforeach; ?>

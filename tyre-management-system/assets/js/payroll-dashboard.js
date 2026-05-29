@@ -159,7 +159,7 @@
             setText('pmCode', btn.getAttribute('data-employee-code'));
             setText('pmDept', btn.getAttribute('data-department'));
             setText('pmDesig', btn.getAttribute('data-designation'));
-            setText('pmFixedGross', inr(btn.getAttribute('data-gross'));
+            setText('pmFixedGross', inr(btn.getAttribute('data-gross')));
             document.getElementById('pmExtraOt').value = '0';
             document.getElementById('pmManualDed').value = '0';
             document.getElementById('payrollFormAction').value = 'generate';

@@ -117,7 +117,7 @@ function payroll_test_generate(PDO $pdo, int $employeeId, string $month, array $
     $regenerate = !empty($options['regenerate']);
     $clearPayroll = !empty($options['clear_payroll']);
 
-    $empStmt = $pdo->prepare('SELECT * FROM employees WHERE id = :id AND status = \'active\' LIMIT 1');
+    $empStmt = $pdo->prepare("SELECT * FROM employees WHERE id = :id AND LOWER(COALESCE(status, '')) = 'active' LIMIT 1");
     $empStmt->execute(['id' => $employeeId]);
     $emp = $empStmt->fetch(PDO::FETCH_ASSOC);
     if (!$emp) {
@@ -243,7 +243,7 @@ function payroll_test_generate(PDO $pdo, int $employeeId, string $month, array $
  */
 function payroll_test_generate_all_active(PDO $pdo, string $month, array $options = []): array
 {
-    $ids = $pdo->query("SELECT id FROM employees WHERE status = 'active' ORDER BY id")->fetchAll(PDO::FETCH_COLUMN);
+    $ids = $pdo->query("SELECT id FROM employees WHERE LOWER(COALESCE(status, '')) = 'active' ORDER BY id")->fetchAll(PDO::FETCH_COLUMN);
     $employees = 0;
     $created = 0;
     $errors = [];
@@ -339,7 +339,7 @@ function payroll_test_generate_with_payroll(PDO $pdo, int $employeeId, string $m
  */
 function payroll_test_generate_all_with_payroll(PDO $pdo, string $month, array $options = []): array
 {
-    $ids = $pdo->query("SELECT id FROM employees WHERE status = 'active' ORDER BY id")->fetchAll(PDO::FETCH_COLUMN);
+    $ids = $pdo->query("SELECT id FROM employees WHERE LOWER(COALESCE(status, '')) = 'active' ORDER BY id")->fetchAll(PDO::FETCH_COLUMN);
     $employees = 0;
     $payrolls = 0;
     $errors = [];

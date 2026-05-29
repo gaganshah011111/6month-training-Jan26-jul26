@@ -28,6 +28,7 @@ $iconMap = [
     'Supplier Ledger' => 'bi-receipt',
     'Receivables' => 'bi-hourglass-split',
     'Payables' => 'bi-journal-arrow-down',
+    'Salary Payments' => 'bi-cash-coin',
     'Expenses' => 'bi-wallet2',
     'Cash & Bank' => 'bi-bank',
     'Transactions History' => 'bi-clock-history',
@@ -118,14 +119,15 @@ $iconMap = [
         'Accounts Manager' => [
             'Accounts & Finance' => [
                 'accounts/dashboard' => 'Dashboard',
-                'accounts/ledger' => 'Customer Ledger',
-                'accounts/supplier-ledger' => 'Supplier Ledger',
                 'accounts/receivables' => 'Receivables',
                 'accounts/payables' => 'Payables',
+                'accounts/salary-payments' => 'Salary Payments',
+                'accounts/ledger' => 'Customer Ledger',
+                'accounts/supplier-ledger' => 'Supplier Ledger',
                 'accounts/expenses' => 'Expenses',
                 'accounts/cashbook' => 'Cash & Bank',
                 'accounts/reports' => 'Reports',
-                'accounts/transactions-history' => 'Transactions History',
+                'accounts/transactions-history' => 'Transaction History',
             ],
         ],
         default => [

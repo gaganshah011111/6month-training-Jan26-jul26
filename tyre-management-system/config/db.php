@@ -333,7 +333,7 @@ class Database
                 ('Inventory Manager','inventory@ralson.local','invmanager','\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi','Inventory Manager','active',0),
                 ('Dispatch Manager','dispatch@ralson.local','dispatchmgr','\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi','Dispatch Manager','active',0),
                 ('Quality Manager','quality@ralson.local','qualitymgr','\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi','Quality Manager','active',0),
-                ('Accounts Manager','accounts@ralson.local','accounts_manager','\$2y\$10\$RfhImGZW.tr40l3aqw4P9ujsfJoyXlWFuEuwJ.qCVsxrcCY/yUUDS','Accounts Manager','active',0),
+                ('Accounts Manager','accounts@ralson.local','accounts_manager','\$2y\$10\$xEW0mYJ6Y4PdPMsst/j2WuGrA6JPKBY5vMJZ8.T8gRoR2GvxQ.YCi','Accounts Manager','active',0),
                 ('Employee User','employee@ralson.local','employeeuser','\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi','Employee','active',0)
             ON DUPLICATE KEY UPDATE
                 full_name=VALUES(full_name),

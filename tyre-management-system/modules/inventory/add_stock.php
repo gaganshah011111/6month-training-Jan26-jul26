@@ -166,18 +166,24 @@ $supplierJson = json_encode(array_map(static function ($s) {
                 </section>
 
                 <section class="inv-card inv-purchase-section">
-                    <div class="inv-card__head"><h2 class="inv-card__title">4. Payable terms (Accounts managed)</h2></div>
+                    <div class="inv-card__head"><h2 class="inv-card__title">4. Accounts Payable Status</h2></div>
                     <div class="inv-card__body">
-                        <div class="row g-2">
-                            <input type="hidden" name="payment_status" value="Unpaid">
-                            <input type="hidden" name="paid_amount" value="0">
-                            <div class="col-md-3"><label class="form-label">Due date</label><input type="date" class="form-control form-control-sm" name="due_date"></div>
-                            <div class="col-md-9"><label class="form-label">Notes</label><textarea class="form-control form-control-sm" name="notes" rows="2" placeholder="Payment is managed by Accounts in Payables module."></textarea></div>
-                            <div class="col-12">
-                                <div class="alert alert-info py-2 mb-0 small">
-                                    Purchase Inward creates supplier payable automatically with <strong>Unpaid</strong> status. Record supplier payment from <strong>Accounts &amp; Finance &gt; Payables</strong>.
-                                </div>
+                        <input type="hidden" name="payment_status" value="Unpaid">
+                        <input type="hidden" name="paid_amount" value="0">
+                        <input type="hidden" name="due_date" value="">
+                        <div class="border rounded p-3 bg-light">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                                <span class="text-muted small text-uppercase fw-semibold">Status</span>
+                                <span class="badge bg-danger-subtle text-danger border">Unpaid</span>
                             </div>
+                            <p class="small text-muted mb-3 mb-md-2">Accounts Department will manage supplier payments.</p>
+                            <?php if (has_role(['Accounts Manager', 'Super Admin', 'Admin'])): ?>
+                                <a class="btn btn-sm btn-outline-primary" href="<?= e(route_url('accounts/payables')) ?>">View in Accounts <i class="bi bi-arrow-right ms-1"></i></a>
+                            <?php endif; ?>
+                        </div>
+                        <div class="mt-2">
+                            <label class="form-label small text-muted">Purchase notes (optional)</label>
+                            <textarea class="form-control form-control-sm" name="notes" rows="2" placeholder="Material / GRN notes only — not payment details."></textarea>
                         </div>
                     </div>
                 </section>

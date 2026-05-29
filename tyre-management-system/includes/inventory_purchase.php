@@ -146,6 +146,22 @@ function inv_purchase_add_payment(PDO $pdo, int $inwardId, array $data): int
     $paymentId = (int)$pdo->lastInsertId();
     inv_purchase_sync_inward_payment($pdo, $inwardId);
 
+    require_once __DIR__ . '/accounts_expenses.php';
+    try {
+        acc_expense_create_from_supplier($pdo, $paymentId);
+    } catch (Throwable) {
+        // expense mirror must not block payment
+    }
+    if (function_exists('acc_treasury_mirror_supplier_payment')) {
+        require_once __DIR__ . '/accounts_expenses.php';
+        require_once __DIR__ . '/accounts_treasury.php';
+        try {
+            acc_treasury_mirror_supplier_payment($pdo, $paymentId);
+        } catch (Throwable) {
+            // treasury mirror must not block payment
+        }
+    }
+
     $pinv = (string)($row['pinv_no'] ?? 'PINV-' . $inwardId);
     inv_log_activity(
         $pdo,

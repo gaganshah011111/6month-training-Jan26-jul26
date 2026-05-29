@@ -109,6 +109,9 @@
         if (el.matches(EXCLUDE_SELECTOR)) {
             return false;
         }
+        if (el.closest('.acc-exp-filters')) {
+            return false;
+        }
         if (el.getAttribute('data-erp-searchable') === 'on' || el.classList.contains('erp-select-search')) {
             return true;
         }

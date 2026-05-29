@@ -166,10 +166,41 @@ function erp_doc_print_styles(): string
         }
         .btn-print { background: #fff; color: #1a2744; font-weight: 600; }
         .btn-back { background: transparent; color: #e2e8f0; border: 1px solid #64748b !important; }
+        .slip__kpis {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+        .slip__kpi {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px 12px;
+            background: #f8fafc;
+        }
+        .slip__kpi span {
+            display: block;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+        .slip__kpi strong {
+            font-size: 12px;
+            color: #1a2744;
+        }
+        .slip__kpi--danger strong { color: #b91c1c; }
+        .slip__kpi--success strong { color: #15803d; }
         @media print {
             body { background: #fff; padding: 0; }
             .no-print { display: none !important; }
             .slip { box-shadow: none; border: none; max-width: none; }
+            .slip__kpis { grid-template-columns: repeat(4, 1fr); }
+        }
+        @media (max-width: 640px) {
+            .slip__kpis { grid-template-columns: repeat(2, 1fr); }
         }
 CSS;
 }

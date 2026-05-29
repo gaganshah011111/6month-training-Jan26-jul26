@@ -1127,9 +1127,18 @@ function sales_save_payment(PDO $pdo, array $data): int
         $pdo->prepare('UPDATE sales_invoices SET amount_paid = amount_paid + :a WHERE id = :id')
             ->execute(['a' => $amount, 'id' => $invoiceId]);
         sales_refresh_invoice_payment_status($pdo, $invoiceId);
+        $paymentId = (int)$pdo->lastInsertId();
         $pdo->commit();
+        if (function_exists('acc_treasury_mirror_customer_payment')) {
+            require_once __DIR__ . '/accounts_treasury.php';
+            try {
+                acc_treasury_mirror_customer_payment($pdo, $paymentId);
+            } catch (Throwable) {
+                // treasury mirror must not block payment
+            }
+        }
 
-        return (int)$pdo->lastInsertId();
+        return $paymentId;
     } catch (Throwable $e) {
         $pdo->rollBack();
         throw $e;

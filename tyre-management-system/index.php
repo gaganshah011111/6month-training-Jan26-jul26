@@ -56,6 +56,7 @@ if (str_starts_with((string)$page, 'api/')) {
 if ($page === 'employees/credential-slip' || $page === 'payroll/payslip' || $page === 'dispatch/slip'
     || $page === 'sales/invoice-print' || $page === 'sales/payment-receipt' || $page === 'sales/order-print'
     || $page === 'accounts/payment-receipt' || $page === 'accounts/invoice-print'
+    || $page === 'accounts/salary-payslip' || $page === 'accounts/salary-payment-receipt'
     || $page === 'inventory/purchase-print' || str_starts_with((string)$page, 'inventory/purchase-print')) {
     require __DIR__ . '/' . $path;
     exit;
@@ -90,6 +91,44 @@ if ($page === 'sales/dispatch' && isset($_GET['export'])) {
 
 if ($page === 'sales/payments' && isset($_GET['export'])) {
     require __DIR__ . '/modules/sales/payments.php';
+    exit;
+}
+
+if (in_array($page, ['accounts/salary-payments', 'accounts/salary-payment-detail'], true) && isset($_GET['export'])) {
+    require __DIR__ . '/' . $path;
+    exit;
+}
+
+if (in_array($page, ['accounts/ledger', 'accounts/customer-ledger-detail', 'accounts/supplier-ledger', 'accounts/supplier-ledger-detail'], true) && isset($_GET['export'])) {
+    require __DIR__ . '/' . $path;
+    exit;
+}
+
+if ($page === 'accounts/expenses' && isset($_GET['export'])) {
+    require __DIR__ . '/' . $path;
+    exit;
+}
+
+if ($page === 'accounts/cashbook' && isset($_GET['export'])) {
+    require __DIR__ . '/' . $path;
+    exit;
+}
+
+if ($page === 'accounts/cashbook' && isset($_GET['sync']) && $_GET['sync'] === '1') {
+    require_once __DIR__ . '/config/db.php';
+    require_once __DIR__ . '/includes/accounts_finance.php';
+    if (!acc_treasury_can_manage()) {
+        set_flash('danger', 'Permission denied.');
+        redirect('accounts/cashbook');
+    }
+    $pdo = Database::connection();
+    acc_treasury_sync_all($pdo);
+    set_flash('success', 'Ledger synced from all modules.');
+    redirect('accounts/cashbook');
+}
+
+if ($page === 'accounts/expense-file') {
+    require __DIR__ . '/' . $path;
     exit;
 }
 
@@ -145,6 +184,7 @@ $postRedirectPaths = [
     'modules/sales/order.php',
     'modules/sales/payments.php',
     'modules/accounts/expenses.php',
+    'modules/accounts/cashbook.php',
 ];
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($path, $postRedirectPaths, true)) {
     require __DIR__ . '/' . $path;

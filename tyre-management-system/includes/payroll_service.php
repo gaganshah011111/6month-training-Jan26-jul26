@@ -192,6 +192,25 @@ function payroll_save_record(PDO $pdo, int $employeeId, string $month, array $ca
         'dr' => $isDraft,
     ]);
 
+    if (function_exists('acc_salary_ensure_schema')) {
+        acc_salary_ensure_schema($pdo);
+    } else {
+        require_once __DIR__ . '/accounts_salary_payroll.php';
+        acc_salary_ensure_schema($pdo);
+    }
+    $hrStatus = $asDraft ? 'draft' : 'generated';
+    $draftFlag = $isDraft ? 1 : 0;
+    $pdo->prepare(
+        "UPDATE salaries SET hr_payroll_status = CASE
+            WHEN hr_payroll_status = 'sent_to_accounts' THEN hr_payroll_status
+            WHEN :draft_flag = 1 THEN 'draft'
+            ELSE 'generated'
+         END,
+         verified_at = CASE WHEN hr_payroll_status = 'sent_to_accounts' OR :draft_v = 1 THEN verified_at ELSE NULL END,
+         verified_by = CASE WHEN hr_payroll_status = 'sent_to_accounts' OR :draft_w = 1 THEN verified_by ELSE NULL END
+         WHERE employee_id = :e AND month_year = :m"
+    )->execute(['draft_flag' => $draftFlag, 'draft_v' => $draftFlag, 'draft_w' => $draftFlag, 'e' => $employeeId, 'm' => $month]);
+
     $monthNum = (int)date('n', strtotime($month . '-01'));
     $yearNum = (int)date('Y', strtotime($month . '-01'));
     $payrollCompat = $pdo->prepare('INSERT INTO payroll(employee_id,month,year,present_days,paid_leave_days,unpaid_leave_days,overtime_amount,basic_salary,deduction,net_salary) VALUES(:e,:m,:y,:pd,:pl,:ul,:oa,:b,:d,:n) ON DUPLICATE KEY UPDATE present_days=VALUES(present_days), paid_leave_days=VALUES(paid_leave_days), unpaid_leave_days=VALUES(unpaid_leave_days), overtime_amount=VALUES(overtime_amount), basic_salary=VALUES(basic_salary), deduction=VALUES(deduction), net_salary=VALUES(net_salary)');
@@ -225,7 +244,7 @@ function payroll_mark_paid(PDO $pdo, int $salaryId): bool
     return $st->rowCount() > 0;
 }
 
-/** UI status: pending | generated | draft | paid */
+/** UI status: pending | generated | draft | verified | sent_to_accounts | paid */
 function payroll_row_status(?array $salaryRow): string
 {
     if (!$salaryRow) {
@@ -234,21 +253,51 @@ function payroll_row_status(?array $salaryRow): string
     if ((string)($salaryRow['payment_status'] ?? '') === 'paid') {
         return 'paid';
     }
-    if (!empty($salaryRow['is_draft'])) {
+    $hr = (string)($salaryRow['hr_payroll_status'] ?? '');
+    if ($hr === 'sent_to_accounts') {
+        return 'sent_to_accounts';
+    }
+    if ($hr === 'verified') {
+        return 'verified';
+    }
+    if (!empty($salaryRow['is_draft']) || $hr === 'draft') {
         return 'draft';
     }
+    if ($hr === 'generated' || !empty($salaryRow['salary_id'])) {
+        return 'generated';
+    }
 
-    return 'generated';
+    return 'pending';
 }
 
 function payroll_status_badge(string $status): array
 {
     return match ($status) {
         'paid' => ['label' => 'Paid', 'class' => 'payroll-badge payroll-badge--paid'],
+        'sent_to_accounts' => ['label' => 'Sent to Accounts', 'class' => 'payroll-badge payroll-badge--accounts'],
+        'verified' => ['label' => 'Verified', 'class' => 'payroll-badge payroll-badge--verified'],
         'draft' => ['label' => 'Draft', 'class' => 'payroll-badge payroll-badge--draft'],
-        'generated' => ['label' => 'Payroll Generated', 'class' => 'payroll-badge payroll-badge--generated'],
-        default => ['label' => 'Pending', 'class' => 'payroll-badge payroll-badge--pending'],
+        'generated' => ['label' => 'Generated', 'class' => 'payroll-badge payroll-badge--generated'],
+        default => ['label' => 'Not Generated', 'class' => 'payroll-badge payroll-badge--pending'],
     };
+}
+
+/** Whether HR has sent this month's payroll batch to Accounts. */
+function payroll_month_accounts_batch(PDO $pdo, string $month): ?array
+{
+    if (!preg_match('/^\d{4}-\d{2}$/', $month)) {
+        return null;
+    }
+    if (!function_exists('acc_salary_ensure_schema')) {
+        require_once __DIR__ . '/accounts_salary_payroll.php';
+    }
+    acc_salary_ensure_schema($pdo);
+    $st = $pdo->prepare('SELECT * FROM accounts_salary_batches WHERE month_year = :m LIMIT 1');
+    $st->execute(['m' => $month]);
+
+    $row = $st->fetch(PDO::FETCH_ASSOC);
+
+    return $row ?: null;
 }
 
 function payroll_format_month_label(string $month): string
@@ -361,6 +410,10 @@ function payroll_list_employees(PDO $pdo, string $month, array $filters = []): a
         $having = 'HAVING salary_id IS NOT NULL AND COALESCE(payment_status,\'unpaid\') = \'unpaid\' AND COALESCE(is_draft,0) = 0';
     } elseif ($statusFilter === 'draft') {
         $having = 'HAVING salary_id IS NOT NULL AND is_draft = 1';
+    } elseif ($statusFilter === 'sent_to_accounts') {
+        $having = 'HAVING salary_id IS NOT NULL AND hr_payroll_status = \'sent_to_accounts\'';
+    } elseif ($statusFilter === 'verified') {
+        $having = 'HAVING salary_id IS NOT NULL AND hr_payroll_status = \'verified\'';
     }
 
     $sql = "SELECT e.*,
@@ -373,6 +426,8 @@ function payroll_list_employees(PDO $pdo, string $month, array $filters = []): a
         s.total_deduction,
         s.net_salary,
         s.payment_status,
+        s.hr_payroll_status,
+        s.amount_paid,
         s.is_draft,
         s.present_days AS sal_present,
         s.generated_at

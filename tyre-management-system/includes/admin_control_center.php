@@ -15,12 +15,14 @@ const ACC_ADMIN_MODULES = [
 ];
 
 const ACC_ADMIN_DEPT_CARDS = [
-    'HR' => ['icon' => 'bi-people', 'match' => ['HR', 'Human Resources']],
-    'Accounts' => ['icon' => 'bi-bank2', 'match' => ['Accounts', 'Finance']],
-    'Sales' => ['icon' => 'bi-graph-up', 'match' => ['Sales', 'CRM']],
-    'Inventory' => ['icon' => 'bi-boxes', 'match' => ['Inventory', 'Store', 'Warehouse']],
-    'Production' => ['icon' => 'bi-building-gear', 'match' => ['Production', 'Manufacturing']],
-    'Dispatch' => ['icon' => 'bi-truck', 'match' => ['Dispatch', 'Logistics']],
+    'HR' => ['icon' => 'bi-people', 'match' => ['HR', 'Human Resources'], 'code' => 'DEPT_HR'],
+    'Accounts' => ['icon' => 'bi-bank2', 'match' => ['Accounts', 'Finance'], 'code' => 'DEPT_ACC'],
+    'Sales' => ['icon' => 'bi-graph-up', 'match' => ['Sales', 'CRM'], 'code' => 'DEPT_SALES'],
+    'Inventory' => ['icon' => 'bi-boxes', 'match' => ['Inventory', 'Store', 'Warehouse'], 'code' => 'DEPT_RAW_MAT'],
+    'Production' => ['icon' => 'bi-building-gear', 'match' => ['Production', 'Manufacturing'], 'code' => 'DEPT_PPC'],
+    'Dispatch' => ['icon' => 'bi-truck', 'match' => ['Dispatch', 'Logistics'], 'code' => 'DEPT_LOG_DISP'],
+    'Quality' => ['icon' => 'bi-shield-check', 'match' => ['Quality', 'QA'], 'code' => 'DEPT_QA_QC'],
+    'Administration' => ['icon' => 'bi-gear', 'match' => ['Administration', 'Admin'], 'code' => 'DEPT_ADMIN'],
 ];
 
 const ACC_ADMIN_ROLES = [
@@ -35,7 +37,7 @@ const ACC_ADMIN_ROLES = [
     'Employee',
 ];
 
-const ACC_ADMIN_PERMISSIONS = ['view', 'create', 'edit', 'delete', 'export', 'approve'];
+const ACC_ADMIN_PERMISSIONS = ['view', 'create', 'edit', 'delete', 'export'];
 
 function admin_can_access(): bool
 {
@@ -194,7 +196,7 @@ function admin_system_health_full(PDO $pdo): array
         'health' => $dbOk ? 'Healthy' : 'Critical',
         'level' => $dbOk ? 'green' : 'red',
         'records' => admin_table_count($pdo, 'users'),
-        'route' => 'admin/system-health',
+        'route' => 'admin/monitoring',
     ];
     $modules['backup'] = [
         'key' => 'backup',
@@ -345,7 +347,7 @@ function admin_operational_alerts(PDO $pdo): array
                 'type' => 'danger',
                 'title' => $h['label'],
                 'message' => (string)$h['health'],
-                'url' => route_url('admin/system-health'),
+                'url' => route_url('admin/monitoring'),
             ];
         }
     }
@@ -355,7 +357,7 @@ function admin_operational_alerts(PDO $pdo): array
             'type' => 'success',
             'title' => 'System stable',
             'message' => 'No critical alerts. Modules run independently.',
-            'url' => route_url('admin/system-health'),
+            'url' => route_url('admin/monitoring'),
         ];
     }
 
@@ -491,15 +493,27 @@ function admin_executive_reports(PDO $pdo): array
 function admin_department_cards(PDO $pdo): array
 {
     install_department_hierarchy($pdo);
+    require_once __DIR__ . '/admin_departments_service.php';
+    $loginCodes = array_flip(admin_departments_login_codes($pdo));
     $cards = [];
     foreach (ACC_ADMIN_DEPT_CARDS as $name => $cfg) {
+        $deptCode = (string)($cfg['code'] ?? '');
+        if ($deptCode === '' || !isset($loginCodes[$deptCode])) {
+            continue;
+        }
         $like = [];
         foreach ($cfg['match'] as $m) {
             $like[] = "department LIKE " . $pdo->quote('%' . $m . '%');
         }
         $where = implode(' OR ', $like);
         $empCount = admin_count($pdo, "SELECT COUNT(*) FROM employees WHERE ($where)");
-        $userCount = admin_count($pdo, "SELECT COUNT(*) FROM users u JOIN employees e ON e.user_id = u.id WHERE u.status = 'active' AND ($where)");
+        $deptName = '';
+        if (dh_table_exists($pdo, 'departments')) {
+            $stName = $pdo->prepare('SELECT department_name FROM departments WHERE department_code = :c LIMIT 1');
+            $stName->execute(['c' => $deptCode]);
+            $deptName = (string)($stName->fetchColumn() ?: '');
+        }
+        $userCount = admin_department_login_user_count($pdo, $deptCode, $deptName);
         $head = '—';
         if (dh_table_exists($pdo, 'departments')) {
             foreach ($cfg['match'] as $m) {
@@ -542,36 +556,43 @@ function admin_dashboard_bundle(PDO $pdo): array
 
 function admin_page_head(string $title, string $subtitle = '', ?string $actionHtml = null): void
 {
-    echo '<header class="admin-cc__head">';
-    echo '<div><h1 class="admin-cc__title">' . e($title) . '</h1>';
+    echo '<header class="sa-head">';
+    echo '<div class="sa-head__text"><h1 class="sa-head__title">' . e($title) . '</h1>';
     if ($subtitle !== '') {
-        echo '<p class="admin-cc__sub">' . e($subtitle) . '</p>';
+        echo '<p class="sa-head__sub">' . e($subtitle) . '</p>';
     }
     echo '</div>';
     if ($actionHtml) {
-        echo '<div class="admin-cc__head-actions">' . $actionHtml . '</div>';
+        echo '<div class="sa-head__actions">' . $actionHtml . '</div>';
     }
     echo '</header>';
 }
 
-function admin_render_timeline(array $events): void
+function admin_render_timeline(array $events, bool $detailed = false): void
 {
-    echo '<ul class="admin-timeline">';
+    echo '<ul class="sa-timeline">';
     if ($events === []) {
-        echo '<li class="admin-timeline__empty">No activity recorded yet.</li>';
+        echo '<li class="sa-timeline__empty">No activity recorded yet.</li>';
         return;
     }
     foreach ($events as $ev) {
         $level = e((string)($ev['level'] ?? 'blue'));
-        echo '<li class="admin-timeline__item admin-timeline__item--' . $level . '">';
-        echo '<div class="admin-timeline__dot"></div>';
-        echo '<div class="admin-timeline__body">';
-        echo '<div class="admin-timeline__top"><strong>' . e((string)$ev['user']) . '</strong>';
-        echo '<span class="admin-chip admin-chip--' . $level . '">' . e((string)($ev['status'] ?? 'info')) . '</span></div>';
-        echo '<p class="admin-timeline__action">' . e((string)$ev['action']) . '</p>';
-        echo '<div class="admin-timeline__meta"><span class="admin-badge admin-badge--muted">' . e((string)$ev['module']) . '</span>';
-        echo '<time>' . e((string)$ev['date']) . ' · ' . e((string)$ev['time']) . '</time></div>';
-        echo '</div></li>';
+        echo '<li class="sa-timeline__item sa-timeline__item--' . $level . '">';
+        echo '<div class="sa-timeline__dot"></div>';
+        echo '<div class="sa-timeline__body">';
+        echo '<div class="sa-timeline__top"><strong>' . e((string)$ev['user']) . '</strong>';
+        echo '<span class="sa-chip sa-chip--' . $level . '">' . e((string)($ev['status'] ?? 'info')) . '</span></div>';
+        echo '<p class="sa-timeline__action">' . e((string)$ev['action']) . '</p>';
+        if ($detailed && (!empty($ev['old_value']) || !empty($ev['new_value']))) {
+            echo '<p class="sa-timeline__change"><span>' . e((string)($ev['old_value'] ?? '—')) . '</span> → <span>' . e((string)($ev['new_value'] ?? '—')) . '</span></p>';
+        }
+        echo '<div class="sa-timeline__meta">';
+        echo '<span class="sa-badge sa-badge--muted">' . e((string)$ev['module']) . '</span>';
+        echo '<time>' . e((string)$ev['date']) . ' · ' . e((string)$ev['time']) . '</time>';
+        if ($detailed && !empty($ev['ip'])) {
+            echo '<span class="sa-timeline__ip">IP ' . e((string)$ev['ip']) . '</span>';
+        }
+        echo '</div></div></li>';
     }
     echo '</ul>';
 }

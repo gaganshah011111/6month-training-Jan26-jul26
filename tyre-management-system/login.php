@@ -5,11 +5,26 @@ require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/admin_security_service.php';
+require_once __DIR__ . '/includes/admin_users_service.php';
+require_once __DIR__ . '/includes/user_account_status.php';
 $cssPath = __DIR__ . '/assets/css/style.css';
 $cssVersion = is_file($cssPath) ? (string)filemtime($cssPath) : (string)time();
 
+$pdo = Database::connection();
+admin_users_ensure_schema($pdo);
+
 if (isset($_SESSION['user'])) {
-    $role = (string)($_SESSION['user']['role'] ?? '');
+    $userId = (int)($_SESSION['user']['id'] ?? $_SESSION['user_id'] ?? 0);
+    if ($userId > 0) {
+        $liveStatus = auth_fetch_user_status_by_id($pdo, $userId);
+        auth_status_log($pdo, 'login_page_session', $userId, (string)$liveStatus, 'existing_session');
+        if ($liveStatus === null || !auth_login_is_permitted($liveStatus)) {
+            logout_user();
+            header('Location: login.php?blocked=1');
+            exit;
+        }
+    }
+    $role = (string)($_SESSION['user']['role'] ?? $_SESSION['role'] ?? '');
     $target = role_home_page($role);
     if ($target !== 'login.php') {
         header('Location: ' . route_url($target));
@@ -64,17 +79,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 admin_record_login($pdo, null, $login, false, 'Account not found');
                 $error = 'Account not found.';
             } else {
-                $statusValue = strtolower(trim((string)($user['status'] ?? 'active')));
-                $blockedStatuses = ['inactive', 'locked', 'frozen', 'terminated'];
-                if (in_array($statusValue, $blockedStatuses, true)) {
-                    admin_record_login($pdo, (int)$user['id'], $login, false, 'Status: ' . $statusValue);
-                    $error = admin_login_status_message($statusValue);
-                } else {
-                    $isActive = $statusValue === 'active' || $statusValue === '1' || $user['status'] === 1;
-
-                if (!$isActive) {
-                    admin_record_login($pdo, (int)$user['id'], $login, false, 'Inactive');
-                    $error = 'Account inactive.';
+                $loginBlock = auth_evaluate_login_user($pdo, $user, $login);
+                if ($loginBlock !== null) {
+                    $error = $loginBlock;
                 } else {
                     $dbPassword = (string)($user['password_hash'] ?? $user['password'] ?? '');
                     $isHashedPassword = is_string($dbPassword) && preg_match('/^\$2[aby]\$/', $dbPassword) === 1;
@@ -106,7 +113,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             exit;
                         }
                     }
-                }
                 }
             }
         }

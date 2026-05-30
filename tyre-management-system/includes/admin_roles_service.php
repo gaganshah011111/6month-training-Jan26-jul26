@@ -304,8 +304,6 @@ function admin_roles_permission_matrix(): array
 
                 'export' => $canView,
 
-                'approve' => in_array($role, ['HR Manager', 'Accounts Manager'], true),
-
             ];
 
         }

@@ -10,15 +10,6 @@ require_once __DIR__ . '/config/app.php';
 require_auth();
 $user = current_user();
 
-if (is_logged_in()) {
-    try {
-        require_once __DIR__ . '/config/db.php';
-        require_once __DIR__ . '/includes/admin_security_service.php';
-        admin_enforce_session_policy(Database::connection());
-    } catch (Throwable) {
-    }
-}
-
 if (!isset($_GET['page'])) {
     $homeFile = role_home_file((string)($user['role'] ?? ''));
     if ($homeFile !== 'login.php') {
@@ -190,13 +181,13 @@ $postRedirectPaths = [
     'modules/suppliers/index.php',
     'modules/settings/index.php',
     'modules/admin/users.php',
+    'modules/admin/security_center.php',
     'modules/admin/departments.php',
     'modules/admin/settings.php',
     'modules/admin/user_profile.php',
     'modules/admin/backup.php',
     'modules/admin/roles.php',
-    'modules/admin/sales_oversight.php',
-    'modules/admin/purchase_oversight.php',
+    'modules/admin/company_config.php',
     'modules/inventory/materials.php',
     'modules/inventory/add_stock.php',
     'modules/inventory/use_stock.php',

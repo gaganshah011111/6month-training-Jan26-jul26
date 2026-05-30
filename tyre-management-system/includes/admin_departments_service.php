@@ -239,9 +239,265 @@ function admin_department_get(PDO $pdo, int $id): ?array
 
 
 
+/** ERP login role → canonical department code (users are not always linked via employees). */
+
+function admin_role_to_department_code(string $role): ?string
+
+{
+
+    $role = normalize_role_name($role);
+
+
+
+    return match ($role) {
+
+        'Super Admin', 'Admin' => 'DEPT_ADMIN',
+
+        'HR Manager' => 'DEPT_HR',
+
+        'Accounts Manager' => 'DEPT_ACC',
+
+        'Sales Manager' => 'DEPT_SALES',
+
+        'Inventory Manager' => 'DEPT_RAW_MAT',
+
+        'Production Manager' => 'DEPT_PPC',
+
+        'Dispatch Manager' => 'DEPT_LOG_DISP',
+
+        'Quality Manager' => 'DEPT_QA_QC',
+
+        default => null,
+
+    };
+
+}
+
+
+
+/** @return list<string> */
+
+function admin_roles_for_department_code(string $departmentCode): array
+
+{
+
+    $roles = [];
+
+    foreach ([
+
+        'Super Admin', 'Admin', 'HR Manager', 'Accounts Manager', 'Sales Manager',
+
+        'Inventory Manager', 'Production Manager', 'Dispatch Manager', 'Quality Manager', 'Employee',
+
+    ] as $role) {
+
+        if (admin_role_to_department_code($role) === $departmentCode) {
+
+            $roles[] = $role;
+
+        }
+
+    }
+
+
+
+    return $roles;
+
+}
+
+
+
+function admin_department_name_by_code(PDO $pdo, string $departmentCode): string
+
+{
+
+    if ($departmentCode === '') {
+
+        return '—';
+
+    }
+
+    admin_departments_ensure($pdo);
+
+    $st = $pdo->prepare('SELECT department_name FROM departments WHERE department_code = :c LIMIT 1');
+
+    $st->execute(['c' => $departmentCode]);
+
+    $name = $st->fetchColumn();
+
+
+
+    return $name !== false && $name !== '' ? (string)$name : '—';
+
+}
+
+
+
+/** @return array{code: string, name: string, roles: list<string>}|null */
+
+function admin_department_match_filter(PDO $pdo, string $filter): ?array
+
+{
+
+    $filter = trim($filter);
+
+    if ($filter === '') {
+
+        return null;
+
+    }
+
+    admin_departments_ensure($pdo);
+
+    $st = $pdo->prepare(
+
+        'SELECT department_code, department_name FROM departments
+
+         WHERE department_name = :exact OR department_name LIKE :like OR department_code = :code
+
+         LIMIT 1'
+
+    );
+
+    $st->execute(['exact' => $filter, 'like' => '%' . $filter . '%', 'code' => $filter]);
+
+    $row = $st->fetch(PDO::FETCH_ASSOC);
+
+    if (!$row) {
+
+        return null;
+
+    }
+
+    $code = (string)$row['department_code'];
+
+
+
+    return [
+
+        'code' => $code,
+
+        'name' => (string)$row['department_name'],
+
+        'roles' => admin_roles_for_department_code($code),
+
+    ];
+
+}
+
+
+
+/** @return list<string> Department codes that have at least one user login. */
+
+function admin_departments_login_codes(PDO $pdo): array
+
+{
+
+    admin_departments_ensure($pdo);
+
+    $codes = [];
+
+    foreach ($pdo->query('SELECT DISTINCT role FROM users')->fetchAll(PDO::FETCH_COLUMN) ?: [] as $role) {
+
+        $code = admin_role_to_department_code((string)$role);
+
+        if ($code !== null) {
+
+            $codes[$code] = true;
+
+        }
+
+    }
+
+    if (dh_table_exists($pdo, 'employees')) {
+
+        $rows = $pdo->query(
+
+            'SELECT DISTINCT d.department_code
+
+             FROM users u
+
+             INNER JOIN employees e ON e.user_id = u.id
+
+             INNER JOIN departments d ON d.id = e.department_id OR d.department_name = e.department
+
+             WHERE TRIM(COALESCE(d.department_code, "")) <> ""'
+
+        )->fetchAll(PDO::FETCH_COLUMN) ?: [];
+
+        foreach ($rows as $code) {
+
+            $codes[(string)$code] = true;
+
+        }
+
+    }
+
+
+
+    return array_keys($codes);
+
+}
+
+
+
+function admin_department_login_user_count(PDO $pdo, string $departmentCode, string $departmentName): int
+
+{
+
+    if ($departmentCode === '') {
+
+        return 0;
+
+    }
+
+    $count = 0;
+
+    foreach ($pdo->query('SELECT role FROM users')->fetchAll(PDO::FETCH_COLUMN) ?: [] as $role) {
+
+        if (admin_role_to_department_code((string)$role) === $departmentCode) {
+
+            $count++;
+
+        }
+
+    }
+
+    try {
+
+        $st = $pdo->prepare(
+
+            'SELECT COUNT(DISTINCT u.id) FROM users u
+
+             INNER JOIN employees e ON e.user_id = u.id
+
+             WHERE (e.department_id = (SELECT id FROM departments WHERE department_code = :code LIMIT 1)
+
+                    OR e.department = :name)
+
+               AND LOWER(TRIM(u.role)) IN ("employee", "staff")'
+
+        );
+
+        $st->execute(['code' => $departmentCode, 'name' => $departmentName]);
+
+        $count += (int)$st->fetchColumn();
+
+    } catch (Throwable) {
+
+    }
+
+
+
+    return $count;
+
+}
+
+
+
 /** @return list<array<string, mixed>> */
 
-function admin_departments_list(PDO $pdo): array
+function admin_departments_list(PDO $pdo, bool $withLoginsOnly = false): array
 
 {
 
@@ -273,7 +529,23 @@ function admin_departments_list(PDO $pdo): array
 
 
 
-    return $rows;
+    if (!$withLoginsOnly) {
+
+        return $rows;
+
+    }
+
+    $loginCodes = array_flip(admin_departments_login_codes($pdo));
+
+
+
+    return array_values(array_filter(
+
+        $rows,
+
+        static fn(array $r): bool => isset($loginCodes[(string)($r['department_code'] ?? '')])
+
+    ));
 
 }
 

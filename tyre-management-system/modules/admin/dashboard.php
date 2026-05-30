@@ -1,89 +1,96 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/../../config/db.php';
-require_once __DIR__ . '/../../includes/admin_control_center.php';
+require_once __DIR__ . '/../../includes/admin_dashboard_service.php';
 if (!admin_can_access()) { echo '<div class="alert alert-warning m-3">Access denied.</div>'; return; }
 $pdo = Database::connection();
-$b = admin_dashboard_bundle($pdo);
-$k = $b['kpis'];
-$h = $b['health'];
-$a = $b['activity'];
-$alerts = $b['alerts'];
-$quickActions = admin_quick_actions();
+$d = admin_system_dashboard($pdo);
+$o = $d['overview'];
+$h = $d['system_health'];
 ?>
-<div class="admin-cc module-shell" id="adminControlCenter">
-    <?php admin_page_head('ERP Control Center', 'Command, monitor, and configure the entire ERP — no operational approval layer'); ?>
+<div class="sa-console sa-dash">
+    <?php admin_page_head('Dashboard', 'System health overview — users, modules, security, and infrastructure'); ?>
 
-    <section class="admin-quick-actions" aria-label="Quick actions">
-        <?php foreach ($quickActions as $qa): ?>
-            <a href="<?= e($qa['url']) ?>" class="admin-quick-card admin-quick-card--<?= e($qa['tone']) ?>">
-                <i class="bi <?= e($qa['icon']) ?>"></i>
-                <span><?= e($qa['label']) ?></span>
-            </a>
-        <?php endforeach; ?>
-    </section>
+    <div class="sa-dash-row">
+        <section class="sa-dash-block">
+            <h2 class="sa-dash-block__title">System Overview</h2>
+            <div class="sa-dash-stats sa-dash-stats--6">
+                <a class="sa-dash-stat" href="<?= e(route_url('admin/users')) ?>"><span>Total Users</span><strong><?= (int)$o['total'] ?></strong></a>
+                <a class="sa-dash-stat sa-dash-stat--green" href="<?= e(route_url('admin/users', ['status' => 'active'])) ?>"><span>Active Users</span><strong><?= (int)$o['active'] ?></strong></a>
+                <a class="sa-dash-stat sa-dash-stat--red" href="<?= e(route_url('admin/users', ['status' => 'locked'])) ?>"><span>Locked Users</span><strong><?= (int)$o['locked'] ?></strong></a>
+                <a class="sa-dash-stat" href="<?= e(route_url('admin/users', ['status' => 'inactive'])) ?>"><span>Inactive Users</span><strong><?= (int)$o['inactive'] ?></strong></a>
+                <a class="sa-dash-stat" href="<?= e(route_url('admin/departments')) ?>"><span>Departments</span><strong><?= (int)$o['departments'] ?></strong></a>
+                <a class="sa-dash-stat sa-dash-stat--blue" href="<?= e(route_url('admin/users')) ?>"><span>Online Users</span><strong><?= (int)$o['online'] ?></strong></a>
+            </div>
+        </section>
+    </div>
 
-    <section class="admin-cc__kpis" aria-label="Organization overview">
-        <div class="admin-kpi"><span>Total Users</span><strong><?= (int)$k['users'] ?></strong><a href="<?= e(route_url('admin/users')) ?>">Manage</a></div>
-        <div class="admin-kpi"><span>Total Employees</span><strong><?= (int)$k['employees'] ?></strong><a href="<?= e(route_url('admin/employee-oversight')) ?>">Oversight</a></div>
-        <div class="admin-kpi"><span>Departments</span><strong><?= (int)$k['departments'] ?></strong><a href="<?= e(route_url('admin/departments')) ?>">Manage</a></div>
-        <div class="admin-kpi admin-kpi--green"><span>Revenue (MTD)</span><strong><?= e(sales_format_money((float)$k['revenue'])) ?></strong></div>
-        <div class="admin-kpi admin-kpi--red"><span>Expenses (MTD)</span><strong><?= e(sales_format_money((float)$k['expenses'])) ?></strong></div>
-        <div class="admin-kpi"><span>Profit (MTD)</span><strong><?= e(sales_format_money((float)$k['profit'])) ?></strong></div>
-    </section>
-
-    <section class="admin-cc__kpis admin-cc__kpis--finance" aria-label="Financial & operations">
-        <div class="admin-kpi admin-kpi--warn"><span>Receivables</span><strong><?= e(sales_format_money((float)$k['receivables'])) ?></strong><a href="<?= e(route_url('admin/finance-oversight')) ?>">View</a></div>
-        <div class="admin-kpi"><span>Payables</span><strong><?= e(sales_format_money((float)$k['payables'])) ?></strong><a href="<?= e(route_url('accounts/payables')) ?>">View</a></div>
-        <div class="admin-kpi admin-kpi--green"><span>Cash Balance</span><strong><?= e(sales_format_money((float)$k['cash'])) ?></strong><a href="<?= e(route_url('accounts/cashbook')) ?>">Treasury</a></div>
-        <div class="admin-kpi"><span>Recent Logins</span><strong><?= (int)$k['today_logins'] ?></strong><span class="admin-kpi__hint">Today</span></div>
-        <div class="admin-kpi admin-kpi--warn"><span>Low Stock Alerts</span><strong><?= (int)$k['low_stock'] ?></strong><a href="<?= e(route_url('inventory/materials')) ?>">Materials</a></div>
-        <div class="admin-kpi"><span>Pending Dispatch</span><strong><?= (int)$k['pending_dispatch'] ?></strong><a href="<?= e(route_url('dispatch/history')) ?>">Dispatch</a></div>
-    </section>
-
-    <section class="admin-cc__kpis admin-cc__kpis--dues" aria-label="Outstanding dues">
-        <div class="admin-kpi"><span>Open Customer Dues</span><strong><?= e(sales_format_money((float)$k['customer_dues'])) ?></strong></div>
-        <div class="admin-kpi"><span>Open Supplier Dues</span><strong><?= e(sales_format_money((float)$k['supplier_dues'])) ?></strong></div>
-    </section>
-
-    <div class="admin-cc__grid admin-cc__grid--3">
-        <section class="admin-card">
-            <div class="admin-card__head"><h2 class="admin-card__title mb-0">System Health</h2><a href="<?= e(route_url('admin/system-health')) ?>" class="admin-link-btn">Details</a></div>
-            <div class="admin-health-list">
-                <?php foreach ($h as $mod): ?>
-                    <div class="admin-health-pill admin-health-pill--<?= e($mod['level']) ?>">
-                        <span class="admin-health-pill__dot"></span>
-                        <div><strong><?= e($mod['label']) ?></strong><small><?= e($mod['health']) ?> · <?= (int)$mod['records'] ?> records</small></div>
+    <div class="sa-dash-row sa-dash-row--2">
+        <section class="sa-dash-block">
+            <h2 class="sa-dash-block__title">System Health</h2>
+            <div class="sa-dash-health">
+                <?php foreach ($h as $item): ?>
+                    <div class="sa-dash-health__item sa-dash-health__item--<?= e($item['level']) ?>">
+                        <span class="sa-dash-health__label"><?= e($item['label']) ?></span>
+                        <strong><?= e($item['state']) ?></strong>
+                        <?php if (!empty($item['detail'])): ?><small><?= e($item['detail']) ?></small><?php endif; ?>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <h3 class="sa-dash-subtitle">Module Status</h3>
+            <div class="sa-dash-modules">
+                <?php foreach ($d['modules'] as $m): ?>
+                    <div class="sa-dash-mod sa-dash-mod--<?= e($m['level']) ?>">
+                        <span><?= e($m['label']) ?> Module</span>
+                        <strong><?= e($m['state']) ?></strong>
                     </div>
                 <?php endforeach; ?>
             </div>
         </section>
-        <section class="admin-card">
-            <div class="admin-card__head"><h2 class="admin-card__title mb-0">Recent Activity</h2><a href="<?= e(route_url('admin/activity-logs')) ?>" class="admin-link-btn">Audit center</a></div>
-            <?php admin_render_timeline(array_slice($a, 0, 8)); ?>
-        </section>
-        <section class="admin-card">
-            <div class="admin-card__head"><h2 class="admin-card__title mb-0">Alert Center</h2><span class="admin-card__hint-inline">Monitor · act when needed</span></div>
-            <ul class="admin-notify-list">
-                <?php foreach ($alerts as $note): ?>
-                    <li class="admin-notify admin-notify--<?= e($note['type']) ?>">
-                        <a href="<?= e($note['url']) ?>">
-                            <strong><?= e($note['title']) ?></strong>
-                            <span><?= e($note['message']) ?></span>
-                        </a>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
+
+        <section class="sa-dash-block">
+            <h2 class="sa-dash-block__title">Security Alerts</h2>
+            <?php if ($d['security_alerts'] === []): ?>
+                <p class="sa-dash-empty">No security alerts.</p>
+            <?php else: ?>
+                <ul class="sa-dash-alerts">
+                    <?php foreach ($d['security_alerts'] as $a): ?>
+                        <li class="sa-dash-alert sa-dash-alert--<?= e($a['level']) ?>">
+                            <a href="<?= e($a['url']) ?>">
+                                <strong><?= e($a['title']) ?></strong>
+                                <span><?= e($a['detail']) ?></span>
+                            </a>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
+
+            <h3 class="sa-dash-subtitle">Quick Actions</h3>
+            <div class="sa-dash-quick">
+                <a class="sa-dash-quick__btn" href="<?= e(route_url('admin/users')) ?>">Create User</a>
+                <a class="sa-dash-quick__btn" href="<?= e(route_url('admin/backup')) ?>">Backup Now</a>
+                <a class="sa-dash-quick__btn" href="<?= e(route_url('admin/users')) ?>">Reset User Password</a>
+                <a class="sa-dash-quick__btn" href="<?= e(route_url('admin/activity-logs')) ?>">Open Activity Logs</a>
+            </div>
         </section>
     </div>
 
-    <section class="admin-card mt-3">
-        <h2 class="admin-card__title">Oversight Modules</h2>
-        <div class="admin-oversight-links">
-            <a href="<?= e(route_url('admin/employee-oversight')) ?>" class="admin-oversight-link"><i class="bi bi-person-badge"></i> Employee Oversight</a>
-            <a href="<?= e(route_url('admin/sales-oversight')) ?>" class="admin-oversight-link"><i class="bi bi-graph-up"></i> Sales Oversight</a>
-            <a href="<?= e(route_url('admin/purchase-oversight')) ?>" class="admin-oversight-link"><i class="bi bi-truck"></i> Purchase Oversight</a>
-            <a href="<?= e(route_url('admin/finance-oversight')) ?>" class="admin-oversight-link"><i class="bi bi-bank2"></i> Finance Oversight</a>
+    <section class="sa-dash-block sa-dash-block--compact">
+        <div class="sa-dash-block__head">
+            <h2 class="sa-dash-block__title mb-0">Recent Admin Actions</h2>
+            <a href="<?= e(route_url('admin/activity-logs')) ?>" class="sa-panel__link">View all →</a>
         </div>
+        <?php if ($d['admin_actions'] === []): ?>
+            <p class="sa-dash-empty mb-0">No admin actions recorded yet.</p>
+        <?php else: ?>
+            <ul class="sa-dash-actions">
+                <?php foreach ($d['admin_actions'] as $a): ?>
+                    <li>
+                        <strong><?= e($a['action']) ?></strong>
+                        <span><?= e($a['user']) ?> · <?= e($a['module']) ?> · <?= e($a['when']) ?></span>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
     </section>
 </div>

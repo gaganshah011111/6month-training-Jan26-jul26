@@ -1,2 +1,2 @@
-schema_version=024_salary_payments_v2
-updated_at=2026-05-29T17:30:56+05:30
+schema_version=025_user_status_locked
+updated_at=2026-05-30T23:32:01+05:30

@@ -339,8 +339,7 @@ class Database
                 full_name=VALUES(full_name),
                 username=VALUES(username),
                 password_hash=VALUES(password_hash),
-                role=VALUES(role),
-                status='active'");
+                role=VALUES(role)");
 
         self::$initialized = true;
     }
@@ -1259,6 +1258,15 @@ class Database
         }
         if (!self::hasColumn($pdo, 'users', 'status')) {
             $pdo->exec("ALTER TABLE users ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'active'");
+        } else {
+            try {
+                $col = $pdo->query("SHOW COLUMNS FROM users LIKE 'status'")->fetch(PDO::FETCH_ASSOC);
+                $type = strtolower((string)($col['Type'] ?? ''));
+                if ($type !== '' && str_contains($type, 'enum')) {
+                    $pdo->exec("ALTER TABLE users MODIFY status VARCHAR(20) NOT NULL DEFAULT 'active'");
+                }
+            } catch (Throwable) {
+            }
         }
         $pdo->exec("ALTER TABLE users MODIFY role VARCHAR(50) NOT NULL DEFAULT 'Employee'");
 

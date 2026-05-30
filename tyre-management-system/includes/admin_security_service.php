@@ -170,73 +170,24 @@ function admin_active_sessions(PDO $pdo, int $userId): array
     return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 
+function admin_user_failed_login_count(PDO $pdo, int $userId): int
+{
+    admin_security_ensure_schema($pdo);
+    $st = $pdo->prepare('SELECT COUNT(*) FROM erp_login_history WHERE user_id = :u AND success = 0');
+    $st->execute(['u' => $userId]);
+
+    return (int)$st->fetchColumn();
+}
+
 function admin_enforce_session_policy(PDO $pdo): void
 {
-    if (!is_logged_in()) {
-        return;
-    }
-    admin_security_ensure_schema($pdo);
-    $userId = (int)($_SESSION['user']['id'] ?? $_SESSION['user_id'] ?? 0);
-    if ($userId <= 0) {
-        return;
-    }
-
-    try {
-        $st = $pdo->prepare('SELECT status, force_logout_at FROM users WHERE id = :id LIMIT 1');
-        $st->execute(['id' => $userId]);
-        $row = $st->fetch(PDO::FETCH_ASSOC);
-        if (!$row) {
-            logout_user();
-            header('Location: login.php');
-            exit;
-        }
-        $status = strtolower(trim((string)($row['status'] ?? '')));
-        if (in_array($status, ['inactive', 'locked', 'frozen', 'terminated'], true)) {
-            logout_user();
-            header('Location: login.php?blocked=1');
-            exit;
-        }
-        $forceAt = (string)($row['force_logout_at'] ?? '');
-        if ($forceAt !== '') {
-            $sid = session_id();
-            $st2 = $pdo->prepare(
-                'SELECT created_at FROM erp_user_sessions WHERE session_id = :s AND user_id = :u LIMIT 1'
-            );
-            $st2->execute(['s' => $sid, 'u' => $userId]);
-            $sessCreated = (string)($st2->fetchColumn() ?: '');
-            if ($sessCreated !== '' && strtotime($sessCreated) <= strtotime($forceAt)) {
-                $pdo->prepare('UPDATE erp_user_sessions SET revoked_at = NOW() WHERE session_id = :s')
-                    ->execute(['s' => $sid]);
-                logout_user();
-                header('Location: login.php?logged_out=1');
-                exit;
-            }
-        }
-        $sid = session_id();
-        if ($sid !== '') {
-            $st3 = $pdo->prepare(
-                'SELECT revoked_at FROM erp_user_sessions WHERE session_id = :s AND user_id = :u LIMIT 1'
-            );
-            $st3->execute(['s' => $sid, 'u' => $userId]);
-            $revoked = $st3->fetchColumn();
-            if ($revoked) {
-                logout_user();
-                header('Location: login.php?logged_out=1');
-                exit;
-            }
-        }
-        admin_touch_session($pdo);
-    } catch (Throwable) {
-    }
+    require_once __DIR__ . '/user_account_status.php';
+    auth_enforce_live_session($pdo);
 }
 
 function admin_login_status_message(string $status): string
 {
-    return match (strtolower($status)) {
-        'locked' => 'Account is locked. Contact administrator.',
-        'frozen' => 'Account is frozen. Contact administrator.',
-        'inactive' => 'Account is deactivated.',
-        'terminated' => 'Account has been terminated.',
-        default => 'Account inactive.',
-    };
+    require_once __DIR__ . '/user_account_status.php';
+
+    return auth_login_denial_message($status);
 }

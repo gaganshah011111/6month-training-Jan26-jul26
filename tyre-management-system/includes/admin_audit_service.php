@@ -101,6 +101,10 @@ function admin_audit_list(PDO $pdo, array $filters = [], int $limit = 100): arra
         $sql .= ' AND module_name LIKE :mod';
         $params['mod'] = '%' . $filters['module'] . '%';
     }
+    if (!empty($filters['date_from'])) {
+        $sql .= ' AND DATE(created_at) >= :df';
+        $params['df'] = $filters['date_from'];
+    }
     if (!empty($filters['q'])) {
         $sql .= ' AND (user_name LIKE :q OR action_text LIKE :q OR department LIKE :q OR detail LIKE :q)';
         $params['q'] = '%' . $filters['q'] . '%';

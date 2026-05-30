@@ -82,9 +82,14 @@ if ($footerPage === 'accounts/transactions-history') {
     echo '<script src="assets/js/accounts-transactions.js?v=' . e($accTxVer) . '"></script>' . "\n";
 }
 if ($footerPage === 'super/dashboard' || str_starts_with($footerPage, 'admin/')) {
-    $adminJs = __DIR__ . '/../assets/js/admin-control-center.js';
+    $adminJs = __DIR__ . '/../assets/js/admin-console.js';
     $adminVer = is_file($adminJs) ? (string)filemtime($adminJs) : (string)time();
-    echo '<script src="assets/js/admin-control-center.js?v=' . e($adminVer) . '"></script>' . "\n";
+    echo '<script src="assets/js/admin-console.js?v=' . e($adminVer) . '"></script>' . "\n";
+}
+if ($footerPage === 'admin/users') {
+    $umJs = __DIR__ . '/../assets/js/admin-users.js';
+    $umVer = is_file($umJs) ? (string)filemtime($umJs) : (string)time();
+    echo '<script src="assets/js/admin-users.js?v=' . e($umVer) . '"></script>' . "\n";
 }
 ?>
 </body>
